@@ -37,7 +37,11 @@ jobs:
 
       - run: golangci-lint run
 
+      - run: goreleaser check
+
       - run: goreleaser build --snapshot --clean
+
+      - run: sh npm/test.sh
 
   tenets:
     needs: test
