@@ -1,8 +1,8 @@
 id: project-specific
-tenet: "Say what it does, not how it feels. If the sentence could appear unchanged in another project's docs, it says nothing about this one. Cut it."
+tenet: "Say what it does, not how it feels. The fix names the mechanism or a number. If the sentence could appear unchanged in another project's docs, it says nothing about this one. Cut it."
 criteria:
-  true: "A sentence asserts that the project is good, fast, simple, powerful, flexible, modern, reliable or carefully built without naming anything a reader could check: no command, flag, file, format, version, number, algorithm, limit, or named system it talks to. Lifted into an unrelated project's documentation the sentence would still read as true, because its subject is the reader's feelings or the authors' intentions rather than the software's behaviour."
-  false: "Each claim rests on something particular to this project: a command or flag, a configuration key, a file or wire format, a supported version, a measured quantity, a data structure or algorithm, a named limit or failure mode, or an external system it reads or writes. A plain statement of what the project is or how to install it is specific even when the words are ordinary, and a claim of speed or simplicity is specific when the sentence names the mechanism that makes it so."
+  true: "A sentence rates the project instead of describing it. Its predicate is an evaluation of the software or a statement of the writer's intentions for it, and it rests on nothing a reader could check, so the same words would sit unchanged above any other tool of the same kind. Nothing in the sentence could be wrong, because it reports an estimate rather than a behaviour."
+  false: "Every claim is anchored to something only this project has: a command, a flag or a configuration key; a format, a version or a limit; a measured quantity; the mechanism or the data structure behind a behaviour; a failure mode; or a system it reads or writes. A plain statement of what the project is, or of how to install it, is anchored too even in ordinary words, and a claim about speed or simplicity is anchored when the sentence goes on to name what makes it so."
 source: cursor/plugins pstack/skills/unslop/SKILL.md #27
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
