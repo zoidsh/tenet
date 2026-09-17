@@ -174,14 +174,29 @@ const (
 	OriginLocal = "local"
 )
 
-// Config is a whole tenets.yml.
+// Config is a whole tenets.yml. Tenets holds what the file wrote itself until
+// the config is resolved, and every tenet that will run afterwards.
 type Config struct {
-	Version int      `yaml:"version"`
-	Model   string   `yaml:"model"`
-	Tenets  []*Tenet `yaml:"tenets"`
+	Version  int                  `yaml:"version"`
+	Model    string               `yaml:"model"`
+	Presets  []string             `yaml:"presets"`
+	Rules    []string             `yaml:"rules"`
+	Disable  []string             `yaml:"disable"`
+	Override map[string]*Override `yaml:"override"`
+	Tenets   []*Tenet             `yaml:"tenets"`
 
 	// Path is where the config was read from, for error messages.
 	Path string `yaml:"-"`
+}
+
+// Override patches the fields of a built-in rule a repository wants
+// differently. Anything it leaves out the rule keeps.
+type Override struct {
+	Severity  Severity `yaml:"severity"`
+	Threshold *float64 `yaml:"threshold"`
+	Confident *float64 `yaml:"confident"`
+	Include   []string `yaml:"include"`
+	Exclude   []string `yaml:"exclude"`
 }
 
 var idPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
@@ -192,7 +207,7 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := Parse(data)
+	cfg, err := parse(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -200,11 +215,26 @@ func Load(path string) (*Config, error) {
 	if err := cfg.resolveExamples(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
+	if err := cfg.resolve(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
 	return cfg, nil
 }
 
-// Parse validates the bytes of a tenets.yml.
+// Parse validates the bytes of a tenets.yml and resolves the presets and
+// rules it names into the tenets that will run.
 func Parse(data []byte) (*Config, error) {
+	cfg, err := parse(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := cfg.resolve(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func parse(data []byte) (*Config, error) {
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
@@ -220,9 +250,6 @@ func Parse(data []byte) (*Config, error) {
 func (c *Config) validate() error {
 	if c.Version != 1 {
 		return fmt.Errorf("version: must be 1, got %d", c.Version)
-	}
-	if len(c.Tenets) == 0 {
-		return errors.New("tenets: at least one tenet is required")
 	}
 	seen := make(map[string]bool, len(c.Tenets))
 	for i, t := range c.Tenets {
@@ -244,10 +271,10 @@ func (c *Config) validate() error {
 		} else if _, err := ParseSeverity(string(t.Severity)); err != nil {
 			return fmt.Errorf("tenet %q: %w", t.ID, err)
 		}
-		if err := checkFraction(t.ID, "threshold", t.Threshold); err != nil {
+		if err := checkFraction(fmt.Sprintf("tenet %q", t.ID), "threshold", t.Threshold); err != nil {
 			return err
 		}
-		if err := checkFraction(t.ID, "confident", t.Confident); err != nil {
+		if err := checkFraction(fmt.Sprintf("tenet %q", t.ID), "confident", t.Confident); err != nil {
 			return err
 		}
 		for _, set := range []struct {
@@ -264,6 +291,37 @@ func (c *Config) validate() error {
 			return err
 		}
 		t.model = c.Model
+	}
+	return c.validateOverrides()
+}
+
+func (c *Config) validateOverrides() error {
+	for _, id := range sortedKeys(c.Override) {
+		o := c.Override[id]
+		if o == nil {
+			return fmt.Errorf("override %q: at least one field is required", id)
+		}
+		if o.Severity != "" {
+			if _, err := ParseSeverity(string(o.Severity)); err != nil {
+				return fmt.Errorf("override %q: %w", id, err)
+			}
+		}
+		if err := checkFraction(fmt.Sprintf("override %q", id), "threshold", o.Threshold); err != nil {
+			return err
+		}
+		if err := checkFraction(fmt.Sprintf("override %q", id), "confident", o.Confident); err != nil {
+			return err
+		}
+		for _, set := range []struct {
+			field    string
+			patterns []string
+		}{{"include", o.Include}, {"exclude", o.Exclude}} {
+			for _, p := range set.patterns {
+				if !doublestar.ValidatePattern(p) {
+					return fmt.Errorf("override %q: %s: %q is not a valid glob", id, set.field, p)
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -311,12 +369,12 @@ func (c *Config) resolveExamples(dir string) error {
 	return nil
 }
 
-func checkFraction(id, field string, v *float64) error {
+func checkFraction(subject, field string, v *float64) error {
 	if v == nil {
 		return nil
 	}
 	if *v <= 0 || *v >= 1 {
-		return fmt.Errorf("tenet %q: %s: must be between 0 and 1 exclusive, got %v", id, field, *v)
+		return fmt.Errorf("%s: %s: must be between 0 and 1 exclusive, got %v", subject, field, *v)
 	}
 	return nil
 }

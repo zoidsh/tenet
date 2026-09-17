@@ -1,40 +1,7 @@
 version: 1
-tenets:
-  - id: comment-why
-    tenet: A comment says why the code exists or why it is written this way, not what the code does.
-    criteria:
-      true: A comment inside a function body, or a doc comment that only repeats the identifier's name in other words, that restates what the code visibly does, narrates steps, names the operation, or is a section label. A reader of the code learns nothing new from it.
-      false: The comment gives a reason, a constraint, a contract, a workaround for an external system, a reference explaining the choice, or a warning about ordering or invariants that the code does not show, or is a doc comment on an exported identifier stating what callers can rely on.
-    severity: warn
-    include: ["**/*.go"]
+presets: [agent-hygiene]
+override:
+  comment-why:
     # testdata holds files written to violate a tenet, which is what the live
     # test checks for.
     exclude: ["**/testdata/**"]
-    examples_from: rules/comment-why/examples.yml
-
-  - id: no-fallback
-    tenet: Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
-    criteria:
-      true: The code catches or checks for a failure and then continues with a substitute value, an empty result, a cached or default value, a logged warning, or a swallowed exception, so the caller cannot tell the operation failed.
-      false: Failures propagate, are re-raised, or are converted to an explicit error with context; or the default is a documented, intentional part of the interface such as an optional parameter or a config value with a meaningful default.
-    severity: warn
-    include: ["**/*.go"]
-    examples_from: rules/no-fallback/examples.yml
-
-  - id: no-mocking
-    tenet: You must never mock anything in tests.
-    criteria:
-      true: The test replaces a real dependency with a mock, stub, spy, fake, or patched function, using a mocking library or hand-written substitute, and asserts on or relies on that substitute.
-      false: The test exercises real implementations, in-memory or temporary real resources such as a temp directory or an in-process server, fixtures, or table-driven inputs, with no substituted dependencies.
-    severity: warn
-    include: ["**/*_test.go"]
-    examples_from: rules/no-mocking/examples.yml
-
-  - id: no-defensive-nil
-    tenet: Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden.
-    criteria:
-      true: "The code checks a value for nil, null, None or undefined and silently returns or skips, although the surrounding code already guarantees the value is present: it was assigned, validated, or returned by a constructor or a guard a few lines earlier, or the type does not admit null."
-      false: The nil check guards a value that can genuinely be absent at this point, such as a lookup result, an optional field, or user input, or the check produces an explicit error rather than a silent return.
-    severity: warn
-    include: ["**/*.go"]
-    examples_from: rules/no-defensive-nil/examples.yml

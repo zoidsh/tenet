@@ -105,6 +105,7 @@ func TestStarterMatchesTheRepositoryTenet(t *testing.T) {
 	// is compared.
 	want.Exclude = nil
 	want.Examples, want.ExamplesFrom = nil, ""
+	want.Tags, want.Origin = nil, got.Origin
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("starter tenet is %#v, want %#v", got, want)
 	}
