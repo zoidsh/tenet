@@ -7,3 +7,7 @@ linters:
     - gocritic
     - revive
     - misspell
+
+formatters:
+  enable:
+    - gofmt

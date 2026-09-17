@@ -88,6 +88,7 @@ func Kind(path string) string {
 	return KindCode
 }
 
+// Kind is the framing the model is shown this file under.
 func (f *File) Kind() string { return Kind(f.Path) }
 
 // KindForLanguage is the kind of file a language is written in, which is how
