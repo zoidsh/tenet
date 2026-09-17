@@ -1,4 +1,4 @@
-# Labelled cases for the no-transcript-comment tenet, measured by `tenetlint check`.
+# Labelled cases for the no-transcript-comment tenet, measured by `tenet check`.
 - label: violation
   lines: [7, 8]
   code: |

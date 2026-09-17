@@ -1,4 +1,4 @@
-# Labelled cases for the assertion-justified tenet, measured by `tenetlint check`.
+# Labelled cases for the assertion-justified tenet, measured by `tenet check`.
 - label: violation
   lines: 6
   code: |
