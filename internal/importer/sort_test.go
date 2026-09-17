@@ -144,7 +144,10 @@ func TestSortAcceptsAtExactlyTheThreshold(t *testing.T) {
 		{"just under", importer.KindCodeRule, 0.49, false},
 		{"exactly", importer.KindCodeRule, importer.Accept, true},
 		{"above", importer.KindCodeRule, 0.99, true},
-		{"checkable but not a code rule", importer.KindNeedsRepo, 0.99, false},
+		{"process at the threshold", importer.KindProcess, importer.Accept, true},
+		{"needs-repo but checkable", importer.KindNeedsRepo, 0.9, true},
+		{"context, however checkable", importer.KindContext, 0.9, false},
+		{"other, however checkable", importer.KindOther, 0.9, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

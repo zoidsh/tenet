@@ -18,12 +18,14 @@ import (
 // size the model answers well.
 const ChunkSize = 80
 
-// Accept is the probability a candidate's checkable question has to reach for
-// a code rule to become a tenet.
+// Accept is the probability a candidate's checkable question has to reach to
+// become a tenet.
 const Accept = 0.5
 
-// The kinds a sentence in a rule file can be. Only KindCodeRule becomes a
-// tenet; the others are what makes a rule file bigger than its rules.
+// The kinds a sentence in a rule file can be. KindContext and KindOther never
+// become tenets; the rest do when a diff is enough to judge them, because the
+// kind question reads "never do X" as process even where X is plain in the
+// changed lines.
 const (
 	KindCodeRule  = "code-rule"
 	KindProcess   = "process"
@@ -140,7 +142,7 @@ func (s *Sorter) Sort(ctx context.Context, candidates []Candidate) ([]Sorted, St
 }
 
 func accepted(kind string, checkable float64) bool {
-	return kind == KindCodeRule && checkable >= Accept
+	return checkable >= Accept && kind != KindContext && kind != KindOther
 }
 
 func (s *Sorter) key(c Candidate) string {
