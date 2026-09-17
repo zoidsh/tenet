@@ -32,16 +32,29 @@ Read the verdict, then the misjudged list. `sharp` means nothing landed on the w
 
 ## 4. Sharpen the criteria against the misjudged list
 
-Change `criteria.true` and `criteria.false`, not the examples and not `fail`. Lowering the cutoff to cover a rule's own weak spot buys a number and costs every repository that runs the rule.
+Change `criteria.true` and `criteria.false`, not the examples. Leave `fail` alone while you are here: lowering the cutoff to cover a rule's own weak spot buys a number and costs every repository that runs the rule, and step 5 says what it takes to move it.
 
 Name the concrete shape the misjudged examples share: "an error value assigned to the blank identifier", "a comment that is a section header", "a value the function just produced with a `New...` constructor". Add an exclusion to `criteria.false` for the shape the acceptable examples share, which is what stops a criterion that lifts the violations from dragging the innocent cases up with them. Do not paste examples into the criteria as text; the spike measured that and it changes nothing at a cost of about 130 tokens a call.
 
 Rerun after each edit and keep the numbers. Four attempts is enough to find out whether the wording is the problem: if the misses are still there with the AUC at 1.00, the remaining gap is the model's, not the sentence's, and the honest thing is to ship the rule as `usable` and say so.
 
-## 5. Add it to a preset
+## 5. Move the cutoff only with evidence
+
+`fail` is 0.8 unless the rule says otherwise, and sharpening the criteria is the first answer to a violation that scores under it. A rule may set `fail` lower only when `check` shows no ok example at or above the proposed value with 0.05 to spare: for `fail: 0.75`, nothing acceptable may reach 0.70. The rule.yml then carries a comment naming the highest probability an ok example scored, because that number is the whole of the argument and the next person cannot re-derive it from the file.
+
+```yaml
+# The highest an ok example scores is 0.39, the locale negotiation, so 0.75
+# clears every acceptable case by 0.36. It is there for the required setting
+# that becomes an empty string, which floats between 0.76 and 0.79.
+fail: 0.75
+```
+
+To read that highest probability off `check`, point it at a config that overrides the rule's `fail` down to a floor nothing sits under, and every ok example is then listed as misjudged with its probability. Never lower a cutoff to cover a violation that an acceptable example is scoring near: that is a rule asking to be reworded, not recalibrated.
+
+## 6. Add it to a preset
 
 A rule that belongs in no preset ships in the binary and runs for nobody. Name it in a file under `presets/`, or give it the `standalone` tag when leaving it out is deliberate. `TestBuiltinRulesShip` fails on a rule that is neither.
 
-## 6. Let the corpus test hold the line
+## 7. Let the corpus test hold the line
 
 `TestBuiltinRulesShip` requires twelve examples per rule and both labels present. It is the reason a rule cannot arrive with three cases and a verdict that means nothing.

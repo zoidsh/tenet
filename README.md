@@ -58,7 +58,7 @@ tenets.yml
 
 id                origin         fail  include
 comment-why       agent-hygiene  0.80  **/*.go
-no-fallback       agent-hygiene  0.80  **/*.go
+no-fallback       agent-hygiene  0.75  **/*.go
 ```
 
 `tenetlint init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
