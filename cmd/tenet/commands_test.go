@@ -150,3 +150,23 @@ func TestCheckBuiltinRefusesAConfig(t *testing.T) {
 		t.Errorf("stderr is %q", stderr)
 	}
 }
+
+// Every subcommand answers --help with its own help rather than the root's.
+func TestSubcommandHelpIsItsOwn(t *testing.T) {
+	for _, c := range []struct{ args, want []string }{
+		{[]string{"hook", "install", "--help"}, []string{"tenet hook install", "--force"}},
+		{[]string{"hook", "uninstall", "--help"}, []string{"tenet hook uninstall"}},
+		{[]string{"init", "--help"}, []string{"tenet init", "--agent"}},
+		{[]string{"baseline", "--help"}, []string{"tenet baseline", "--prune"}},
+	} {
+		code, stdout, stderr := runCmd(t, c.args...)
+		if code != 0 {
+			t.Fatalf("%v exited %d: %s", c.args, code, stderr)
+		}
+		for _, want := range c.want {
+			if !strings.Contains(stdout, want) {
+				t.Errorf("%v printed %q, which does not mention %s", c.args, stdout, want)
+			}
+		}
+	}
+}
