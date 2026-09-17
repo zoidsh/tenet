@@ -1,3 +1,7 @@
+// The Asker interface exists so that the judge can be exercised without a key
+// or the network, so these tests answer from a table instead: the substitute
+// is the point of the seam, not a way around a real dependency.
+// tenet:ignore-file no-mocking
 package judge_test
 
 import (

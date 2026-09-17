@@ -49,6 +49,8 @@ type lintOptions struct {
 	noCache bool
 	verbose bool
 	quiet   bool
+
+	failLevel report.FailOn
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
@@ -67,11 +69,11 @@ func (o *lintOptions) validate() error {
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format)
 	}
-	if o.failOn != report.FailNever {
-		if _, err := tenets.ParseSeverity(o.failOn); err != nil {
-			return fmt.Errorf("--fail-on must be error, warn, info or never, got %q", o.failOn)
-		}
+	level, err := report.ParseFailOn(o.failOn)
+	if err != nil {
+		return fmt.Errorf("--fail-on %w", err)
 	}
+	o.failLevel = level
 	return nil
 }
 
@@ -142,7 +144,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	if err := r.Write(out, o.format, report.ColorEnabled(out)); err != nil {
 		return fail(err)
 	}
-	if code := r.ExitCode(o.failOn); code != report.ExitOK {
+	if code := r.ExitCode(o.failLevel); code != report.ExitOK {
 		return &exitError{code: code}
 	}
 	return nil

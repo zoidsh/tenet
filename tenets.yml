@@ -29,6 +29,6 @@ tenets:
   - id: no-defensive-nil
     tenet: Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden.
     criteria:
-      true: The code checks a value for nil, null, None or undefined and silently returns or skips, although the surrounding code already guarantees the value is present: it was assigned, validated, or returned by a constructor or a guard a few lines earlier, or the type does not admit null.
+      true: "The code checks a value for nil, null, None or undefined and silently returns or skips, although the surrounding code already guarantees the value is present: it was assigned, validated, or returned by a constructor or a guard a few lines earlier, or the type does not admit null."
       false: The nil check guards a value that can genuinely be absent at this point, such as a lookup result, an optional field, or user input, or the check produces an explicit error rather than a silent return.
     severity: warn

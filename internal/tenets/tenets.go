@@ -249,9 +249,10 @@ func (c *Config) SetModel(model string) {
 	}
 }
 
-// Find looks for a tenets.yml from startDir up to the root of its git
-// repository, or to the filesystem root when there is none. It returns the
-// directories it searched when it finds nothing.
+// Find searches upward from startDir, stopping at the root of the git
+// repository so that a config belonging to some enclosing directory is never
+// picked up. The directories it searched come back either way, for the error
+// message.
 func Find(startDir string) (string, []string, error) {
 	dir, err := filepath.Abs(startDir)
 	if err != nil {

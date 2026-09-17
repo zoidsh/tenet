@@ -40,7 +40,6 @@ func newVersionCmd() *cobra.Command {
 	}
 }
 
-// execute runs the command tree and maps whatever comes back to an exit code.
 func execute(root *cobra.Command) int {
 	err := root.Execute()
 	if err == nil {

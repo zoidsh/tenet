@@ -26,7 +26,6 @@ tenets:
 
 const staged = `package main
 
-// adds one to n
 func inc(n int) int {
 	return n + 1
 }

@@ -154,10 +154,20 @@ func TestExitCode(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := report.Report{Findings: c.findings}.ExitCode(c.failOn)
+			failOn, err := report.ParseFailOn(c.failOn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := report.Report{Findings: c.findings}.ExitCode(failOn)
 			if got != c.want {
 				t.Errorf("exit %d, want %d", got, c.want)
 			}
 		})
+	}
+}
+
+func TestParseFailOnRejectsNonsense(t *testing.T) {
+	if _, err := report.ParseFailOn("loud"); err == nil {
+		t.Fatal("want an error")
 	}
 }

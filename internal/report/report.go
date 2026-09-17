@@ -24,6 +24,24 @@ const (
 // FailNever is the --fail-on value that lets every finding through.
 const FailNever = "never"
 
+// FailOn is the severity a finding has to reach to fail the run.
+type FailOn struct {
+	level tenets.Severity
+	never bool
+}
+
+// ParseFailOn reads a --fail-on value.
+func ParseFailOn(s string) (FailOn, error) {
+	if s == FailNever {
+		return FailOn{never: true}, nil
+	}
+	level, err := tenets.ParseSeverity(s)
+	if err != nil {
+		return FailOn{}, fmt.Errorf("must be error, warn, info or never, got %q", s)
+	}
+	return FailOn{level: level}, nil
+}
+
 // Formats a report can be printed in.
 const (
 	FormatText = "text"
@@ -43,19 +61,15 @@ type Report struct {
 // ExitCode is 1 when a finding at or above failOn stands. A low confidence
 // finding is reported but never fails a run, because the point of the flag is
 // that it is safe to gate a commit on.
-func (r Report) ExitCode(failOn string) int {
-	if failOn == FailNever {
-		return ExitOK
-	}
-	level, err := tenets.ParseSeverity(failOn)
-	if err != nil {
+func (r Report) ExitCode(failOn FailOn) int {
+	if failOn.never {
 		return ExitOK
 	}
 	for _, f := range r.Findings {
 		if f.LowConfidence {
 			continue
 		}
-		if f.Severity.Rank() >= level.Rank() {
+		if f.Severity.Rank() >= failOn.level.Rank() {
 			return ExitFinding
 		}
 	}

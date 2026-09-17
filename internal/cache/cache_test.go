@@ -32,8 +32,8 @@ func TestRoundTrip(t *testing.T) {
 	}
 
 	c.PutLocation(key, 0.83, "L017")
-	e, _ = c.Get(key)
-	if !e.Located() || e.Line != "L017" || e.Prob != 0.83 {
+	e, ok = c.Get(key)
+	if !ok || !e.Located() || e.Line != "L017" || e.Prob != 0.83 {
 		t.Fatalf("location round trip: %#v", e)
 	}
 }
