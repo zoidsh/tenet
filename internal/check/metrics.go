@@ -39,11 +39,11 @@ const (
 	AdviceAmbiguous    = "both labels land in the middle: the tenet sentence is ambiguous, name the observable property it is about."
 )
 
-// The band both means sitting inside makes the tenet itself the suspect.
-const (
-	ambiguousLow  = 0.4
-	ambiguousHigh = 0.6
-)
+// AmbiguousBand is how far either side of the tenet's own threshold both
+// means have to sit for the sentence itself to be the suspect. It follows the
+// threshold rather than the middle of the scale, because a tenet cut at 0.8 is
+// undecided about what scores 0.8, not about what scores 0.5.
+const AmbiguousBand = 0.1
 
 // Score is one example's probability under the label it is known to carry.
 type Score struct {
@@ -220,7 +220,9 @@ func verdict(r Result) string {
 // satisfies the other two rules as well, and rewriting the sentence is what
 // such a tenet needs before either criterion is worth writing.
 func advice(r Result) string {
-	middle := func(mean float64) bool { return mean >= ambiguousLow && mean <= ambiguousHigh }
+	middle := func(mean float64) bool {
+		return math.Abs(mean-r.Threshold) <= AmbiguousBand
+	}
 	switch {
 	case r.Violations > 0 && r.OKs > 0 && middle(r.MeanViolation) && middle(r.MeanOK):
 		return AdviceAmbiguous

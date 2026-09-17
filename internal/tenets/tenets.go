@@ -186,7 +186,7 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	cfg.Path = path
-	if err := cfg.ResolveExamples(filepath.Dir(path)); err != nil {
+	if err := cfg.resolveExamples(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
 	return cfg, nil
@@ -274,9 +274,9 @@ func validateExamples(id string, examples []Example) error {
 	return nil
 }
 
-// ResolveExamples appends the examples each tenet keeps in a sibling file,
+// resolveExamples appends the examples each tenet keeps in a sibling file,
 // named relative to dir, to the ones written inline.
-func (c *Config) ResolveExamples(dir string) error {
+func (c *Config) resolveExamples(dir string) error {
 	for _, t := range c.Tenets {
 		if t.ExamplesFrom == "" {
 			continue

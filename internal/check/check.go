@@ -67,11 +67,13 @@ func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats,
 		wg       sync.WaitGroup
 	)
 	slots := make(chan struct{}, concurrency)
+	for _, t := range ts {
+		stats.Examples += len(t.Examples)
+	}
 
 	for i, t := range ts {
 		judgeds[i] = make([]Judged, len(t.Examples))
 		for k, e := range t.Examples {
-			stats.Examples++
 			wg.Add(1)
 			slots <- struct{}{}
 			go func(t *tenets.Tenet, e tenets.Example, out *Judged) {
