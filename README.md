@@ -47,6 +47,21 @@ no-fallback  Do not add fallbacks, default-to-something-that-works-ish behavior,
 fix the lines above or mark one with a tenet:ignore <id> directive, then commit again
 ```
 
+## Directives
+
+Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it — the first line is the usual place, but it is not a rule. Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. A directive that names an id your `tenets.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
+
+```go
+x := fallback() // tenet:ignore no-fallback
+
+// tenet:ignore-next-line comment-why
+y := 1 // set y to one
+```
+
+A directive only counts inside a comment, so a string, a test fixture or a sentence about directives does not quietly exempt the file it sits in. In code that means after a line comment marker, or between a block comment's markers, in the language the file's extension names; in a language tenetlint does not know it counts anywhere on the line. The check is textual rather than a parse, so a marker inside a string literal opens a comment as far as tenetlint is concerned and a directive after it counts. In Markdown, YAML and other prose and data files a directive counts at the start of a line — after list markers, whitespace or the format's own comment marker — or inside an `<!-- -->` comment; a sentence that quotes one mid-line does not count. In a commit message it counts anywhere.
+
+The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
+
 ## Configuration
 
 A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenetlint rules` lists the built-in rules with their tags and the presets that include them, `tenetlint rules comment-why` prints one of them in full, and `tenetlint presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
