@@ -122,8 +122,8 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 func addRunFlags(cmd *cobra.Command, o *lintOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
-	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
-	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
+	f.StringVar(&o.config, "config", "", "path to tenet.yml, searched for by default")
+	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenet.yml")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
 }

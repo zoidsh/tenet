@@ -24,7 +24,7 @@ func TestLiveCheck(t *testing.T) {
 	root.SetErr(&stderr)
 	root.SetArgs([]string{
 		"check", "comment-why",
-		"--config", "../../tenets.yml",
+		"--config", "../../tenet.yml",
 		"--format", "json",
 	})
 
@@ -58,7 +58,7 @@ func TestLiveComment(t *testing.T) {
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
 	root.SetArgs([]string{
-		"--config", "testdata/tenets.yml",
+		"--config", "testdata/tenet.yml",
 		"--format", "json",
 		"--no-cache",
 		"testdata/narrating.go",

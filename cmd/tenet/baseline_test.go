@@ -96,7 +96,7 @@ func baselineRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", marked)
 	git(t, dir, "add", "-A")
 	t.Chdir(dir)
@@ -365,7 +365,7 @@ func TestBaselinePruneWithoutABaseline(t *testing.T) {
 func TestABaselinedFindingSurvivesAModelBump(t *testing.T) {
 	dir := baselineRepo(t)
 	writeBaseline(t)
-	writeFile(t, dir, "tenets.yml", strings.Replace(testConfig, "jev-1.13.0", "jev-1.14.0", 1))
+	writeFile(t, dir, "tenet.yml", strings.Replace(testConfig, "jev-1.13.0", "jev-1.14.0", 1))
 
 	code, stdout, stderr := runCmd(t, "--no-cache", ".")
 	if code != 0 {

@@ -32,7 +32,7 @@ var secretPatterns = []string{".env", ".env.*", "*.pem", "*.key", "id_rsa*", "*.
 // rather than in the packages that own them because those packages import
 // this one, and the skip below has to name them.
 const (
-	ConfigName   = "tenets.yml"
+	ConfigName   = "tenet.yml"
 	BaselineName = ".tenet-baseline.json"
 )
 

@@ -88,7 +88,7 @@ func TestStarterMatchesTheRepositoryRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ours, err := tenets.Load("../../tenets.yml")
+	ours, err := tenets.Load("../../tenet.yml")
 	if err != nil {
 		t.Fatal(err)
 	}

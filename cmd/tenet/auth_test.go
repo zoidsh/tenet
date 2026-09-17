@@ -329,7 +329,7 @@ func TestAuthRefusesFlagsThatContradict(t *testing.T) {
 func TestLintReadsTheKeyFromTheGlobalFile(t *testing.T) {
 	dir, _ := authRepo(t)
 	saveTestKey(t, testKey)
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", staged)
 	git(t, dir, "add", "-Af")
 	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)

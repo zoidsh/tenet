@@ -110,7 +110,7 @@ type jsonReport struct {
 func TestLintStagedEndToEnd(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", staged)
 	writeFile(t, dir, ".env", "TYPESAFE_API_KEY=not-a-real-key\n")
 	git(t, dir, "add", "-Af")
@@ -146,7 +146,7 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	if got.Findings[0] != want {
 		t.Errorf("finding is %#v, want %#v", got.Findings[0], want)
 	}
-	// The one window costs a verdict call and a location call; tenets.yml is
+	// The one window costs a verdict call and a location call; tenet.yml is
 	// staged too and skipped along with the key file.
 	if got.Stats.Files != 1 || got.Stats.Windows != 1 || got.Stats.Calls != 2 || got.Stats.InputTokens != 240 {
 		t.Errorf("stats are %#v", got.Stats)
@@ -158,7 +158,7 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	for _, s := range got.Skipped {
 		skipped[s.File] = s.Reason
 	}
-	if len(skipped) != 2 || skipped[".env"] == "" || skipped["tenets.yml"] == "" {
+	if len(skipped) != 2 || skipped[".env"] == "" || skipped["tenet.yml"] == "" {
 		t.Errorf("skipped is %#v", got.Skipped)
 	}
 }
@@ -168,7 +168,7 @@ func TestLintStagedEndToEnd(t *testing.T) {
 func TestLintOnAPipeAnswersInJSON(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", staged)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -196,7 +196,7 @@ func TestLintOnAPipeAnswersInJSON(t *testing.T) {
 func TestLintExplicitPath(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", staged)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -220,7 +220,7 @@ func TestLintExplicitPath(t *testing.T) {
 func TestLintFromASubdirectory(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	if err := os.Mkdir(filepath.Join(dir, "pkg"), 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestLintFromASubdirectory(t *testing.T) {
 func TestLintGitHubFormatFromASubdirectory(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	if err := os.Mkdir(filepath.Join(dir, "pkg"), 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestLintGitHubFormatFromASubdirectory(t *testing.T) {
 func TestLintRejectsAnUnknownFormat(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
 
@@ -305,7 +305,7 @@ func TestLintRejectsAnUnknownFormat(t *testing.T) {
 func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	writeFile(t, dir, "inc.go", "package main // tenet\x3aignore no-such-rule\n")
 	git(t, dir, "add", "-A")
 	t.Chdir(dir)
@@ -330,7 +330,7 @@ func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
 func TestLintWithoutAKey(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "")
 
@@ -366,7 +366,7 @@ func TestLintWithoutAConfig(t *testing.T) {
 	if code := execute(root); code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}
-	if !strings.Contains(stderr.String(), "tenets.yml") || !strings.Contains(stderr.String(), dir) {
+	if !strings.Contains(stderr.String(), "tenet.yml") || !strings.Contains(stderr.String(), dir) {
 		t.Errorf("stderr is %q, want the search path", stderr.String())
 	}
 }
@@ -374,7 +374,7 @@ func TestLintWithoutAConfig(t *testing.T) {
 func TestLintWithNothingStaged(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-qm", "config")
 	t.Chdir(dir)
@@ -399,7 +399,7 @@ func TestLintWithNothingStaged(t *testing.T) {
 func TestLintUnknownBaseRef(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "tenet.yml", testConfig)
 	git(t, dir, "add", "-A")
 	git(t, dir, "commit", "-qm", "config")
 	t.Chdir(dir)
@@ -428,7 +428,7 @@ func TestNextLineFitsTheRun(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
 			git(t, dir, "init", "-q", "-b", "main")
-			writeFile(t, dir, "tenets.yml", testConfig)
+			writeFile(t, dir, "tenet.yml", testConfig)
 			git(t, dir, "add", "-A")
 			git(t, dir, "commit", "-qm", "config")
 			writeFile(t, dir, "inc.go", staged)

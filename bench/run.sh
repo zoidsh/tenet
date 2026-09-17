@@ -140,7 +140,7 @@ lint diff.json "$tmp/repo" --no-cache --base "$BASE"
 # The pull request text and the config that judges it are files of this
 # branch, not of COMMIT, and neither reads the tree, so this one runs here.
 pr_lines=$(wc -l <bench/pr.txt | tr -d ' ')
-lint pr.json "$repo" --no-cache --pr-text bench/pr.txt --config bench/pr-tenets.yml
+lint pr.json "$repo" --no-cache --pr-text bench/pr.txt --config bench/pr-tenet.yml
 
 "$bin" check --builtin --no-cache --runs 3 --format json >"$tmp/builtin.json" 2>"$tmp/stderr.txt" || {
 	cat "$tmp/stderr.txt" >&2

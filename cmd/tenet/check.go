@@ -60,7 +60,7 @@ func newCheckCmd(g *globalOptions) *cobra.Command {
 		RunE:  func(cmd *cobra.Command, args []string) error { return runCheck(cmd, args, o) },
 	}
 	f := cmd.Flags()
-	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
+	f.StringVar(&o.config, "config", "", "path to tenet.yml, searched for by default")
 	f.BoolVar(&o.builtin, "builtin", false, "measure every rule that ships in the binary, whatever the config turns on")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")

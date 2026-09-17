@@ -81,7 +81,7 @@ func TestPresetsListing(t *testing.T) {
 // the golden can go and look at.
 func TestConfigListing(t *testing.T) {
 	t.Chdir("../..")
-	code, stdout, stderr := runCmd(t, "config", "--config", "tenets.yml")
+	code, stdout, stderr := runCmd(t, "config", "--config", "tenet.yml")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
@@ -153,7 +153,7 @@ func TestCheckBuiltinEndToEnd(t *testing.T) {
 
 // --builtin is the corpus, so there is nothing for a config to say about it.
 func TestCheckBuiltinRefusesAConfig(t *testing.T) {
-	code, _, stderr := runCmd(t, "check", "--builtin", "--config", "tenets.yml")
+	code, _, stderr := runCmd(t, "check", "--builtin", "--config", "tenet.yml")
 	if code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}

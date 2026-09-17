@@ -146,7 +146,7 @@ const (
 	OriginLocal = "local"
 )
 
-// Config is a whole tenets.yml. Tenets holds what the file wrote itself until
+// Config is a whole tenet.yml. Tenets holds what the file wrote itself until
 // the config is resolved, and every tenet that will run afterwards.
 type Config struct {
 	Version  int                  `yaml:"version"`
@@ -173,7 +173,7 @@ type Override struct {
 
 var idPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 
-// Load reads and validates a tenets.yml.
+// Load reads and validates a tenet.yml.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -193,7 +193,7 @@ func Load(path string) (*Config, error) {
 	return cfg, nil
 }
 
-// Parse validates the bytes of a tenets.yml and resolves the presets and
+// Parse validates the bytes of a tenet.yml and resolves the presets and
 // rules it names into the tenets that will run.
 func Parse(data []byte) (*Config, error) {
 	cfg, err := parse(data)

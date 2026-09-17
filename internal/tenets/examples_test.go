@@ -81,7 +81,7 @@ func TestLineRangeContains(t *testing.T) {
 
 func TestExamplesFromASiblingFile(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "tenets.yml"), `version: 1
+	write(t, filepath.Join(dir, "tenet.yml"), `version: 1
 tenets:
   - id: comment-why
     tenet: A comment says why.
@@ -101,7 +101,7 @@ tenets:
     x = x + 1
 `)
 
-	cfg, err := tenets.Load(filepath.Join(dir, "tenets.yml"))
+	cfg, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,10 +205,10 @@ func TestExampleValidationErrors(t *testing.T) {
 
 func TestExamplesFromAFileAreValidated(t *testing.T) {
 	dir := t.TempDir()
-	write(t, filepath.Join(dir, "tenets.yml"), "version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples_from: side.yml\n")
+	write(t, filepath.Join(dir, "tenet.yml"), "version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples_from: side.yml\n")
 	write(t, filepath.Join(dir, "side.yml"), "- label: nope\n  code: \"y = 1\"\n")
 
-	_, err := tenets.Load(filepath.Join(dir, "tenets.yml"))
+	_, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
 	if err == nil {
 		t.Fatal("want an error")
 	}

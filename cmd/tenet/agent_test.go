@@ -195,14 +195,14 @@ func TestInitAgentUnknownWritesNothing(t *testing.T) {
 
 func TestInitAgentLeavesTheConfigAlone(t *testing.T) {
 	dir := agentRepo(t)
-	writeFile(t, dir, "tenets.yml", "version: 1\npresets: [agent-hygiene]\n")
+	writeFile(t, dir, "tenet.yml", "version: 1\npresets: [agent-hygiene]\n")
 
 	code, _, stderr := runInitCmd(t, "--agent", "claude")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if got := read(t, filepath.Join(dir, "tenets.yml")); got != "version: 1\npresets: [agent-hygiene]\n" {
-		t.Errorf("tenets.yml is:\n%s", got)
+	if got := read(t, filepath.Join(dir, "tenet.yml")); got != "version: 1\npresets: [agent-hygiene]\n" {
+		t.Errorf("tenet.yml is:\n%s", got)
 	}
 }
 

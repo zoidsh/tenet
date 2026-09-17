@@ -131,7 +131,7 @@ func checkDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenets.yml", checkConfig)
+	writeFile(t, dir, "tenet.yml", checkConfig)
 	if err := os.MkdirAll(filepath.Join(dir, "examples"), 0o750); err != nil {
 		t.Fatal(err)
 	}
