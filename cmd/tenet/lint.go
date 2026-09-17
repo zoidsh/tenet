@@ -295,8 +295,6 @@ func (o *lintOptions) accepted(root string) (*baseline.File, error) {
 	return f, err
 }
 
-// textPath is the name the tenets match this run's text under when what it
-// lints is text rather than files, and empty when it lints files.
 func textPath(o *lintOptions) string {
 	switch {
 	case o.commitMsg != "":

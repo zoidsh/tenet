@@ -62,7 +62,7 @@ In GitHub Actions, where the action downloads the release binary for the runner 
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
-Each finding is annotated on the line of the diff it was raised on, which `annotate: false` turns off in favour of JSON in the log.
+Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
 
 Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenetlint/releases).
 
