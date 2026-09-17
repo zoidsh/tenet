@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Marker is how an uninstall tells our hook from one somebody else wrote.
+// Marker is how an uninstall tells our hook from one somebody else wrote. It
+// keeps the old name of the command, because changing it would orphan every
+// hook already on a machine.
 const marker = "# tenetlint hook"
 
 // SkipEnv lets someone commit without a key, or without the lint, at all.
@@ -83,7 +85,7 @@ func newHookInstallCmd() *cobra.Command {
 				existing, err := os.ReadFile(p.path)
 				switch {
 				case err == nil && !strings.Contains(string(existing), marker) && !force:
-					return fail(fmt.Errorf("%s already exists and was not written by tenetlint; pass --force to replace it", p.path))
+					return fail(fmt.Errorf("%s already exists and was not written by tenet; pass --force to replace it", p.path))
 				case err != nil && !os.IsNotExist(err):
 					return fail(err)
 				}
@@ -106,14 +108,14 @@ func newHookInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&force, "force", false, "replace a hook tenetlint did not write")
+	cmd.Flags().BoolVar(&force, "force", false, "replace a hook tenet did not write")
 	return cmd
 }
 
 func newHookUninstallCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "uninstall",
-		Short: "Remove the tenetlint pre-commit and commit-msg hooks",
+		Short: "Remove the tenet pre-commit and commit-msg hooks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dir, err := hooksDir(cmd.Context())
@@ -132,7 +134,7 @@ func newHookUninstallCmd() *cobra.Command {
 					return fail(err)
 				}
 				if !strings.Contains(string(existing), marker) {
-					_, _ = fmt.Fprintf(out, "left %s alone, tenetlint did not write it\n", path)
+					_, _ = fmt.Fprintf(out, "left %s alone, tenet did not write it\n", path)
 					continue
 				}
 				if err := os.Remove(path); err != nil {

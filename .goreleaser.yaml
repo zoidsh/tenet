@@ -48,8 +48,8 @@ homebrew_casks:
         # The binary is unsigned, so Gatekeeper quarantines it on download and
         # macOS kills it on the first run with no error a user can act on.
         install: |
-          if system_command("/usr/bin/xattr", args: ["-h"], print_stderr: false).exit_status == 0
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tenet"]
+          if File.executable?("/usr/bin/xattr")
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", staged_path]
           end
 
 release:

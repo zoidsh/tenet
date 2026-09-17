@@ -10,7 +10,7 @@ Every path tenetlint prints, including the `file` field of `--format json`, is r
 
 The command is `tenet`, and every path below installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
 
-Homebrew, on macOS; tenetlint ships as a cask, which Homebrew on Linux does not install, so use the installer script or npm below there:
+Homebrew, on macOS. tenetlint ships as a cask, and the cask carries both a macOS and a Linux block; Homebrew 4.5 and later is said to install casks on Linux too, which we have not tested, so if `brew` turns it down there, use the installer script or npm below:
 
 ```
 brew install zoidsh/tap/tenetlint
