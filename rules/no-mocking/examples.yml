@@ -1,5 +1,30 @@
 # Labelled cases for the no-mocking tenet, measured by `tenetlint check`.
 - label: violation
+  lines: [1, 8]
+  code: |
+    type recordingNotifier struct {
+    	sent []string
+    }
+
+    func (r *recordingNotifier) Notify(ctx context.Context, userID string) error {
+    	r.sent = append(r.sent, userID)
+    	return nil
+    }
+
+    func TestDigestNotifiesEverySubscriber(t *testing.T) {
+    	rec := &recordingNotifier{}
+    	svc := NewDigestService(rec)
+
+    	if err := svc.SendDigest(context.Background(), []string{"u1", "u2"}); err != nil {
+    		t.Fatalf("SendDigest: %v", err)
+    	}
+
+    	want := []string{"u1", "u2"}
+    	if !reflect.DeepEqual(rec.sent, want) {
+    		t.Errorf("notified %v, want %v", rec.sent, want)
+    	}
+    }
+- label: violation
   lines: [3, 6]
   code: |
     func TestChargeUsesTheGateway(t *testing.T) {
@@ -16,6 +41,29 @@
     	}
     	if receipt.ID != "rcpt_1" {
     		t.Errorf("receipt id = %q, want %q", receipt.ID, "rcpt_1")
+    	}
+    }
+- label: violation
+  lines: [1, 5]
+  code: |
+    type failingStore struct{}
+
+    func (failingStore) Load(ctx context.Context, id string) (*Profile, error) {
+    	return nil, errors.New("store offline")
+    }
+
+    func TestHandlerReportsStoreFailure(t *testing.T) {
+    	h := NewProfileHandler(failingStore{})
+    	req := httptest.NewRequest(http.MethodGet, "/profiles/7", nil)
+    	rec := httptest.NewRecorder()
+
+    	h.ServeHTTP(rec, req)
+
+    	if rec.Code != http.StatusBadGateway {
+    		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadGateway)
+    	}
+    	if !strings.Contains(rec.Body.String(), "store offline") {
+    		t.Errorf("body = %q, want the store failure mentioned", rec.Body.String())
     	}
     }
 - label: violation
@@ -63,6 +111,56 @@
 
         assert [entry["id"] for entry in entries] == ["e-3", "e-4"]
         assert reader.cursor == "2024-04-12T08:30:00Z"
+- label: violation
+  lines: [4, 10]
+  lang: python
+  code: |
+    from accounts import AccountService, TokenSigner
+
+
+    class RecordingMailer:
+        def __init__(self):
+            self.sent = []
+
+        def send(self, to, subject, body):
+            self.sent.append((to, subject))
+            return "msg-%d" % len(self.sent)
+
+
+    def test_password_reset_emails_the_account_owner():
+        mailer = RecordingMailer()
+        service = AccountService(mailer, TokenSigner("test-key"))
+
+        service.request_password_reset("ada@example.com")
+
+        assert len(mailer.sent) == 1
+        to, subject = mailer.sent[0]
+        assert to == "ada@example.com"
+        assert subject == "Reset your password"
+- label: violation
+  lines: [1, 8]
+  lang: typescript
+  code: |
+    class FakeRateLimiter {
+      public readonly calls: string[] = [];
+
+      async take(key: string): Promise<boolean> {
+        this.calls.push(key);
+        return this.calls.length <= 2;
+      }
+    }
+
+    describe("ingest", () => {
+      it("stops consuming events once the limiter refuses", async () => {
+        const limiter = new FakeRateLimiter();
+        const events = ["a", "b", "c", "d"].map((id) => ({ id, body: "x" }));
+
+        const accepted = await ingest(events, limiter);
+
+        expect(accepted).toHaveLength(2);
+        expect(limiter.calls).toEqual(["a", "b", "c"]);
+      });
+    });
 - label: ok
   code: |
     func TestArchiveRoundTrip(t *testing.T) {
@@ -137,3 +235,98 @@
     		})
     	}
     }
+- label: ok
+  code: |
+    func TestSessionExpiresAfterIdleWindow(t *testing.T) {
+    	clock := clockwork.NewFakeClockAt(time.Date(2024, 3, 1, 9, 0, 0, 0, time.UTC))
+    	// NewSessionStore takes a Clock in production too; main passes clockwork.NewRealClock().
+    	store := NewSessionStore(WithClock(clock), WithIdleTimeout(15*time.Minute))
+
+    	token, err := store.Create("u-1")
+    	if err != nil {
+    		t.Fatalf("Create: %v", err)
+    	}
+
+    	clock.Advance(14 * time.Minute)
+    	if _, err := store.Resolve(token); err != nil {
+    		t.Fatalf("Resolve before the window closes: %v", err)
+    	}
+
+    	clock.Advance(2 * time.Minute)
+    	if _, err := store.Resolve(token); !errors.Is(err, ErrSessionExpired) {
+    		t.Errorf("Resolve after the window = %v, want ErrSessionExpired", err)
+    	}
+    }
+- label: ok
+  lang: python
+  code: |
+    import sqlite3
+
+    import pytest
+
+    from ledger import SCHEMA, Ledger
+
+
+    @pytest.fixture
+    def ledger():
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(SCHEMA)
+        return Ledger(conn)
+
+
+    def test_balance_reflects_posted_entries(ledger):
+        ledger.post("cash", 1500)
+        ledger.post("cash", -400)
+        ledger.post("fees", -100)
+
+        assert ledger.balance("cash") == 1100
+        assert ledger.balance("fees") == -100
+        assert ledger.trial_balance() == 1000
+- label: ok
+  lang: python
+  code: |
+    import json
+
+    from importer import import_orders
+
+
+    def test_import_orders_reads_a_jsonl_file(tmp_path):
+        source = tmp_path / "orders.jsonl"
+        rows = [
+            {"id": "o-1", "total": 1200, "status": "paid"},
+            {"id": "o-2", "total": 900, "status": "refunded"},
+            {"id": "o-3", "total": 4500, "status": "paid"},
+        ]
+        source.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+
+        report = import_orders(source, out_dir=tmp_path / "out")
+
+        assert report.imported == 2
+        assert report.skipped == 1
+        written = (tmp_path / "out" / "paid.csv").read_text(encoding="utf-8")
+        assert written.splitlines()[0] == "id,total"
+- label: ok
+  lang: typescript
+  code: |
+    import { createServer, type Server } from "node:http";
+    import { fetchJson } from "./fetch-json";
+
+    let server: Server;
+    let baseUrl: string;
+
+    beforeAll(async () => {
+      server = createServer((req, res) => {
+        res.setHeader("content-type", "application/json");
+        res.end(JSON.stringify({ path: req.url, ok: true }));
+      });
+      await new Promise<void>((resolve) => server.listen(0, resolve));
+      const { port } = server.address() as { port: number };
+      baseUrl = `http://127.0.0.1:${port}`;
+    });
+
+    afterAll(() => new Promise((resolve) => server.close(() => resolve(null))));
+
+    it("returns the decoded body", async () => {
+      const body = await fetchJson(`${baseUrl}/widgets`);
+      expect(body).toEqual({ path: "/widgets", ok: true });
+    });
