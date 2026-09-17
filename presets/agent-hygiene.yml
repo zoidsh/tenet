@@ -1,0 +1,8 @@
+version: 1
+name: agent-hygiene
+description: The habits a coding agent slips into when nobody reads the diff.
+rules:
+  - comment-why
+  - no-fallback
+  - no-mocking
+  - no-defensive-nil

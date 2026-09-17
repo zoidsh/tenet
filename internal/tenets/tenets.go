@@ -156,12 +156,23 @@ type Tenet struct {
 	Confident *float64  `yaml:"confident"`
 	Include   []string  `yaml:"include"`
 	Exclude   []string  `yaml:"exclude"`
+	Tags      []string  `yaml:"tags"`
 
 	Examples     []Example `yaml:"examples"`
 	ExamplesFrom string    `yaml:"examples_from"`
 
+	// Origin is where the tenet reached the resolved config from: the name of
+	// a preset, OriginRules or OriginLocal.
+	Origin string `yaml:"-"`
+
 	model string
 }
+
+// The origins a tenet that came from no preset carries.
+const (
+	OriginRules = "rules"
+	OriginLocal = "local"
+)
 
 // Config is a whole tenets.yml.
 type Config struct {
