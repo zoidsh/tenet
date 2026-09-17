@@ -8,7 +8,7 @@ BIN=tenet
 ALIAS=tenetlint
 PLATFORMS="darwin-arm64 darwin-x64 linux-arm64 linux-x64"
 
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 version=0.0.0-test
 
 case $(uname -s) in

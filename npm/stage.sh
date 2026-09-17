@@ -18,7 +18,7 @@ fi
 
 dist=$1
 version=$2
-npm_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+npm_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 platform_manifest() {
 	platform=$1
@@ -57,6 +57,7 @@ EOF
 }
 
 entry_manifest() {
+	# shellcheck disable=SC2016 # the $ and ${} below are the node script's, not the shell's
 	node -e '
 		const fs = require("fs");
 		const [file, version, scope, platforms] = process.argv.slice(1);
@@ -81,7 +82,13 @@ for platform in $PLATFORMS; do
 
 	# goreleaser suffixes the build directory with the microarchitecture level
 	# it targeted (_v1, _v8.0), which is not part of anything we name.
-	built=$(ls -d "$dist/${NAME}_${os}_${goarch}"* 2>/dev/null | head -n 1)
+	built=
+	for candidate in "$dist/${NAME}_${os}_${goarch}"*; do
+		if [ -e "$candidate" ]; then
+			built=$candidate
+			break
+		fi
+	done
 	if [ -z "$built" ] || [ ! -f "$built/$BIN" ]; then
 		echo "stage.sh: no binary for $platform under $dist" >&2
 		exit 1
