@@ -1,8 +1,10 @@
 package cache_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/zoidsh/tenetlint/internal/cache"
@@ -64,6 +66,37 @@ func TestCorruptEntryIsAMiss(t *testing.T) {
 	}
 	if _, ok := c.Get(key); ok {
 		t.Error("a corrupt entry was read as a hit")
+	}
+}
+
+func TestConcurrentWritesLeaveAReadableEntry(t *testing.T) {
+	dir := t.TempDir()
+	c, err := cache.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := cache.Key("text", "hash")
+
+	var wg sync.WaitGroup
+	for i := range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c.PutLocation(key, 0.9, fmt.Sprintf("L%03d", i+1))
+		}()
+	}
+	wg.Wait()
+
+	e, ok := c.Get(key)
+	if !ok || e.Prob != 0.9 || !e.Located() {
+		t.Fatalf("entry is %#v, %v", e, ok)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("the cache holds %d files, want only the entry itself", len(entries))
 	}
 }
 

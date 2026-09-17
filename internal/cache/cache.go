@@ -86,7 +86,9 @@ func (c *Cache) PutLocation(key string, prob float64, line string) {
 }
 
 // put writes an entry, ignoring failures: a cache that cannot be written only
-// costs another call.
+// costs another call. The write goes to a temporary file first, so that a run
+// killed mid-write, or two runs writing the same key at once, cannot leave a
+// half-written entry behind.
 func (c *Cache) put(key string, e Entry) {
 	if c == nil {
 		return
@@ -96,7 +98,26 @@ func (c *Cache) put(key string, e Entry) {
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(c.path(key), data, 0o600)
+	temp, err := os.CreateTemp(c.dir, key+".*")
+	if err != nil {
+		return
+	}
+	if _, err := temp.Write(data); err != nil {
+		_ = temp.Close()
+		_ = os.Remove(temp.Name())
+		return
+	}
+	if err := temp.Close(); err != nil {
+		_ = os.Remove(temp.Name())
+		return
+	}
+	if err := os.Chmod(temp.Name(), 0o600); err != nil {
+		_ = os.Remove(temp.Name())
+		return
+	}
+	if err := os.Rename(temp.Name(), c.path(key)); err != nil {
+		_ = os.Remove(temp.Name())
+	}
 }
 
 func (c *Cache) path(key string) string {
