@@ -196,8 +196,10 @@ func (t *Tenet) ConfidentValue() float64 {
 	return *t.Confident
 }
 
-// Applies reports whether the tenet judges a file, by its slash-separated path
-// relative to the config.
+// Applies reports whether the tenet judges a file. The path is slash
+// separated and relative to the repository root, which is what the globs in
+// the config are written against, whatever directory the lint was started
+// from.
 func (t *Tenet) Applies(relPath string) bool {
 	relPath = filepath.ToSlash(relPath)
 	for _, p := range t.Exclude {

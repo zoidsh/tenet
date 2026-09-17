@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -124,12 +125,6 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	if err != nil {
 		return fail(err)
 	}
-	if o.verbose {
-		for _, s := range set.Skipped {
-			_, _ = fmt.Fprintf(errOut, "skipped %s: %s\n", s.File, s.Reason)
-		}
-	}
-
 	r := report.Report{
 		Stats:   judge.Stats{Files: len(set.Files)},
 		Skipped: set.Skipped,
@@ -145,6 +140,12 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		r.Findings, r.Stats = findings, stats
 	}
 
+	relocate(&r, set.Root, dir)
+	if o.verbose {
+		for _, s := range r.Skipped {
+			_, _ = fmt.Fprintf(errOut, "skipped %s: %s\n", s.File, s.Reason)
+		}
+	}
 	if err := r.Write(out, o.format, report.ColorEnabled(out)); err != nil {
 		return fail(err)
 	}
@@ -152,6 +153,27 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return &exitError{code: code}
 	}
 	return nil
+}
+
+// relocate rewrites the repository-relative paths the tenets are matched
+// against into paths relative to where the lint was started, which is what a
+// terminal needs to open the file it printed.
+func relocate(r *report.Report, root, dir string) {
+	for i := range r.Findings {
+		r.Findings[i].File = displayPath(root, dir, r.Findings[i].File)
+	}
+	for i := range r.Skipped {
+		r.Skipped[i].File = displayPath(root, dir, r.Skipped[i].File)
+	}
+}
+
+func displayPath(root, dir, path string) string {
+	abs := filepath.Join(root, filepath.FromSlash(path))
+	rel, err := filepath.Rel(dir, abs)
+	if err != nil {
+		return filepath.ToSlash(abs)
+	}
+	return filepath.ToSlash(rel)
 }
 
 func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) ([]judge.Finding, judge.Stats, error) {

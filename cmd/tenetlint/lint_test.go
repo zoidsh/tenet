@@ -189,6 +189,41 @@ func TestLintExplicitPath(t *testing.T) {
 	}
 }
 
+func TestLintFromASubdirectory(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	if err := os.Mkdir(filepath.Join(dir, "pkg"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, dir, filepath.Join("pkg", "inc.go"), staged)
+	git(t, dir, "add", "-A")
+	t.Chdir(filepath.Join(dir, "pkg"))
+	t.Setenv(jev.APIKeyEnv, "test-key")
+
+	server := answerServer(t)
+	restore := newAsker
+	newAsker = func(key, model string) judge.Asker {
+		return jev.New(key, jev.WithModel(model), jev.WithBaseURL(server.URL))
+	}
+	t.Cleanup(func() { newAsker = restore })
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"--no-cache", "--fail-on", "never"})
+
+	if code := execute(root); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	// The globs match pkg/inc.go, but the path printed is the one this
+	// terminal can open.
+	if !strings.HasPrefix(stdout.String(), "inc.go:3: error comment-why") {
+		t.Errorf("stdout is %q", stdout.String())
+	}
+}
+
 func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
