@@ -5,19 +5,32 @@ import (
 	"strings"
 
 	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/source"
 	"github.com/zoidsh/tenetlint/internal/tenets"
 )
 
 // StateOf renders lines the way the model is shown a window, so that text
 // which never came from a file on disk is judged in the same state a lint
-// would have built for it.
-func StateOf(lang, path string, lines []string) string {
+// would have built for it. The kind decides the framing: a document read as
+// source code is judged against what its code says rather than what it says.
+func StateOf(kind, lang, path string, lines []string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Language: %s. File: %s. Source file excerpt:\n", lang, path)
+	fmt.Fprintf(&b, "%s\n", header(kind, lang, path))
 	for i, line := range lines {
 		fmt.Fprintf(&b, "%s %s\n", lineID(i+1), line)
 	}
 	return b.String()
+}
+
+func header(kind, lang, path string) string {
+	switch kind {
+	case source.KindProse:
+		return fmt.Sprintf("Document: %s. File: %s. Text excerpt:", lang, path)
+	case source.KindData:
+		return fmt.Sprintf("Data file: %s. File: %s. Excerpt:", lang, path)
+	default:
+		return fmt.Sprintf("Language: %s. File: %s. Source file excerpt:", lang, path)
+	}
 }
 
 // VerdictQuestion asks whether the state violates the tenet.

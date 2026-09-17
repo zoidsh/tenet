@@ -87,7 +87,7 @@ type Judge struct {
 // State is what the model is shown: the window's lines, each under the id the
 // location question will answer with.
 func State(w *source.Window) string {
-	return StateOf(w.File.Language(), w.Path(), w.Lines)
+	return StateOf(w.File.Kind(), w.File.Language(), w.Path(), w.Lines)
 }
 
 func lineID(n int) string { return fmt.Sprintf("L%03d", n) }

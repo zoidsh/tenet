@@ -151,7 +151,8 @@ func (c *Checker) pass(ctx context.Context, ts []*tenets.Tenet, skipCache bool) 
 func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example, skipCache bool) (Judged, Stats, error) {
 	var stats Stats
 	lines := e.CodeLines()
-	state := judge.StateOf(exampleLang(t, e), exampleFile(t, e), lines)
+	lang := exampleLang(t, e)
+	state := judge.StateOf(source.KindForLanguage(lang), lang, exampleFile(t, e), lines)
 	key := cache.Key(state, t.Hash())
 
 	judged := Judged{Example: e}

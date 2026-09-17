@@ -77,6 +77,9 @@ var extensions = map[string]string{
 	"markdown":   ".md",
 	"html":       ".html",
 	"css":        ".css",
+	"text":       ".txt",
+	"rst":        ".rst",
+	"asciidoc":   ".adoc",
 }
 
 // Window is a slice of a file small enough to ask about in one call.
@@ -167,8 +170,13 @@ var languages = map[string]string{
 	".yaml":  "yaml",
 	".yml":   "yaml",
 	".json":  "json",
-	".md":    "markdown",
-	".html":  "html",
+	".md":       "markdown",
+	".mdx":      "markdown",
+	".markdown": "markdown",
+	".txt":      "text",
+	".rst":      "rst",
+	".adoc":     "asciidoc",
+	".html":     "html",
 	".htm":   "html",
 	".css":   "css",
 	".scss":  "css",
