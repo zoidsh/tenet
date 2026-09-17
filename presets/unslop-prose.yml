@@ -19,3 +19,4 @@ description: The prose an LLM writes into a README when nobody rewrites the draf
 rules:
   - project-specific
   - no-throat-clearing
+  - no-false-contrast
