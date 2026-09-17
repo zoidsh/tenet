@@ -20,6 +20,34 @@ Then read what it drafted, delete the rules you did not mean, and run `tenetlint
 
 Finally, `tenetlint hook install` writes a pre-commit hook that runs the lint on every commit, and `tenetlint hook uninstall` takes it away again.
 
+## Configuration
+
+A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenetlint rules` lists the built-in rules with their tags and the presets that include them, `tenetlint rules comment-why` prints one of them in full, and `tenetlint presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
+
+```yaml
+version: 1
+presets: [agent-hygiene]        # built-in presets, expanded in order
+rules: [comment-why]            # individual built-in rules, added after presets
+disable: [no-mocking]           # removed after expansion, by id
+override:                       # per-id patches applied last
+  no-fallback:
+    severity: error
+    include: ["**/*.go"]
+tenets: [...]                   # your own tenets, as before
+```
+
+The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, severity, threshold and include globs of every tenet that will run.
+
+```
+tenets.yml
+
+id                origin         severity  threshold  include
+comment-why       agent-hygiene  warn      0.50       **/*.go
+no-fallback       agent-hygiene  warn      0.50       **/*.go
+```
+
+`tenetlint init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
+
 ## Criteria
 
 A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and they are the lever that moves a rule from roughly right to reliable. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer.
@@ -34,7 +62,7 @@ A tenet is judged by its sentence alone unless you give it criteria: a `true` de
 
 ## Checking a tenet
 
-`tenetlint check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok`, the `code` it is about, and on a violation the `lines` a finding should land on: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out, which is what this repository does for its own four tenets. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
+`tenetlint check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok`, the `code` it is about, and on a violation the `lines` a finding should land on: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenetlint check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
 
 ```yaml
     examples:
