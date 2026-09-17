@@ -90,7 +90,10 @@ func (o *baselineOptions) loadForPrune(run *run, path string, scope baseline.Sco
 }
 
 // scopeOf is what this run looked at, in paths the baseline can be read
-// against from anywhere in the repository..
+// against from anywhere in the repository. The order of the cases is
+// source.Collect's own precedence, where paths win over a base ref and the
+// staged changes are what is left, so that the scope recorded is the mode that
+// actually ran rather than the flags that were typed..
 func scopeOf(run *run, lint *lintOptions, paths []string) (baseline.Scope, error) {
 	switch {
 	case len(paths) > 0:
