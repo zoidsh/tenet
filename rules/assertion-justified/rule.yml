@@ -1,8 +1,8 @@
 id: assertion-justified
 tenet: "A comment justifying a type assertion, cast, or unchecked conversion states the invariant that makes it safe, not a placeholder."
 criteria:
-  true: "A value is forced into a type nothing has checked — an assertion, a cast, a suppression directive, or a pointer reinterpretation — and nothing beside it says why that holds: either no comment at all, or a comment that declares the line safe without giving a reason, restates the conversion, or vouches for it personally. A reader is left unable to tell whether the wrong type ever reaches this line."
-  false: "The conversion is checked, so a value of the wrong type takes an error path instead of being assumed away: a two-result assertion, a guard or a parse that rejects, or a narrowing the language itself carries through. Or the unchecked conversion carries a comment naming the invariant that makes it hold, such as where the value was produced, what a check above it established, or what the only writer of that field ever stores, so that a reader can judge whether the invariant is true."
+  true: "A value is forced into a type nothing has checked — an assertion, a cast, or a pointer reinterpretation — and nothing beside it gives a reason a reader could check: either no comment at all, or a comment that declares the line safe without saying what makes it so. A comment that names the conversion, or labels it with an adjective and nothing more, says no more than the line it sits on. A check nearby leaves the conversion unjustified unless what it settles is the type itself."
+  false: "The conversion is checked, so a value of the wrong type takes an error path instead of being assumed away. Or the unchecked conversion carries a comment naming the invariant that makes it hold, such as where the value was produced or what a check or a construction above it established."
 source: dmmulroy/anti-slop require-safety-comment-for-type-assertion
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
 kind: [code]

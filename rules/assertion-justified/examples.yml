@@ -94,15 +94,17 @@
   lines: 7
   lang: python
   code: |
-    def build_pipeline(config, registry):
-        stages = []
-        for name in config.stage_names:
-            factory = registry[name]
-            stages.append(factory(config.options_for(name)))
-        runner = Runner(stages)
-        runner.on_failure = config.failure_handler  # type: ignore[assignment]
-        runner.max_parallel = config.max_parallel
-        return runner
+    def replay(journal, handlers):
+        applied = 0
+        for record in journal.records():
+            handler = handlers.get(record.kind)
+            if handler is None:
+                raise UnknownRecordKind(record.kind)
+            payload = cast(MutationPayload, record.payload)
+            handler(payload.entity_id, payload.fields)
+            applied += 1
+        journal.mark_replayed(applied)
+        return applied
 - label: ok
   code: |
     func (r *Registry) Handler(name string) (http.Handler, error) {
@@ -131,48 +133,56 @@
 - label: ok
   lang: typescript
   code: |
+    interface DomainEvent {
+      kind: string;
+      payload: unknown;
+    }
+
     export function handleEvent(event: DomainEvent, handlers: Handlers): void {
       if (event.kind !== "order.placed") {
         handlers.other(event);
         return;
       }
-      // kind is the discriminant of the event union and it was compared
-      // above, so on this branch the payload is the order-placed shape.
-      const placed = event as OrderPlacedEvent;
+      // The producer writes an order-placed payload under this kind and the
+      // kind is part of the topic's published contract, so the payload on
+      // this branch has that shape.
+      const placed = event.payload as OrderPlacedPayload;
       handlers.orderPlaced(placed.orderId, placed.totalCents);
     }
 - label: ok
   lang: typescript
   code: |
-    export function parseSettings(raw: unknown): Settings {
-      const parsed = settingsSchema.safeParse(raw);
-      if (!parsed.success) {
-        throw new InvalidSettings(parsed.error.issues);
+    const ACCOUNT_ID = /^acct_[0-9a-f]{16}$/;
+
+    export function accountId(raw: string): AccountId {
+      if (!ACCOUNT_ID.test(raw)) {
+        throw new MalformedAccountId(raw);
       }
-      return parsed.data;
+      // AccountId is a branded string whose brand is nominal: the test above
+      // is the whole of what it stands for, and this is the one function
+      // that applies it.
+      return raw as AccountId;
     }
 
-    export function settingsFromEnv(env: Record<string, string | undefined>): Settings {
-      const raw = env.APP_SETTINGS;
-      if (raw === undefined) {
-        throw new InvalidSettings([{ path: ["APP_SETTINGS"], message: "must be set" }]);
-      }
-      return parseSettings(JSON.parse(raw));
+    export function accountIds(raws: readonly string[]): AccountId[] {
+      return raws.map(accountId);
     }
 - label: ok
   lang: typescript
   code: |
-    export function describeError(err: unknown): string {
-      if (err instanceof HttpError) {
-        return `${err.status} ${err.statusText}`;
+    export function stageConfig(doc: ValidatedConfig, stage: string): StageConfig {
+      const section = doc.sections[stage];
+      if (section === undefined) {
+        throw new UnknownStage(stage);
       }
-      if (err instanceof Error) {
-        return `${err.name}: ${err.message}`;
-      }
-      if (typeof err === "string") {
-        return err;
-      }
-      return `a thrown ${typeof err}: ${JSON.stringify(err)}`;
+      // A document is validated against the schema before it is wrapped as
+      // ValidatedConfig, and the schema admits nothing but a stage config
+      // under a section name.
+      return section as StageConfig;
+    }
+
+    export function stageNames(doc: ValidatedConfig): string[] {
+      return Object.keys(doc.sections).sort();
     }
 - label: ok
   lang: python
