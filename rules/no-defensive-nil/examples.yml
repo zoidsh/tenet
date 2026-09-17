@@ -246,3 +246,32 @@
       const limit = Number(params.get("limit") ?? DEFAULT_LIMIT);
       return { since, status, limit: Math.min(limit, MAX_LIMIT) };
     }
+- label: violation
+  lines: [3, 4]
+  lang: typescript
+  code: |
+    export function toSeries(samples: RawSample[], window: Window): Series {
+      const points: Point[] = samples.map((s) => ({ t: s.at, v: s.value }));
+      if (points === null) {
+        return { window, points: [], p95: 0 };
+      }
+      return {
+        window,
+        points,
+        p95: percentile(points.map((p) => p.v), 95),
+      };
+    }
+- label: violation
+  lines: [4, 5]
+  lang: python
+  code: |
+    def summarise_run(run, steps):
+        rows = [{"step": "start", "at": run.started_at}]
+        rows.extend({"step": s.name, "at": s.finished_at} for s in steps)
+        if not rows:
+            return None
+        return {
+            "run_id": run.id,
+            "rows": rows,
+            "duration_s": (rows[-1]["at"] - rows[0]["at"]).total_seconds(),
+        }
