@@ -35,9 +35,9 @@ const APIKeyEnv = "TYPESAFE_API_KEY"
 
 const requestIDHeader = "x-typesafe-request-id"
 
-// Options configure a Client. Every field has a default; the last few are
+// options configure a Client. Every field has a default; the last few are
 // seams the tests drive so they need not wait in real time.
-type Options struct {
+type options struct {
 	BaseURL        string
 	Model          string
 	UserAgent      string
@@ -54,81 +54,88 @@ type Options struct {
 }
 
 // Option overrides one default.
-type Option func(*Options)
+type Option func(*options)
 
 // WithBaseURL points the client at another API host.
 func WithBaseURL(url string) Option {
-	return func(o *Options) { o.BaseURL = strings.TrimRight(url, "/") }
+	return func(o *options) { o.BaseURL = strings.TrimRight(url, "/") }
 }
 
 // WithModel picks the jev model version to ask.
 func WithModel(model string) Option {
-	return func(o *Options) { o.Model = model }
+	return func(o *options) { o.Model = model }
 }
 
 // WithUserAgent overrides the User-Agent header.
 func WithUserAgent(ua string) Option {
-	return func(o *Options) { o.UserAgent = ua }
+	return func(o *options) { o.UserAgent = ua }
 }
 
 // WithHTTPClient supplies the transport to send requests on.
 func WithHTTPClient(c *http.Client) Option {
-	return func(o *Options) { o.HTTPClient = c }
+	return func(o *options) { o.HTTPClient = c }
 }
 
 // WithMaxRetries sets how many attempts follow the first one.
 func WithMaxRetries(n int) Option {
-	return func(o *Options) { o.MaxRetries = n }
+	return func(o *options) { o.MaxRetries = n }
 }
 
 // WithAttemptTimeout bounds a single attempt.
 func WithAttemptTimeout(d time.Duration) Option {
-	return func(o *Options) { o.AttemptTimeout = d }
+	return func(o *options) { o.AttemptTimeout = d }
 }
 
 // WithBackoff sets the first retry delay and the ceiling it doubles towards.
 func WithBackoff(initial, ceiling time.Duration) Option {
-	return func(o *Options) { o.InitialBackoff, o.MaxBackoff = initial, ceiling }
+	return func(o *options) { o.InitialBackoff, o.MaxBackoff = initial, ceiling }
 }
 
 // WithJitter sets the fraction of a backoff that is subtracted at random.
 func WithJitter(fraction float64) Option {
-	return func(o *Options) { o.Jitter = fraction }
+	return func(o *options) { o.Jitter = fraction }
 }
 
 // WithMaxRetryAfter sets the longest server-named delay worth waiting out.
 func WithMaxRetryAfter(d time.Duration) Option {
-	return func(o *Options) { o.MaxRetryAfter = d }
+	return func(o *options) { o.MaxRetryAfter = d }
 }
 
 // WithSleep replaces the wait between attempts.
 func WithSleep(sleep func(ctx context.Context, d time.Duration) error) Option {
-	return func(o *Options) { o.Sleep = sleep }
+	return func(o *options) { o.Sleep = sleep }
 }
 
 // WithRandom replaces the source of jitter.
 func WithRandom(random func() float64) Option {
-	return func(o *Options) { o.Random = random }
+	return func(o *options) { o.Random = random }
 }
 
 // WithNow replaces the clock that resolves an HTTP-date Retry-After.
 func WithNow(now func() time.Time) Option {
-	return func(o *Options) { o.Now = now }
+	return func(o *options) { o.Now = now }
 }
 
-// Client talks to the jev API. It deliberately has no String or GoString
-// method, so that printing it can never spill the key.
+// Client talks to the jev API.
 type Client struct {
 	apiKey string
-	opts   Options
+	opts   options
 }
+
+// String and GoString exist because fmt reaches unexported fields by
+// reflection: without them, printing a Client with %v, %+v or %#v would spill
+// the API key into a log.
+func (c *Client) String() string { return "jev.Client" }
+
+// GoString keeps %#v from reaching the key, as String does for %v and %+v.
+func (c *Client) GoString() string { return "jev.Client" }
 
 // KeyFromEnv reads the API key from the environment.
 func KeyFromEnv() string { return os.Getenv(APIKeyEnv) }
 
 // New builds a client for one API key.
 func New(apiKey string, opts ...Option) *Client {
-	o := Options{
+	o := options{
 		BaseURL:        DefaultBaseURL,
 		Model:          DefaultModel,
 		UserAgent:      "tenetlint/" + buildinfo.Version(),

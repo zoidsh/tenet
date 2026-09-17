@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -172,9 +174,9 @@ func TestConstructorsValidateCounts(t *testing.T) {
 }
 
 func TestAskValidatesBeforeSending(t *testing.T) {
-	var calls int
+	var calls atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		calls++
+		calls.Add(1)
 	}))
 	defer srv.Close()
 	client, _ := testClient(t, srv)
@@ -190,8 +192,8 @@ func TestAskValidatesBeforeSending(t *testing.T) {
 			t.Errorf("%s: want error", name)
 		}
 	}
-	if calls != 0 {
-		t.Errorf("sent %d requests despite invalid questions", calls)
+	if got := calls.Load(); got != 0 {
+		t.Errorf("sent %d requests despite invalid questions", got)
 	}
 }
 
@@ -246,10 +248,9 @@ func TestErrorBodyShapes(t *testing.T) {
 }
 
 func TestRetryAfterMillisecondsHonoured(t *testing.T) {
-	var attempts int
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts++
-		if attempts == 1 {
+		if attempts.Add(1) == 1 {
 			w.Header().Set("retry-after-ms", "120")
 			w.Header().Set("Retry-After", "30")
 			w.WriteHeader(http.StatusTooManyRequests)
@@ -264,8 +265,8 @@ func TestRetryAfterMillisecondsHonoured(t *testing.T) {
 	if _, err := client.Ask(context.Background(), "s", map[string]Question{"a": Noul("q", "", "")}); err != nil {
 		t.Fatalf("Ask: %v", err)
 	}
-	if attempts != 2 {
-		t.Errorf("attempts = %d", attempts)
+	if got := attempts.Load(); got != 2 {
+		t.Errorf("attempts = %d", got)
 	}
 	if len(sleeper.delays) != 1 || sleeper.delays[0] != 120*time.Millisecond {
 		t.Errorf("delays = %v, want one of 120ms", sleeper.delays)
@@ -305,10 +306,9 @@ func TestBackoffCapAndJitter(t *testing.T) {
 }
 
 func TestRetryOnServerErrorThenSuccess(t *testing.T) {
-	var attempts int
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts++
-		if attempts < 3 {
+		if attempts.Add(1) < 3 {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
@@ -321,8 +321,8 @@ func TestRetryOnServerErrorThenSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ask: %v", err)
 	}
-	if attempts != 3 {
-		t.Errorf("attempts = %d, want 3", attempts)
+	if got := attempts.Load(); got != 3 {
+		t.Errorf("attempts = %d, want 3", got)
 	}
 	if len(sleeper.delays) != 2 {
 		t.Errorf("delays = %v", sleeper.delays)
@@ -333,9 +333,9 @@ func TestRetryOnServerErrorThenSuccess(t *testing.T) {
 }
 
 func TestNoRetryOnBadRequest(t *testing.T) {
-	var attempts int
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts++
+		attempts.Add(1)
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = io.WriteString(w, `{"error": "bad state"}`)
 	}))
@@ -345,8 +345,8 @@ func TestNoRetryOnBadRequest(t *testing.T) {
 	if _, err := client.Ask(context.Background(), "s", map[string]Question{"a": Noul("q", "", "")}); err == nil {
 		t.Fatal("want error")
 	}
-	if attempts != 1 {
-		t.Errorf("attempts = %d, want 1", attempts)
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("attempts = %d, want 1", got)
 	}
 	if len(sleeper.delays) != 0 {
 		t.Errorf("slept %v before giving up", sleeper.delays)
@@ -354,9 +354,9 @@ func TestNoRetryOnBadRequest(t *testing.T) {
 }
 
 func TestContextCancelDuringBackoff(t *testing.T) {
-	var attempts int
+	var attempts atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts++
+		attempts.Add(1)
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
@@ -370,17 +370,21 @@ func TestContextCancelDuringBackoff(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("error = %v, want context.Canceled", err)
 	}
-	if attempts != 1 {
-		t.Errorf("attempts = %d, want 1", attempts)
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("attempts = %d, want 1", got)
 	}
 }
 
 func TestAttemptTimeoutTriggersRetry(t *testing.T) {
-	var attempts int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		attempts++
-		if attempts == 1 {
-			time.Sleep(100 * time.Millisecond)
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if attempts.Add(1) == 1 {
+			// net/http only starts watching for a hang-up once the request
+			// body has been consumed, so without this drain the handler
+			// context would never be cancelled and the test would block until
+			// the package timeout.
+			_, _ = io.Copy(io.Discard, r.Body)
+			<-r.Context().Done()
 			return
 		}
 		_, _ = io.WriteString(w, `{"model":"m","answers":{"a":{"type":"noul","noul":0.3}},"usage":{}}`)
@@ -392,14 +396,82 @@ func TestAttemptTimeoutTriggersRetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ask: %v", err)
 	}
-	if attempts != 2 {
-		t.Errorf("attempts = %d, want 2", attempts)
+	if got := attempts.Load(); got != 2 {
+		t.Errorf("attempts = %d, want 2", got)
 	}
 	if len(sleeper.delays) != 1 {
 		t.Errorf("delays = %v, want one", sleeper.delays)
 	}
 	if resp.Answers["a"].Prob() != 0.3 {
 		t.Errorf("answer = %+v", resp.Answers["a"])
+	}
+}
+
+func TestClientNeverPrintsTheKey(t *testing.T) {
+	c := New("super-secret-key")
+	printed := fmt.Sprintf("%v %+v %#v %s", c, c, c, c)
+	if strings.Contains(printed, "super-secret-key") {
+		t.Errorf("printing a client leaked the key: %s", printed)
+	}
+}
+
+func TestRetryAfterHeader(t *testing.T) {
+	now := time.Date(2026, time.September, 17, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		name   string
+		header map[string]string
+		want   time.Duration
+	}{
+		{name: "none", header: map[string]string{}, want: 0},
+		{name: "milliseconds", header: map[string]string{"retry-after-ms": "250"}, want: 250 * time.Millisecond},
+		{
+			name:   "milliseconds win",
+			header: map[string]string{"retry-after-ms": "250", "Retry-After": "2"},
+			want:   250 * time.Millisecond,
+		},
+		{name: "seconds", header: map[string]string{"Retry-After": "2"}, want: 2 * time.Second},
+		{
+			name:   "http date",
+			header: map[string]string{"Retry-After": now.Add(90 * time.Second).Format(http.TimeFormat)},
+			want:   90 * time.Second,
+		},
+		{
+			name:   "http date in the past",
+			header: map[string]string{"Retry-After": now.Add(-time.Minute).Format(http.TimeFormat)},
+			want:   0,
+		},
+		{name: "unparseable", header: map[string]string{"Retry-After": "soon"}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := http.Header{}
+			for k, v := range tc.header {
+				h.Set(k, v)
+			}
+			if got := retryAfter(h, now); got != tc.want {
+				t.Errorf("retryAfter = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRetryAfterSecondsHonoured(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) == 1 {
+			w.Header().Set("Retry-After", "2")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = io.WriteString(w, `{"model":"m","answers":{"a":{"type":"noul","noul":0.5}},"usage":{}}`)
+	}))
+	defer srv.Close()
+
+	client, sleeper := testClient(t, srv)
+	if _, err := client.Ask(context.Background(), "s", map[string]Question{"a": Noul("q", "", "")}); err != nil {
+		t.Fatalf("Ask: %v", err)
+	}
+	if len(sleeper.delays) != 1 || sleeper.delays[0] != 2*time.Second {
+		t.Errorf("delays = %v, want one of 2s", sleeper.delays)
 	}
 }
 

@@ -5,7 +5,7 @@ A Go CLI that lints code against English rules, judged by TypeSafe's jev model.
 ## Commands
 
 - Setup: `mise install`. Every `go`, `golangci-lint` and `goreleaser` command runs through mise, either as `mise exec -- <cmd>` or with mise activated in the shell.
-- Test: `go test ./...`
+- Test: `go test -race ./...`
 - Lint: `golangci-lint run`
 - Release build check: `goreleaser build --snapshot --clean`
 

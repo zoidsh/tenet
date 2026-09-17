@@ -12,7 +12,9 @@ const (
 	KindScore  Kind = "score"
 )
 
-// Input tokens are the only billed unit: $42 per billion, output free.
+// Input tokens are the only billed unit, output tokens are free. The pricing
+// page quotes $42 per billion input tokens, which is the $0.042 per million
+// written here.
 const usdPerInputToken = 0.042 / 1e6
 
 // Usage counts the tokens a request was billed for.

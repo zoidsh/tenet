@@ -11,7 +11,9 @@ import (
 
 // The fixtures are response bodies recorded from the live API during the
 // design spike, so they guard the decoder against wire details no handwritten
-// sample would think to include.
+// sample would think to include. The live API omitted the documented "model"
+// field in every one of them, so these tests assert nothing about it; do not
+// "fix" the fixtures by adding it.
 func TestGoldenResponses(t *testing.T) {
 	for _, tc := range []struct {
 		file      string
