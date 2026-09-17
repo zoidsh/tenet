@@ -32,8 +32,19 @@ homebrew_casks:
     repository:
       owner: zoidsh
       name: homebrew-tap
+      # The release job's own GITHUB_TOKEN is scoped to this repository and
+      # cannot push to the tap.
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/zoidsh/tenetlint
     description: A command-line linter for the rules you wrote in English
+    hooks:
+      post:
+        # The binary is unsigned, so Gatekeeper quarantines it on download and
+        # macOS kills it on the first run with no error a user can act on.
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"], print_stderr: false).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/tenetlint"]
+          end
 
 release:
   github:
