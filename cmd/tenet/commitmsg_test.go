@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/zoidsh/tenetlint/internal/jev"
@@ -122,17 +125,31 @@ func TestLintCommitMsgWithoutATenetForIt(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
 
+	var asked atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		asked.Add(1)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv(jev.BaseURLEnv, server.URL)
+
 	var stdout, stderr bytes.Buffer
 	root := newRootCmd()
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
-	root.SetArgs([]string{"--format", "text", "--commit-msg", path})
+	root.SetArgs([]string{"--format", "json", "--commit-msg", path})
 
 	if code := execute(root); code != 0 {
 		t.Fatalf("exit %d, want 0: %s", code, stderr.String())
 	}
-	if !strings.HasPrefix(stdout.String(), "0 findings") || !strings.Contains(stdout.String(), "0 windows") {
-		t.Errorf("stdout is %q", stdout.String())
+	var got jsonReport
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("%v in %s", err, stdout.String())
+	}
+	if got.Stats.Calls != 0 || got.Stats.Windows != 0 || got.Stats.Files != 0 {
+		t.Errorf("stats are %#v", got.Stats)
+	}
+	if n := asked.Load(); n != 0 {
+		t.Errorf("made %d requests", n)
 	}
 }
 
