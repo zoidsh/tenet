@@ -37,6 +37,8 @@ jobs:
 
       - run: golangci-lint run
 
+      - run: shellcheck bench/run.sh bench/testdata/stub-tenet install.sh npm/stage.sh npm/test.sh packaging/tenetlint plugin/hooks/pre-commit.sh
+
       - run: goreleaser check
 
       - run: goreleaser build --snapshot --clean

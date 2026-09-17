@@ -4,9 +4,10 @@ A Go CLI that lints code against English rules, judged by TypeSafe's jev model.
 
 ## Commands
 
-- Setup: `mise install`. Every `go`, `golangci-lint` and `goreleaser` command runs through mise, either as `mise exec -- <cmd>` or with mise activated in the shell.
+- Setup: `mise install`. Every `go`, `golangci-lint`, `goreleaser` and `shellcheck` command runs through mise, either as `mise exec -- <cmd>` or with mise activated in the shell.
 - Test: `go test -race ./...`
 - Lint: `golangci-lint run`
+- Shell scripts: `shellcheck bench/run.sh bench/testdata/stub-tenet install.sh npm/stage.sh npm/test.sh packaging/tenetlint plugin/hooks/pre-commit.sh`
 - Release build check: `goreleaser build --snapshot --clean`
 - Before reporting a branch done: `tenet --base main`, which lints the branch against the repo's own `tenets.yml` and needs `TYPESAFE_API_KEY`.
 - Before a release: `tenet .`, a full sweep, because diff-scoped runs never revisit old code after a rule changes.
