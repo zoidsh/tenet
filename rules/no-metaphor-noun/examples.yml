@@ -1,0 +1,222 @@
+# Labelled cases for the no-metaphor-noun tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Configuration
+
+    `config.toml` is the substrate on which every other tool in the
+    repository builds.
+
+    The daemon reads it at startup and re-reads it on SIGHUP. Keys are
+    case-sensitive and an unknown key is an error at load time.
+
+    ## Overrides
+
+    An environment variable of the same name uppercased and prefixed `APP_`
+    wins over the file, and a flag wins over both.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Watch mode
+
+    `--watch` is the thin end of the wedge for the daemon mode the project
+    has wanted for two releases.
+
+    It re-runs the build when a tracked file changes, debounced by 200ms,
+    and exits on the first build that fails.
+
+    ## What it watches
+
+    Everything the last build read, which is what `build.lock` records. A
+    new import is picked up on the next successful build, not before.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Release notes for 2.4
+
+    Every release this year has moved the project further along the vector
+    of simplicity.
+
+    `--watch` re-runs the build when a tracked file changes. `config.toml`
+    accepts a `[cache]` table with a `dir` key.
+
+    ## Removed
+
+    `--lenient`, which accepted unknown config keys. An unknown key has been
+    an error since 2.4 and the flag did nothing after that.
+- label: violation
+  lang: markdown
+  lines: [6, 7]
+  code: |
+    # Architecture
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from
+    the `jobs` stream in Redis and writes results to Postgres.
+
+    The cache sits between them and is the locus of most of the complexity
+    in this system.
+
+    ## Failure modes
+
+    If Redis is unreachable the gateway answers reads from its in-process
+    cache for 60 seconds and then returns 503.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Contributing
+
+    Good documentation is the flywheel of adoption, and every page you fix
+    spins it a little faster.
+
+    Run `make check` before opening a pull request. CI runs the same target,
+    so a green `make check` is a green CI.
+
+    ## Reviews
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Principles
+
+    Correctness is the north star, and every trade-off in the scheduler is
+    made against it.
+
+    A job runs at least once. A job that runs twice must leave the same rows
+    behind, because the runner promises nothing stronger.
+
+    ## Ordering
+
+    Jobs in one queue run in priority order, and ties go to whichever was
+    enqueued first.
+- label: violation
+  lang: markdown
+  lines: [9, 10]
+  code: |
+    ## The wire format
+
+    A frame is a four-byte big-endian length followed by that many bytes of
+    CBOR. Lengths above 16 MiB are rejected before the body is read.
+
+    The client sends its highest supported version and the server answers
+    with the one it chose, or closes the connection.
+
+    This handshake is the bedrock of everything above it, and widening its
+    surface area is the decision the 3.0 line exists to avoid.
+- label: ok
+  note: "A vector as an ordered tuple of numbers, which is what the word means in this domain."
+  lang: markdown
+  code: |
+    # Embeddings
+
+    Each document is stored as a 768-dimensional vector of float32, keyed by
+    the document id.
+
+    Similarity is cosine, computed over the normalised vectors, so the dot
+    product is enough and no division happens at query time.
+
+    ## Storage
+
+    Vectors are held in one memory-mapped file. An index over more than
+    about two million documents will not fit on a 16 GB machine.
+- label: ok
+  note: "Attack vector names a route into the system, which is the ordinary term in a security advisory rather than a borrowed one."
+  lang: markdown
+  code: |
+    # Advisory 2026-03: symlink in the output directory
+
+    The attack vector is a symlink planted in the output directory before a
+    build runs. `build --clean` followed the link and deleted the target.
+
+    ## Affected versions
+
+    2.0 through 2.3. Fixed in 2.4, which refuses to delete anything outside
+    the directory it is cleaning.
+
+    ## Workaround
+
+    Run the build with the output directory on a filesystem the build user
+    alone can write.
+- label: ok
+  lang: markdown
+  code: |
+    # Reading the sensor
+
+    The board reports substrate temperature on register 0x2A as a signed
+    12-bit value in quarter-degrees.
+
+    A read while the converter is busy returns the previous sample rather
+    than blocking, so poll no faster than the 50ms conversion time.
+
+    ## Calibration
+
+    The offset is stored in the top nibble of 0x2B and is applied by the
+    driver, not by the board.
+- label: ok
+  lang: markdown
+  code: |
+    # Variant records
+
+    A record names a locus by chromosome and one-based position, and carries
+    the reference and alternate alleles at that locus.
+
+    Two records at the same locus are merged only when their reference
+    alleles agree; otherwise both are kept and the conflict is reported.
+
+    ## Sorting
+
+    Records sort by chromosome in the order the header declares, then by
+    position. A record on an undeclared chromosome is an error.
+- label: ok
+  note: "North Star is the name of a product the exporter writes to, not a description of a goal."
+  lang: markdown
+  code: |
+    ## Exporters
+
+    - **North Star.** One event per finished job, posted to the collector
+      named in `exporters.northstar.url`.
+    - **Statsd.** One counter per job outcome and one timer per job, sent
+      over UDP to `exporters.statsd.addr`.
+
+    An exporter that fails is retried for an hour and then disabled, with
+    the failure written to the audit log.
+
+    ## Adding one
+
+    An exporter is a plugin. `docs/plugins.md` has the request shape.
+- label: ok
+  lang: markdown
+  code: |
+    # Rendering
+
+    Each layer is drawn to its own surface and the surfaces are composited
+    in declaration order.
+
+    A surface is allocated at the layer's own resolution, so a layer scaled
+    down costs less memory than the canvas it lands on.
+
+    ## Invalidation
+
+    A layer that has not changed keeps its surface between frames. Resizing
+    the window drops every surface.
+- label: ok
+  lang: markdown
+  code: |
+    # Configuration
+
+    `config.toml` is read by the daemon at startup and re-read on SIGHUP.
+    Keys are case-sensitive and an unknown key is an error at load time.
+
+    Every other tool in the repository reads the same file, so a key added
+    for one of them is visible to all of them.
+
+    ## Overrides
+
+    An environment variable of the same name uppercased and prefixed `APP_`
+    wins over the file, and a flag wins over both.

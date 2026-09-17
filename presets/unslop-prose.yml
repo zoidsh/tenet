@@ -26,3 +26,4 @@ rules:
   - no-generic-conclusion
   - inline-header-detail
   - active-voice
+  - no-metaphor-noun

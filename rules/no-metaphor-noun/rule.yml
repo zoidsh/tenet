@@ -1,0 +1,9 @@
+id: no-metaphor-noun
+tenet: "Abstract metaphor nouns. Substrate, wedge, vector, locus..."
+criteria:
+  true: "A noun borrowed from physics, engineering, geology or biology stands in for something the sentence could have named plainly: a layer called a substrate, a small first feature called a wedge, a direction or a theme called a vector, a place called a locus, a self-reinforcing effect called a flywheel, a goal called a north star, a foundation called bedrock, an extent called surface area. The borrowed noun carries none of the properties of the thing it literally denotes, and swapping it for the plain word loses nothing the paragraph was relying on."
+  false: "The noun means what it says, in a domain where it is the ordinary term: a vector as an ordered tuple or a direction in mathematics, graphics or machine learning; a substrate in hardware or chemistry; a locus as a position on a chromosome; a surface in rendering; a route into a system in a security advisory. A term the project has defined and uses consistently, and a product or component's actual name, are literal however figurative the word was before somebody adopted it."
+source: cursor/plugins pstack/skills/unslop/SKILL.md #26
+include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
+kind: [prose]
+tags: [prose, docs]
