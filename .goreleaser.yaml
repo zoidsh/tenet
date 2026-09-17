@@ -1,0 +1,28 @@
+version: 2
+
+project_name: tenetlint
+
+builds:
+  - id: tenetlint
+    main: ./cmd/tenetlint
+    binary: tenetlint
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/zoidsh/tenetlint/internal/buildinfo.version={{.Version}}
+
+archives:
+  - id: tenetlint
+    formats:
+      - tar.gz
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
