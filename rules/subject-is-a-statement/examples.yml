@@ -1,0 +1,164 @@
+# Labelled cases for the subject-is-a-statement tenet, measured by
+# `tenet check`. Half the corpus is framed as a commit message and half as
+# pull request text, which is what the lang on each example chooses; in both
+# the subject or title is the first line, then a blank line, then the body.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    PLAT-4471
+
+    The ingest path had no per-tenant limit, so one tenant replaying a
+    month of events pushed everybody else's writes past their timeout
+    twice last week.
+
+    A token bucket keyed by tenant id drains before the batch is
+    decoded, and a request over budget gets a 429 with `Retry-After`.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    Fixed the pagination cursor
+
+    The cursor encoded the last row's id as exclusive and the query
+    read it as inclusive, so the first row of every page after the
+    first was skipped.
+
+    The query compares strictly now.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    Session store rework
+
+    The store lived in `internal/auth`, which meant anything wanting a
+    session had to import the whole auth package and its dependency on
+    the identity client.
+
+    It moves to `internal/session`, which imports neither.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    JIRA-882: cursor
+
+    Clients paging a busy list saw rows twice and missed others,
+    because page numbers reshuffled under insertion.
+
+    The list endpoint takes and returns an opaque cursor, and page
+    numbers are answered with a deprecation header for one release.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Adding retry logic to webhook delivery
+
+    A customer's endpoint was down for ninety seconds and every event
+    sent in that window was dropped, because delivery treated a 503
+    the same as a 400 and gave up.
+
+    A 5xx or a timeout is retried four times with backoff; a 4xx is
+    still final.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Webhook retries
+
+    Delivery gave up on the first failure whatever the status, so a
+    customer restarting their server lost the events sent during the
+    restart.
+
+    Deliveries are queued and drained by workers that retry.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Misc fixes
+
+    Three things that came out of the plan limits work: the seat
+    counter double-counted an invited user who had not accepted, the
+    limits cache was never invalidated on a plan change, and the admin
+    template still read the old field.
+
+    Each is a commit of its own below.
+- label: ok
+  lang: commit
+  code: |
+    Retry a webhook delivery when the endpoint returns 503
+
+    A customer's endpoint was down for ninety seconds and we dropped
+    every event in the window, because delivery treated a 503 the same
+    as a 400.
+
+    Only a 4xx is final now.
+- label: ok
+  lang: commit
+  code: |
+    Drop the Node 18 build
+
+    Node 18 went out of maintenance support in April and our own
+    support policy is maintained releases only.
+
+    The matrix runs 20 and 22, and `engines` is raised to `>=20`.
+  note: >-
+    Four words, and still an imperative sentence with an object. Short is not
+    a fragment.
+- label: ok
+  lang: commit
+  code: |
+    fix: reject an upload over the size limit before reading it
+
+    The handler read the whole body into memory and checked its length
+    afterwards, so a large upload cost the memory whether or not it
+    was going to be kept.
+
+    The limit is enforced on the request body as it is read.
+  note: >-
+    The conventional-commit prefix is regex-grade and this rule says nothing
+    about it. What follows the colon is an imperative sentence, so it passes.
+- label: ok
+  lang: commit
+  code: |
+    Cap the seat limit at the plan's maximum (PLAT-4471)
+
+    The per-workspace seat cap was lower than what the largest plan is
+    sold with, so the biggest customers hit it on their first import
+    and support raised the limit by hand.
+
+    The cap is read from the plan.
+  note: >-
+    The ticket is there, beside a statement rather than instead of one, which
+    is the distinction the tenet draws.
+- label: ok
+  lang: pr
+  code: |
+    Stop dropping events while a customer's endpoint is down
+
+    Deliveries went out from the request thread and gave up on the
+    first failure, so an endpoint down for a minute lost everything
+    sent in that minute.
+
+    Events are queued and drained by workers that retry, and the
+    dead-letter queue is unchanged.
+- label: ok
+  lang: pr
+  code: |
+    Let a workspace pin its formatter version
+
+    A formatter release changes output, and today a whole repository
+    reformats on the next save with no warning. Support has heard
+    about it four times this quarter.
+
+    A workspace can set `formatter.version`, honoured by the language
+    server and the CLI.
+- label: ok
+  lang: pr
+  code: |
+    Collapse the sidebar under 900px
+
+    The sidebar held its 260px at every width, so on a laptop at
+    1000px the content column was down to about 500px and the tables
+    in it scrolled sideways.
+
+    Under 900px it collapses to a rail with icons only.
