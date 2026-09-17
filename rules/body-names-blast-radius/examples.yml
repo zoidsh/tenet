@@ -1,0 +1,233 @@
+# Labelled cases for the body-names-blast-radius tenet, measured by
+# `tenet check`. Each example is a pull request text: the title on the first
+# line, a blank line, then the description.
+- label: violation
+  lines: [3, 11]
+  lang: text
+  code: |
+    Return the full address object from the orders API
+
+    The mobile team has been fetching `/orders` and then fetching
+    `/addresses/:id` for every row to draw the list, which is the
+    slowest screen in the app.
+
+    `OrderSerializer` now embeds the address rather than its id, and
+    the `address_id` key goes.
+
+    A revert puts the key back; nothing has been dropped from the
+    database.
+- label: violation
+  lines: 12
+  lang: text
+  code: |
+    Raise the default page size from 25 to 100
+
+    Every client we have was paging through three requests to fill one
+    screen, and the page size has not been looked at since the API
+    shipped.
+
+    `DefaultPageSize` is now 100. A client that asks for a size still
+    gets what it asked for.
+
+    ## Merge Danger
+
+    Blast radius: low.
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Rename `Account.Owner` to `Account.PrimaryContact`
+
+    Owner was read by half the codebase as the billing owner and by
+    the other half as the person to email, and the two came apart when
+    we added seats.
+
+    The field is renamed and the JSON tag with it.
+
+    ## Merge Danger
+
+    Blast radius: the `accounts` package, the serializer, and the
+    admin templates that render the field.
+  note: >-
+    The list is the diff read back. It says where the work happened, not who
+    outside it is holding the old name.
+- label: violation
+  lines: 12
+  lang: text
+  code: |
+    Compute invoice totals in cents
+
+    Totals were floats, and a customer on an annual plan with a
+    part-month credit was invoiced a penny under what the line items
+    came to.
+
+    Totals are integers in cents through the calculator and rounded
+    once, at render.
+
+    ## Merge Danger
+
+    No impact.
+- label: violation
+  lines: [10, 11]
+  lang: text
+  code: |
+    Move the checkout summary above the payment form
+
+    Users were scrolling back up to check the total before entering a
+    card, which showed up as a drop-off between the two steps.
+
+    The summary component moves above the form in `CheckoutPage`.
+
+    ## Merge Danger
+
+    Blast radius is the checkout flow: the change affects the checkout
+    page and the order it lays its two panels out in.
+- label: violation
+  lines: [10, 11]
+  lang: text
+  code: |
+    Batch the search indexer writes
+
+    The indexer opened a write per document and was the slowest step in
+    the import, at about eleven minutes for a full reindex.
+
+    Writes are buffered and flushed every 500 documents or two seconds.
+
+    ## Merge Danger
+
+    Blast radius is small. The indexer has unit tests covering the
+    buffer and the flush, and two of us have read the change through.
+- label: violation
+  lines: [10, 11]
+  lang: text
+  code: |
+    Serve the docs site from the CDN
+
+    Docs were served by the app, so a deploy took the documentation
+    down with it and every page paid a round trip to our region.
+
+    The site is built in CI and uploaded to the bucket behind the CDN.
+
+    ## Merge Danger
+
+    Blast radius: readers get the docs from a nearer edge and stop
+    losing them during a deploy.
+- label: ok
+  lang: text
+  code: |
+    Return `null` rather than an empty string for a missing bio
+
+    An empty bio and an absent one were the same value, so the profile
+    could not tell "not written yet" from "cleared on purpose".
+
+    `bio` is now nullable in the API response.
+
+    ## Merge Danger
+
+    Blast radius: anything reading `user.bio` and expecting a string.
+    The web profile calls `.trim()` on it and would throw; that is
+    fixed here. The iOS client decodes it as non-optional, and
+    versions before 4.2 will fail the whole profile decode, so this
+    waits on the 4.2 rollout passing 90%.
+- label: ok
+  lang: text
+  code: |
+    Give table rows a fixed height
+
+    Rows sized to their content, so a table with one wrapped cell drew
+    at a different rhythm from every other table on the page.
+
+    Rows are now 44px with the cell contents clipped.
+
+    ## Merge Danger
+
+    Blast radius is layout. Any table with a cell that was wrapping to
+    two lines now clips instead, which is most visible in the invoice
+    line-item table on narrow screens; under about 480px the
+    description column loses its second line.
+- label: ok
+  lang: text
+  code: |
+    Take a context on `store.Put`
+
+    `Put` could not be cancelled, so a shutdown waited on whatever
+    write was in flight.
+
+    The signature gains a leading `context.Context`.
+
+    ## Merge Danger
+
+    Blast radius: every caller of `store.Put`. There are nine in this
+    repo, all updated here, and the interface is exported, so the
+    two internal services that vendor it will not compile until they
+    pass a context.
+- label: ok
+  lang: text
+  code: |
+    Drop the retry loop from the pricing client
+
+    The loop retried on 4xx as well as 5xx, so a bad request was sent
+    four times and counted four times against the rate limit.
+
+    Only 5xx and timeouts are retried now.
+
+    ## Merge Danger
+
+    `pricing` is internal and has two callers, the quote endpoint and
+    the nightly repricing job, both in this repo and both covered
+    here. Nothing outside the module reaches the client, so the reach
+    stops at those two.
+  note: >-
+    A bound rather than a list of casualties, but the bound is argued from
+    something a reader can check, which is naming the reach and finding it
+    small.
+- label: ok
+  lang: text
+  code: |
+    Write `events.occurred_at` in UTC
+
+    Half the rows were written in the writer's local zone, which made
+    any window query near midnight wrong.
+
+    The writer converts before insert and the backfill rewrites the
+    old rows.
+
+    ## Merge Danger
+
+    Blast radius: everything downstream of that column. The daily
+    active users dashboard will step by up to eight hours on the
+    backfill date, the retention export the growth team pulls on
+    Mondays will restate history, and the `stale_events` alert
+    thresholds were tuned against the old skew and will need raising.
+- label: ok
+  lang: text
+  code: |
+    Normalise email addresses to lower case on signup
+
+    Two accounts existed for the same person on a mixed-case address,
+    and support has merged four of them by hand.
+
+    Addresses are lowercased before the uniqueness check.
+
+    ## Merge Danger
+
+    Existing mixed-case rows are untouched, so login for those
+    accounts keeps matching exactly and is unaffected. What this does
+    reach is the marketing export, which dedupes on the raw address
+    and will start seeing one row where it saw two.
+- label: ok
+  lang: text
+  code: |
+    Cache the permissions lookup per request
+
+    Permission checks ran a query each, and a page drawing thirty rows
+    ran thirty of them.
+
+    The result is memoised on the request context.
+
+    ## Merge Danger
+
+    A permission revoked mid-request is now honoured on the next
+    request rather than immediately, which matters to the admin
+    console, where revoking a seat and reloading is the flow support
+    walks customers through.
