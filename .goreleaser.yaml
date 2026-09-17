@@ -26,3 +26,20 @@ archives:
 
 checksum:
   name_template: checksums.txt
+
+homebrew_casks:
+  - name: tenetlint
+    repository:
+      owner: zoidsh
+      name: homebrew-tap
+    homepage: https://github.com/zoidsh/tenetlint
+    description: A command-line linter for the rules you wrote in English
+
+release:
+  github:
+    owner: zoidsh
+    name: tenetlint
+  draft: false
+
+changelog:
+  use: github
