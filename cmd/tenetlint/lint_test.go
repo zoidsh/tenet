@@ -189,6 +189,31 @@ func TestLintExplicitPath(t *testing.T) {
 	}
 }
 
+func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "inc.go", "package main // tenet:ignore no-such-rule\n")
+	git(t, dir, "add", "-A")
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs(nil)
+
+	if code := execute(root); code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	for _, want := range []string{"inc.go", ":1:", "no-such-rule"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("stderr %q does not mention %s", stderr.String(), want)
+		}
+	}
+}
+
 func TestLintWithoutAKey(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")

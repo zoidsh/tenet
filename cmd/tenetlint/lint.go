@@ -116,7 +116,11 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return fail(fmt.Errorf("%s is not set: export your TypeSafe API key to lint", jev.APIKeyEnv))
 	}
 
-	set, err := source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths})
+	ids := make([]string, 0, len(cfg.Tenets))
+	for _, t := range cfg.Tenets {
+		ids = append(ids, t.ID)
+	}
+	set, err := source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, Tenets: ids})
 	if err != nil {
 		return fail(err)
 	}

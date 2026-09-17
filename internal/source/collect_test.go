@@ -279,7 +279,7 @@ func TestCollectStripsDirectivesFromContent(t *testing.T) {
 	write(t, dir, "a.go", "x := 1 // tenet:ignore comment-why\n")
 	run(t, dir, "git", "add", "-A")
 
-	set, err := Collect(context.Background(), Options{Dir: dir})
+	set, err := Collect(context.Background(), Options{Dir: dir, Tenets: []string{"comment-why"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,5 +289,16 @@ func TestCollectStripsDirectivesFromContent(t *testing.T) {
 	}
 	if !a.Sup.Line(1, "comment-why") {
 		t.Error("the directive was not recorded")
+	}
+}
+
+func TestCollectRejectsAnUnknownTenetInADirective(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, "a.go", "x := 1 // tenet:ignore comment-why\n")
+	run(t, dir, "git", "add", "-A")
+
+	_, err := Collect(context.Background(), Options{Dir: dir, Tenets: []string{"no-fallback"}})
+	if err == nil || !strings.Contains(err.Error(), "comment-why") {
+		t.Fatalf("error is %v", err)
 	}
 }

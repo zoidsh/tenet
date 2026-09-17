@@ -1,18 +1,28 @@
 package source
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
 
 // A directive is a token in the code, not prose about the code: the model
 // never sees it, so an ordinary comment saying a rule does not apply here
-// cannot exempt the line.
-var directivePattern = regexp.MustCompile(`\btenet:(ignore-next-line|ignore-file|ignore)\b(\s+[a-z0-9-]+(?:,[a-z0-9-]+)*)?`)
+// cannot exempt the line. The id list is greedy on purpose, so that prose
+// after a directive is caught as an unknown tenet rather than silently
+// suppressing one.
+var directivePattern = regexp.MustCompile(`\btenet:(ignore[a-z-]*)\b((?:[ \t]+[a-z0-9-]+(?:[ \t]*,[ \t]*[a-z0-9-]+)*)?)`)
 
 // AllTenets is the key under which a directive that names no tenet is
 // recorded.
 const AllTenets = ""
+
+// The directive keywords, and what each one exempts.
+const (
+	ignoreLine     = "ignore"
+	ignoreNextLine = "ignore-next-line"
+	ignoreFile     = "ignore-file"
+)
 
 // Suppressions records which tenets a file or a line is exempt from.
 type Suppressions struct {
@@ -63,8 +73,11 @@ func (s *Suppressions) addLine(line int, ids []string) {
 
 // stripDirectives removes every directive token from the lines it is given and
 // returns what each one suppresses. Line numbers survive because a directive
-// is cut out of its line rather than the line out of the file.
-func stripDirectives(lines []string) ([]string, *Suppressions) {
+// is cut out of its line rather than the line out of the file. A directive
+// that names a tenet the config does not define, or a keyword that is not a
+// directive, is an error: a typo that silently suppressed nothing would be
+// worse than a failed run.
+func stripDirectives(path string, lines []string, known map[string]bool) ([]string, *Suppressions, error) {
 	sup := newSuppressions()
 	out := make([]string, len(lines))
 	copy(out, lines)
@@ -74,20 +87,37 @@ func stripDirectives(lines []string) ([]string, *Suppressions) {
 			continue
 		}
 		for _, m := range matches {
-			kind := line[m[2]:m[3]]
+			keyword := line[m[2]:m[3]]
 			ids := parseIDs(group(line, m, 2))
-			switch kind {
-			case "ignore":
+			if err := check(path, i+1, keyword, ids, known); err != nil {
+				return nil, nil, err
+			}
+			switch keyword {
+			case ignoreLine:
 				sup.addLine(i+1, ids)
-			case "ignore-next-line":
+			case ignoreNextLine:
 				sup.addLine(i+2, ids)
-			case "ignore-file":
+			case ignoreFile:
 				sup.addFile(ids)
 			}
 		}
 		out[i] = cut(line, matches)
 	}
-	return out, sup
+	return out, sup, nil
+}
+
+func check(path string, line int, keyword string, ids []string, known map[string]bool) error {
+	switch keyword {
+	case ignoreLine, ignoreNextLine, ignoreFile:
+	default:
+		return fmt.Errorf("%s:%d: unknown directive tenet:%s", path, line, keyword)
+	}
+	for _, id := range ids {
+		if id != AllTenets && !known[id] {
+			return fmt.Errorf("%s:%d: tenet:%s names %q, which is not a tenet in the config", path, line, keyword, id)
+		}
+	}
+	return nil
 }
 
 func group(line string, m []int, n int) string {

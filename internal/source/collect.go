@@ -40,6 +40,9 @@ type Options struct {
 	Dir   string
 	Base  string
 	Paths []string
+
+	// Tenets are the ids a tenet:ignore directive may name.
+	Tenets []string
 }
 
 // Set is everything one run looks at.
@@ -73,26 +76,30 @@ func Collect(ctx context.Context, opts Options) (*Set, error) {
 		return nil, err
 	}
 	root, repoErr := RepoRoot(ctx, abs)
+	known := make(map[string]bool, len(opts.Tenets))
+	for _, id := range opts.Tenets {
+		known[id] = true
+	}
 
 	switch {
 	case len(opts.Paths) > 0:
-		return collectPaths(ctx, abs, root, opts.Paths)
+		return collectPaths(ctx, abs, root, opts.Paths, known)
 	case opts.Base != "":
 		if repoErr != nil {
 			return nil, repoErr
 		}
-		return collectDiff(ctx, root, []string{opts.Base}, false)
+		return collectDiff(ctx, root, []string{opts.Base}, false, known)
 	default:
 		if repoErr != nil {
 			return nil, repoErr
 		}
-		return collectDiff(ctx, root, []string{"--cached"}, true)
+		return collectDiff(ctx, root, []string{"--cached"}, true, known)
 	}
 }
 
 // collectDiff lints a diff: the staged changes when fromIndex, otherwise the
 // working tree against a base ref.
-func collectDiff(ctx context.Context, root string, diffArgs []string, fromIndex bool) (*Set, error) {
+func collectDiff(ctx context.Context, root string, diffArgs []string, fromIndex bool, known map[string]bool) (*Set, error) {
 	paths, err := changedPaths(ctx, root, diffArgs)
 	if err != nil {
 		return nil, err
@@ -123,12 +130,14 @@ func collectDiff(ctx context.Context, root string, diffArgs []string, fromIndex 
 		if lines == nil {
 			lines = map[int]bool{}
 		}
-		set.add(path, content, lines)
+		if err := set.add(path, content, lines, known); err != nil {
+			return nil, err
+		}
 	}
 	return set, nil
 }
 
-func collectPaths(ctx context.Context, dir, root string, paths []string) (*Set, error) {
+func collectPaths(ctx context.Context, dir, root string, paths []string, known map[string]bool) (*Set, error) {
 	base := root
 	if base == "" {
 		base = dir
@@ -206,7 +215,9 @@ func collectPaths(ctx context.Context, dir, root string, paths []string) (*Set, 
 		if err != nil {
 			return nil, err
 		}
-		set.add(rel, content, nil)
+		if err := set.add(rel, content, nil, known); err != nil {
+			return nil, err
+		}
 	}
 	return set, nil
 }
@@ -220,23 +231,32 @@ func relative(base, path string) (string, error) {
 }
 
 // add records a file unless its contents rule it out.
-func (s *Set) add(path string, content []byte, reportable map[int]bool) {
+func (s *Set) add(path string, content []byte, reportable map[int]bool, known map[string]bool) error {
 	if reason := skipByContent(content); reason != "" {
 		s.Skipped = append(s.Skipped, Skip{File: path, Reason: reason})
-		return
+		return nil
 	}
 	if reportable != nil && len(reportable) == 0 {
-		return
+		return nil
 	}
-	s.Files = append(s.Files, NewFile(path, content, reportable))
+	file, err := NewFile(path, content, reportable, known)
+	if err != nil {
+		return err
+	}
+	s.Files = append(s.Files, file)
+	return nil
 }
 
 // NewFile prepares one file's contents for the model: the directives are cut
 // out and recorded, and reportable, when it is not nil, limits findings to the
-// lines a diff touched.
-func NewFile(path string, content []byte, reportable map[int]bool) *File {
-	lines, sup := stripDirectives(splitLines(content))
-	return &File{Path: path, Lines: lines, reportable: reportable, Sup: sup}
+// lines a diff touched. known are the tenet ids a directive is allowed to
+// name.
+func NewFile(path string, content []byte, reportable map[int]bool, known map[string]bool) (*File, error) {
+	lines, sup, err := stripDirectives(path, splitLines(content), known)
+	if err != nil {
+		return nil, err
+	}
+	return &File{Path: path, Lines: lines, reportable: reportable, Sup: sup}, nil
 }
 
 func skipByName(path string) string {

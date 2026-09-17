@@ -83,8 +83,16 @@ func fixture(t *testing.T, body string, reportable map[int]bool) (*judge.Judge, 
 	if err != nil {
 		t.Fatal(err)
 	}
+	known := map[string]bool{}
+	for _, t := range cfg.Tenets {
+		known[t.ID] = true
+	}
+	file, err := source.NewFile("a.go", []byte(body), reportable, known)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var windows []*source.Window
-	for _, w := range source.NewFile("a.go", []byte(body), reportable).Windows() {
+	for _, w := range file.Windows() {
 		if w.HasReportable() {
 			windows = append(windows, w)
 		}
