@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml)
 
-tenetlint is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.1 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
+tenetlint is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.2 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
 
-TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.5 s and cost $0.0036. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 12x faster than the Sonnet one, dividing each of those times by its 1.5 s. It is cheaper than both, $0.0036 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
+TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.6 s and cost $0.0037. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 11x faster than the Sonnet one, dividing each of those times by its 1.6 s. It is cheaper than both, $0.0037 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
 
 ## Install
 
@@ -396,27 +396,27 @@ Every number in this README comes from [bench/results.md](bench/results.md), whi
 
 | Run | Lines or scope | Calls | Cost | Duration |
 | --- | --- | --- | --- | --- |
-| Full sweep, cold cache | the whole tree | 122 | $0.0181 | 5.5 s |
+| Full sweep, cold cache | the whole tree | 122 | $0.0181 | 5.7 s |
 | Full sweep, warm cache | the same tree, straight after | 0 | $0.0000 | 0.0 s |
-| One staged change | 379 lines staged | 13 | $0.0021 | 1.1 s |
-| A 2,062-line diff | 2,105 lines, 2,062 of them Go, 83,295 bytes of diff | 21 | $0.0036 | 1.5 s |
+| One staged change | 379 lines staged | 13 | $0.0021 | 1.2 s |
+| A 2,062-line diff | 2,105 lines, 2,062 of them Go, 83,295 bytes of diff | 22 | $0.0037 | 1.6 s |
 | One pull request text | 27 lines of title and description | 1 | <$0.0001 | 0.6 s |
 
-Rule quality is measured the same way, by `tenet check --builtin --no-cache --runs 3` over every rule in the binary: in that run all fourteen rules in a preset read `sharp`, and of the eleven standalone rules ten read `usable` and one reads `sharp`, which is the table in bench/results.md rule by rule.
+Rule quality is measured the same way, by `tenet check --builtin --no-cache --runs 3` over every rule in the binary: in that run thirteen of the fourteen rules in a preset read `sharp` and one reads `usable`, and of the eleven standalone rules ten read `usable` and one reads `sharp`, which is the table in bench/results.md rule by rule.
 
 The same rule, translated, with its examples judged three times each at the 0.80 cutoff:
 
 | Language | Examples | AUC | Accuracy at 0.80 | Location | Largest sd | Crossings | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| English | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.021 | 0 | sharp |
-| German | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.012 | 1 | sharp |
-| Japanese | 14 | 1.00 | 0.86 | 1.00 over 7 | 0.021 | 1 | usable |
+| English | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.012 | 0 | sharp |
+| German | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.017 | 1 | sharp |
+| Japanese | 14 | 1.00 | 0.79 | 1.00 over 7 | 0.020 | 0 | usable |
 
 And the 2,062-line diff against what one agent call over the same diff would cost and take:
 
 | Reviewer | Input tokens | Output tokens | Cost | Time |
 | --- | --- | --- | --- | --- |
-| tenetlint, measured | 85,440 | n/a | $0.0036 | 1.5 s |
+| tenetlint, measured | 88,765 | n/a | $0.0037 | 1.6 s |
 | Claude Haiku 4.5 | 20,823 | 1,000 | $0.0258 | 12.7 s |
 | Claude Sonnet 5 | 20,823 | 1,000 | $0.0516 | 17.5 s |
 | GPT-5 nano | 20,823 | 1,000 | $0.0014 | n/a |
