@@ -276,3 +276,18 @@
       // Falling back to the default locale is a product decision: a missing translation must never block rendering.
       return catalog.defaultLocale;
     }
+- label: ok
+  note: "resolveLocale's shape in Go: a preference order over values the request and the routing table already hold, where nothing was attempted that could fail, and the one case with no candidate is an error."
+  code: |
+    func (r *Router) EndpointFor(req Request) (string, error) {
+    	if req.Endpoint != "" {
+    		return req.Endpoint, nil
+    	}
+    	if ep, ok := r.regions[req.Region]; ok {
+    		return ep, nil
+    	}
+    	if r.cfg.DefaultEndpoint == "" {
+    		return "", fmt.Errorf("no endpoint for region %q and no default configured", req.Region)
+    	}
+    	return r.cfg.DefaultEndpoint, nil
+    }
