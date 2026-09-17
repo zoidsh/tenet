@@ -69,7 +69,7 @@ func newRootCmd() *cobra.Command {
 	opts := &lintOptions{}
 	root := &cobra.Command{
 		Use:   "tenet [paths...]",
-		Short: "Lint code against the rules you wrote in English",
+		Short: "The review gate for code that agents write",
 		// Without this, cobra reads the first path as the name of a subcommand
 		// it does not have.
 		Args:          cobra.ArbitraryArgs,

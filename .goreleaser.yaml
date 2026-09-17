@@ -36,7 +36,7 @@ homebrew_casks:
       # cannot push to the tap.
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/zoidsh/tenet
-    description: A command-line linter for the rules you wrote in English
+    description: "The review gate for code that agents write: rules in plain language, judged on every commit"
     binaries:
       - tenet
     hooks:

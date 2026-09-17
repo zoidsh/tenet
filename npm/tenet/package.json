@@ -1,7 +1,7 @@
 {
   "name": "@zoidsh/tenet",
   "version": "0.0.0-dev",
-  "description": "A command-line linter for the rules you wrote in English",
+  "description": "The review gate for code that agents write: rules in plain language, judged on every commit",
   "license": "MIT",
   "repository": {
     "type": "git",
