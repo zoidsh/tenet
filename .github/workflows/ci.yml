@@ -68,7 +68,7 @@ jobs:
 
       - name: Check the built-in rules against their examples
         if: env.TYPESAFE_API_KEY != ''
-        run: go run ./cmd/tenetlint check --builtin --format json > check.json
+        run: go run ./cmd/tenet check --builtin --format json > check.json
 
       # check reports and never fails, so the verdicts are what fails this job.
       - name: Fail on a blurry or unmeasurable rule
@@ -82,7 +82,7 @@ jobs:
 
       - name: Lint the branch against tenets.yml
         if: env.TYPESAFE_API_KEY != '' && github.event_name == 'pull_request'
-        run: go run ./cmd/tenetlint --base origin/${{ github.base_ref }} --format json
+        run: go run ./cmd/tenet --base origin/${{ github.base_ref }} --format json
 
       # The account's artifact quota can fill; the jq step above is this job's verdict.
       - uses: actions/upload-artifact@v4

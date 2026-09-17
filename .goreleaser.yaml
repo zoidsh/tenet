@@ -4,7 +4,7 @@ project_name: tenetlint
 
 builds:
   - id: tenetlint
-    main: ./cmd/tenetlint
+    main: ./cmd/tenet
     binary: tenetlint
     env:
       - CGO_ENABLED=0
