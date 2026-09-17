@@ -107,3 +107,27 @@ func TestNilCacheIsAlwaysAMiss(t *testing.T) {
 		t.Error("the bypassed cache reported a hit")
 	}
 }
+
+// --no-cache asks for fresh answers, and the run after it should still be
+// warm, so a write-only cache reads as a miss and writes all the same.
+func TestWriteOnlyMissesAndStillWrites(t *testing.T) {
+	dir := t.TempDir()
+	fresh, err := cache.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh.WriteOnly()
+	fresh.PutVerdict("key", 0.9)
+	if _, ok := fresh.Get("key"); ok {
+		t.Error("a write-only cache reported a hit")
+	}
+
+	later, err := cache.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, ok := later.Get("key")
+	if !ok || entry.Prob != 0.9 {
+		t.Errorf("the next run read %#v, %v", entry, ok)
+	}
+}

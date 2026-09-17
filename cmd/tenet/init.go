@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
 	"github.com/zoidsh/tenetlint/internal/importer"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/report"
@@ -60,7 +59,7 @@ func newInitCmd() *cobra.Command {
 	f.BoolVar(&o.force, "force", false, "overwrite an existing tenets.yml")
 	f.StringVar(&o.config, "config", "", "path to write, tenets.yml in the repository root by default")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
-	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
+	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
 	return cmd
 }
@@ -164,13 +163,11 @@ func sortCandidates(ctx context.Context, cmd *cobra.Command, o *initOptions, key
 		Asker: jev.New(key, jev.WithModel(jev.DefaultModel)),
 		Model: jev.DefaultModel,
 	}
-	if !o.noCache {
-		c, err := cache.Open("")
-		if err != nil {
-			return nil, importer.Stats{}, err
-		}
-		sorter.Cache = c
+	c, err := openCache(o.noCache)
+	if err != nil {
+		return nil, importer.Stats{}, err
 	}
+	sorter.Cache = c
 	if o.verbose {
 		errOut := cmd.ErrOrStderr()
 		sorter.Log = func(line string) { _, _ = fmt.Fprintln(errOut, line) }

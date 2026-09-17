@@ -37,8 +37,15 @@ func (e Entry) Sorted() bool { return e.Kind != "" }
 
 // Cache is a directory of answers, keyed by what was asked.
 type Cache struct {
-	dir string
-	now func() time.Time
+	dir    string
+	now    func() time.Time
+	noRead bool
+}
+
+// WriteOnly makes every read a miss while the writes go on. It is what asking
+// for a fresh answer means: the run after it should not be cold as well.
+func (c *Cache) WriteOnly() {
+	c.noRead = true
 }
 
 // Open prepares the cache directory, defaulting to the user's cache home.
@@ -69,7 +76,7 @@ func Key(windowText, tenetHash string) string {
 // Get reads an entry. A missing or unreadable entry is a miss, never an error:
 // the answer can always be asked for again.
 func (c *Cache) Get(key string) (Entry, bool) {
-	if c == nil {
+	if c == nil || c.noRead {
 		return Entry{}, false
 	}
 	data, err := os.ReadFile(c.path(key))

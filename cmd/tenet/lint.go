@@ -39,6 +39,20 @@ func (e *exitError) Unwrap() error { return e.err }
 
 func fail(err error) error { return &exitError{code: report.ExitError, err: err} }
 
+// openCache is the cache every command that asks the model writes to.
+// --no-cache is a run that wants fresh answers, not one that leaves the next
+// run as cold as itself, so it bypasses the reads alone.
+func openCache(noCache bool) (*cache.Cache, error) {
+	c, err := cache.Open("")
+	if err != nil {
+		return nil, err
+	}
+	if noCache {
+		c.WriteOnly()
+	}
+	return c, nil
+}
+
 // missingKeyError is shared with init, so that whichever command a newcomer
 // runs first names the same key and the same way out.
 func missingKeyError() error {
@@ -77,7 +91,7 @@ func addRunFlags(cmd *cobra.Command, o *lintOptions) {
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
 	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
-	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
+	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
 }
 
@@ -296,13 +310,11 @@ func relativeTo(dir, path string) string {
 
 func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) (judge.Outcome, error) {
 	j := &judge.Judge{Asker: jev.New(key, jev.WithModel(model)), Tenets: cfg.Tenets}
-	if !o.noCache {
-		c, err := cache.Open("")
-		if err != nil {
-			return judge.Outcome{}, err
-		}
-		j.Cache = c
+	c, err := openCache(o.noCache)
+	if err != nil {
+		return judge.Outcome{}, err
 	}
+	j.Cache = c
 	if o.verbose {
 		errOut := cmd.ErrOrStderr()
 		// Windows are judged concurrently, so the log lines need a lock of

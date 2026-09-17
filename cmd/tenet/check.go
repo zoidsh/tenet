@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
 	"github.com/zoidsh/tenetlint/internal/check"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/report"
@@ -62,7 +61,7 @@ func newCheckCmd() *cobra.Command {
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
 	f.BoolVar(&o.builtin, "builtin", false, "measure every rule that ships in the binary, whatever the config turns on")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
-	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
+	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
 	f.IntVar(&o.minExamples, "min-examples", check.DefaultMinExamples, "report no numbers for a tenet with fewer examples than this")
 	f.IntVar(&o.runs, "runs", 1, "judge every example this many times and report how far the answers moved")
@@ -153,13 +152,11 @@ func checkExamples(cmd *cobra.Command, o *checkOptions, key, model string, ts []
 		MinExamples: o.minExamples,
 		Runs:        o.runs,
 	}
-	if !o.noCache {
-		opened, err := cache.Open("")
-		if err != nil {
-			return nil, check.Stats{}, err
-		}
-		c.Cache = opened
+	opened, err := openCache(o.noCache)
+	if err != nil {
+		return nil, check.Stats{}, err
 	}
+	c.Cache = opened
 	if o.verbose {
 		errOut := cmd.ErrOrStderr()
 		// Examples are judged concurrently, so the log lines need a lock of
