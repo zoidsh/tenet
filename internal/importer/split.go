@@ -92,6 +92,10 @@ func (s *splitter) run(lines []string) {
 		if inFence {
 			continue
 		}
+		// A blank line closes the open item, so the second paragraph of a loose
+		// list item is judged on its own rather than joined to the bullet: it
+		// is usually an example or an aside, and folding it in would bury what
+		// the rule says and push the candidate past the word limit.
 		if strings.TrimSpace(line) == "" {
 			s.flush()
 			continue
