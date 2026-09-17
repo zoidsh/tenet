@@ -38,7 +38,11 @@ latest_version() {
 	# and needs no token, unlike the releases API.
 	tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
 		"https://github.com/$REPO/releases/latest" | sed 's:.*/tag/::')
-	[ -n "$tag" ] || die "could not find the latest release"
+	# With no release at all the redirect stops at the releases page, whose URL
+	# has no /tag/ to cut and so survives the sed with its slashes.
+	case $tag in
+	"" | */*) die "no release to install; $REPO has published none yet" ;;
+	esac
 	echo "${tag#v}"
 }
 
@@ -71,13 +75,16 @@ main() {
 	arch=$(detect_arch)
 	# A dry run resolves no version of its own, so that it stays offline and
 	# works before the first release exists.
-	if [ -n "${TENETLINT_VERSION:-}" ]; then
-		version=${TENETLINT_VERSION#v}
-	elif [ "${TENETLINT_DRY_RUN:-}" = 1 ]; then
-		version=LATEST
-	else
-		version=$(latest_version)
-	fi
+	case "${TENETLINT_VERSION:-latest}" in
+	latest)
+		if [ "${TENETLINT_DRY_RUN:-}" = 1 ]; then
+			version=LATEST
+		else
+			version=$(latest_version)
+		fi
+		;;
+	*) version=${TENETLINT_VERSION#v} ;;
+	esac
 	archive=$(archive_name "$version" "$os" "$arch")
 	base="https://github.com/$REPO/releases/download/v$version"
 
