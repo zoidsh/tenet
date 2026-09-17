@@ -107,6 +107,28 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 	}
 }
 
+func TestVerboseLineCountsTokensAndCalls(t *testing.T) {
+	j, f, windows := fixtureWith(t, tenetsConfig(4, 30000), "x := 1\ny := 2\n", nil)
+	for i := range 4 {
+		f.verdict[fmt.Sprintf("t%d", i)] = 0.1
+	}
+	var logged []string
+	j.Log = func(line string) { logged = append(logged, line) }
+
+	if _, _, err := j.Run(context.Background(), windows); err != nil {
+		t.Fatal(err)
+	}
+	if len(logged) != 1 {
+		t.Fatalf("logged %q, want a line for the window's one round", logged)
+	}
+	state := judge.State(windows[0])
+	want := fmt.Sprintf("a.go:1 verdict for 4 tenets, ~%d estimated tokens, 2 calls, 200 input tokens",
+		jev.EstimateTokens(state)+4*jev.QuestionTokens("verdict:t0", jev.Noul(judge.VerdictInstructions(j.Tenets[0]), strings.Repeat("a", 30000), "")))
+	if logged[0] != want {
+		t.Errorf("logged %q, want %q", logged[0], want)
+	}
+}
+
 func TestLocationsSplitAcrossCalls(t *testing.T) {
 	const tenetCount = 40
 	j, f, windows := fixtureWith(t, tenetsConfig(tenetCount, 0), body(source.MaxWindowLines, 8), nil)

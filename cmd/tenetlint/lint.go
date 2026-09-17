@@ -62,7 +62,7 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f.StringVar(&o.failOn, "fail-on", string(tenets.SeverityWarn), "exit 1 on a finding at this severity or above: error, warn, info or never")
 	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
-	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and every call on stderr")
+	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 }
 
