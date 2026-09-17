@@ -1,0 +1,224 @@
+# Labelled cases for the inline-header-detail tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 6]
+  code: |
+    ## Features
+
+    - **Fast.** Built for speed from the very first commit.
+    - **Reliable.** Behaviour you can depend on, every single time.
+    - **Simple.** An interface that is straightforward to use.
+    - **Flexible.** It adapts to whatever workflow you already have.
+
+    ## Requirements
+
+    Go 1.22 or later, and a POSIX shell for the hooks.
+
+    ## Install
+
+        go install github.com/zoidsh/audit/cmd/audit@latest
+- label: violation
+  lang: markdown
+  lines: [3, 6]
+  code: |
+    ## Flags
+
+    - **`--watch`.** Watches for changes.
+    - **`--clean`.** Cleans the output directory.
+    - **`--verbose`.** Prints verbose output.
+    - **`--quiet`.** Runs quietly.
+
+    ## Exit codes
+
+    0 on success, 1 on a failed build, 2 when the config could not be read.
+
+    ## Config
+
+    `build.toml` is read from the directory you run the command in.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    ## Concepts
+
+    - **Queue.** A queue that holds jobs.
+    - **Worker.** A worker that works on jobs from a queue.
+    - **Lease.** The lease a worker holds on the job it is working on.
+
+    ## Getting started
+
+    Start a worker with `app worker --queue default`. It polls every second
+    and exits on `SIGTERM` once the job in flight is finished.
+
+    Enqueue with `app enqueue --queue default --payload @job.json`.
+- label: violation
+  lang: markdown
+  lines: [5, 8]
+  code: |
+    # Principles
+
+    These are the things the project optimises for.
+
+    - **Simplicity.** We value simplicity above other concerns.
+    - **Correctness.** Being correct matters a great deal to us.
+    - **Speed.** We care about being fast.
+    - **Transparency.** We aim to be transparent in what we do.
+
+    ## Governance
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two.
+- label: violation
+  lang: markdown
+  lines: [5, 8]
+  code: |
+    ## 2.4.0 - 2025-11-02
+
+    ### Added
+
+    - **Watch mode.** A mode that watches.
+    - **Cache table.** A table for cache configuration.
+    - **Table output.** Output in the form of a table.
+    - **Verify flag.** A flag that verifies.
+
+    ### Fixed
+
+    - `build --clean` no longer deletes files outside the output directory.
+- label: violation
+  lang: markdown
+  lines: [5, 7]
+  code: |
+    # Where to read next
+
+    The documentation is split into three pages.
+
+    - **Configuration.** How configuration works.
+    - **Scheduling.** All about scheduling.
+    - **Protocol.** A description of the protocol.
+
+    Each page stands alone. Nothing in one of them assumes you have read
+    another, and the glossary at the end of each repeats the terms it uses.
+- label: violation
+  lang: markdown
+  lines: [5, 7]
+  code: |
+    ## Storage backends
+
+    Three backends ship with the binary.
+
+    - **`sqlite`.** Stores data in SQLite.
+    - **`postgres`.** Stores data in Postgres.
+    - **`memory`.** Keeps everything in memory.
+
+    ## Choosing
+
+    Pick `postgres` when more than one process writes and `sqlite` when one
+    does. No configuration makes `sqlite` take two writers.
+- label: ok
+  note: "The same list shape the tenet names, with a mechanism, a consequence and an exception after each bold, which is the case it says is fine."
+  lang: markdown
+  code: |
+    ## Features
+
+    - **Fast.** The whole batch runs in one transaction, so a hundred
+      migrations cost one round trip rather than a hundred.
+    - **Reliable.** A batch that fails rolls back whole; there is no half
+      state to unpick by hand afterwards.
+    - **Simple.** There are no down migrations. Rolling back means writing
+      a new forward migration.
+
+    ## Requirements
+
+    Go 1.22 or later, and a POSIX shell for the hooks.
+- label: ok
+  lang: markdown
+  code: |
+    ## Flags
+
+    - **`--watch`.** Re-runs the build when a tracked file changes, debounced
+      by 200ms.
+    - **`--clean`.** Empties the output directory first, and refuses to run
+      if it holds anything the build did not write.
+    - **`--verbose`.** Prints one line per file to stderr; stdout is
+      unchanged, so a pipe still works.
+    - **`--quiet`.** Suppresses everything but the exit code.
+
+    ## Exit codes
+
+    0 on success, 1 on a failed build, 2 when the config could not be read.
+- label: ok
+  lang: markdown
+  code: |
+    ## Concepts
+
+    - **Queue.** A name, a concurrency limit and a retry policy. At most
+      100000 jobs may be pending in one.
+    - **Worker.** One process running one job at a time. More workers means
+      more processes; there is no pool inside one.
+    - **Lease.** Thirty seconds of ownership, extended every ten. A lease
+      that expires hands the job to another worker.
+
+    ## Getting started
+
+    Start a worker with `app worker --queue default`.
+- label: ok
+  lang: markdown
+  code: |
+    ## Storage backends
+
+    Three backends ship with the binary.
+
+    - **`sqlite`.** One file, one writer, nothing to install. The default.
+    - **`postgres`.** Many writers, and it needs a server, a connection
+      string and a migration run before first use.
+    - **`memory`.** For tests. Everything is lost when the process exits.
+
+    ## Choosing
+
+    Pick `postgres` when more than one process writes and `sqlite` when one
+    does. No configuration makes `sqlite` take two writers.
+- label: ok
+  note: "No bold lead-ins at all; the list is plain sentences, which the tenet takes no position on."
+  lang: markdown
+  code: |
+    ## What `make check` runs
+
+    - the unit tests, with the race detector
+    - `golangci-lint`, with the repository's own config
+    - `gofmt -l` over the tree, which fails on any output
+
+    CI runs the same target, so a green `make check` is a green CI.
+
+    ## What it does not run
+
+    The tests that call the real API. `make test-live` runs those, and they
+    need a key in the environment and cost money.
+- label: ok
+  note: "Bold used inside running sentences for emphasis rather than as a list lead-in."
+  lang: markdown
+  code: |
+    ## Upgrading to 3.0
+
+    Read this before you upgrade: `app config migrate` **rewrites the file in
+    place**, and it keeps no backup.
+
+    The two keys that moved are `cache.path`, now `cache.dir`, and
+    `log.file`, now `log.path`. Everything else is carried over untouched.
+
+    A file the migrator cannot parse is **left alone** and reported, so a
+    hand-written config is never half-rewritten.
+- label: ok
+  lang: markdown
+  code: |
+    ## Glossary
+
+    - **Digest.** The SHA-256 of a step's declared reads. A step whose digest
+      matches its last successful run is skipped.
+    - **Dead letter.** The queue a job lands in after its third failure, with
+      the last error stored beside it.
+    - **Stall.** A writer blocked on disk or on the network. `app status`
+      reports it and nothing else does.
+
+    ## Reading further
+
+    `docs/protocol.md` has the wire format.

@@ -24,3 +24,4 @@ rules:
   - no-false-range
   - no-hedging
   - no-generic-conclusion
+  - inline-header-detail
