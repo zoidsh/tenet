@@ -1,7 +1,7 @@
 id: no-defensive-nil
-tenet: Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden.
+tenet: "Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden, including a check the code above has already made impossible, whether it tests for absence or for emptiness."
 criteria:
-  true: "The code checks a value for nil, null, None or undefined and silently returns or skips, although the surrounding code already guarantees the value is present: it was assigned, validated, or returned by a constructor or a guard a few lines earlier, or the type does not admit null."
-  false: The nil check guards a value that can genuinely be absent at this point, such as a lookup result, an optional field, or user input, or the check produces an explicit error rather than a silent return.
+  true: "The code checks a value for nil, null, None, undefined or emptiness and silently returns or skips, although the surrounding code already guarantees the value is present: the function itself just produced it with a New... constructor, a factory call, a new expression, an address taken of a local, or a literal; a collection was built with an element already in it on the line above, so it cannot be empty; a guard or a validator above has already returned or raised on it; the value was read or dereferenced above the check, so the function would have failed before ever reaching it; or its declared type does not admit null. The branch is unreachable, and its only effect would be a silent nil, none or empty return."
+  false: "The nil check guards a value that can genuinely be absent at this point, such as a map or repository lookup, a pattern match, an optional field, or user input, or the check produces an explicit error rather than a silent return."
 include: ["**/*.go"]
 tags: [code, errors]
