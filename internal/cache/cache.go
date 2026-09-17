@@ -15,17 +15,25 @@ import (
 // retires the old entries instead of misreading them.
 const Version = "v1"
 
-// Entry is one tenet's answer about one window. Line is empty until a
-// location has been asked for, which only happens once the verdict passes.
+// Entry is one question's answer about one piece of text. Line is empty until
+// a location has been asked for, which only happens once the verdict passes.
+// Kind and KindProb hold the chosen label of a second, categorising question,
+// which the importer's sort asks alongside its probability and the judge does
+// not ask at all.
 type Entry struct {
-	Prob float64 `json:"p"`
-	Line string  `json:"line"`
-	At   int64   `json:"at"`
+	Prob     float64 `json:"p"`
+	Line     string  `json:"line"`
+	Kind     string  `json:"kind,omitempty"`
+	KindProb float64 `json:"kind_p,omitempty"`
+	At       int64   `json:"at"`
 }
 
 // Located reports whether the entry also holds the answer to the location
 // question.
 func (e Entry) Located() bool { return e.Line != "" }
+
+// Sorted reports whether the entry holds a categorising answer.
+func (e Entry) Sorted() bool { return e.Kind != "" }
 
 // Cache is a directory of answers, keyed by what was asked.
 type Cache struct {
@@ -83,6 +91,12 @@ func (c *Cache) PutVerdict(key string, prob float64) {
 // PutLocation records the line a passing verdict was placed on.
 func (c *Cache) PutLocation(key string, prob float64, line string) {
 	c.put(key, Entry{Prob: prob, Line: line})
+}
+
+// PutSort records a label with its probability and a second probability about
+// the same text.
+func (c *Cache) PutSort(key, kind string, kindProb, prob float64) {
+	c.put(key, Entry{Prob: prob, Kind: kind, KindProb: kindProb})
 }
 
 // put writes an entry, ignoring failures: a cache that cannot be written only
