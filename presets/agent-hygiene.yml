@@ -3,32 +3,31 @@
 # example three times and reports what moved between the passes. Three passes
 # rather than one because a rule that reads sharp once can read usable the
 # next time, and the preset is a promise about the rule, not about a run.
-# The two rules this pass reworded were measured over four such runs; the
-# rest of the preset over the three of those that covered every rule.
+# Every rule but assertion-justified still stands on the runs recorded
+# before: four such runs for the two reworded then, and the three of those
+# that covered every rule for the rest. assertion-justified was measured
+# again on 2026-09-17, over two `--runs 3` passes.
 #
 # comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase and
 # no-fallback read sharp in every run that covered them, with no example of
 # theirs moving across the cutoff in any pass. no-fallback's nearest
 # acceptable example is the invoice whose tax rate comes from a keyed lookup
-# with a zero default,
-# at 0.71, which the corpus keeps as the edge the tenet has not decided; it
+# with a zero default, at 0.71, which the corpus keeps as the edge the tenet
+# has not decided; it
 # is the highest anything acceptable scores here. That rule was held out of
 # this preset while a different acceptable case, its locale resolver, scored
 # 0.81 and made it fire on innocent code. A false criterion saying what a
 # selection is dropped the resolver to 0.30.
 #
-# assertion-justified no longer straddles the cutoff. It used to straddle on
-# a single example, a header parse that scored 0.78 to 0.81 and crossed in one
-# of the three runs that covered it. On 2026-09-17 its true criterion gained a
-# clause for the shape that example has: a guard on the size or the count
-# above the conversion, and a test of fields read through the value after it,
-# settle how much data there is and what it holds, never its type, and a
-# buffer address reinterpreted as a structure pointer or a value routed
-# through an unconstrained intermediate type is a conversion of that kind
-# however carefully the surrounding code measures the data. Two runs of
-# `--runs 3` then both read sharp with 0 examples crossing the cutoff, max sd
-# 0.029 and 0.026, and every violation above 0.90; the acceptable examples did
-# not move, at a mean of 0.14.
+# assertion-justified no longer straddles the cutoff. It straddled on one
+# example, a header parse scoring 0.78 to 0.81 that crossed in one of the
+# three runs covering it, and it straddled because the size guard standing
+# above that conversion read as though it had checked the type. The true
+# criterion now says that a guard on the size or the count settles quantity
+# and not type. Both `--runs 3` passes of 2026-09-17 read sharp with 0
+# examples crossing the cutoff, at max sd 0.036 and 0.032; the header parse
+# is still the weakest violation, now at 0.86, and the acceptable examples
+# stayed where they were, at a mean of 0.14 to 0.15.
 #
 # no-defensive-nil stays out, under the standalone tag, so a config that
 # wants it names it under `rules:`. Naming the TypeScript and Python
