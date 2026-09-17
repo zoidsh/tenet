@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"os"
 	"path/filepath"
@@ -391,6 +392,21 @@ func (t *Tenet) Applies(relPath string) bool {
 // and examples because they are never shown to it, so adding one must not
 // throw away the answers a lint has already paid for.
 func (t *Tenet) Hash() string {
+	h := t.identity()
+	_, _ = io.WriteString(h, t.model)
+	_, _ = h.Write([]byte{0})
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// IdentityHash identifies the rule itself, which is Hash without the model.
+// The two differ over one thing on purpose: a cached answer is only good for
+// the model that gave it, while what a baseline accepted is a violation of a
+// rule, and upgrading the model must not hand a team its whole backlog again.
+func (t *Tenet) IdentityHash() string {
+	return hex.EncodeToString(t.identity().Sum(nil))
+}
+
+func (t *Tenet) identity() hash.Hash {
 	h := sha256.New()
 	write := func(parts ...string) {
 		for _, p := range parts {
@@ -404,8 +420,7 @@ func (t *Tenet) Hash() string {
 	} else {
 		write("", "")
 	}
-	write(t.model)
-	return hex.EncodeToString(h.Sum(nil))
+	return h
 }
 
 // SetModel records the model the tenet will be judged by, which is part of its

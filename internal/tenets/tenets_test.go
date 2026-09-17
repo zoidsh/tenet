@@ -192,6 +192,30 @@ func TestHashCoversOnlyWhatIsAsked(t *testing.T) {
 	}
 }
 
+func TestIdentityHashIsTheRuleWithoutTheModel(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(sample))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := cfg.Tenets[0].IdentityHash()
+
+	remodelled, err := tenets.Parse([]byte(strings.Replace(sample, "jev-1.13.0", "jev-1.14.0", 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if remodelled.Tenets[0].IdentityHash() != base {
+		t.Error("changing the model changed the identity hash")
+	}
+
+	reworded, err := tenets.Parse([]byte(strings.Replace(sample, "A comment says why.", "A comment says why not.", 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reworded.Tenets[0].IdentityHash() == base {
+		t.Error("rewording the tenet left the identity hash alone")
+	}
+}
+
 func TestValidationErrors(t *testing.T) {
 	cases := []struct {
 		name string

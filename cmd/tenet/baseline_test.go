@@ -357,3 +357,19 @@ func TestBaselinePruneWithoutABaseline(t *testing.T) {
 		t.Errorf("stderr is %q", stderr)
 	}
 }
+
+// A baseline accepts violations of a rule, not of a model, so a model bump
+// must not hand the team its whole backlog back.
+func TestABaselinedFindingSurvivesAModelBump(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+	writeFile(t, dir, "tenets.yml", strings.Replace(testConfig, "jev-1.13.0", "jev-1.14.0", 1))
+
+	code, stdout, stderr := runCmd(t, "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s\n%s", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "1 baselined") {
+		t.Errorf("summary is %q", stdout)
+	}
+}

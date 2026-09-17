@@ -297,7 +297,7 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 			Probability: p.prob,
 			Fail:        cutoff,
 			Message:     p.tenet.Tenet,
-			Hash:        FindingHash(p.tenet.Hash(), w.File.Lines, line),
+			Hash:        FindingHash(p.tenet.IdentityHash(), w.File.Lines, line),
 		})
 	}
 	return findings, near, nil
