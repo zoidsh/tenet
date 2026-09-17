@@ -22,8 +22,9 @@
 #   project-specific       sharp, 1.00, max sd 0.026
 #   no-generic-conclusion  sharp, 1.00, max sd 0.021
 #   no-metaphor-noun       sharp, 1.00, max sd 0.021
+#   no-false-contrast      sharp, 1.00, max sd 0.055
 #
-# Eight more prose rules ship in the binary under the standalone tag and are
+# Seven more prose rules ship in the binary under the standalone tag and are
 # not listed below; a config that wants one names it under `rules:`. The AUC
 # is 1.00 for all but two, so the wording ranks the cases correctly and what
 # is missing is confidence.
@@ -37,9 +38,6 @@
 #   concrete-subject       usable, 0.93, AUC 0.98. Its tenet bans passives
 #                          outright, which lifts every innocent page holding
 #                          one; the ok mean is 0.52.
-#   no-false-contrast      usable, 0.71. The flat two-sentence denial scores
-#                          in the sixties where the not-just-X-but-Y form
-#                          scores well.
 #   no-connector-colon     usable, 0.71. The source licenses a colon before a
 #                          list or an example, and the colons that join two
 #                          whole clauses read as close to that.
@@ -56,3 +54,4 @@ rules:
   - project-specific
   - no-generic-conclusion
   - no-metaphor-noun
+  - no-false-contrast

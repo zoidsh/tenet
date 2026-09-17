@@ -2,4 +2,4 @@ agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
   comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified, no-fallback
 
 unslop-prose  The prose an LLM writes into a README when nobody rewrites the draft.
-  project-specific, no-generic-conclusion, no-metaphor-noun
+  project-specific, no-generic-conclusion, no-metaphor-noun, no-false-contrast
