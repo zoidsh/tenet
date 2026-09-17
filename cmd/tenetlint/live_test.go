@@ -6,8 +6,43 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zoidsh/tenetlint/internal/check"
 	"github.com/zoidsh/tenetlint/internal/jev"
 )
+
+// TestLiveCheck holds the repository's own comment-why examples to the
+// standard the command reports: the tenet the rest of the tests lean on has
+// to separate them outright.
+func TestLiveCheck(t *testing.T) {
+	if jev.KeyFromEnv() == "" {
+		t.Skipf("%s is not set", jev.APIKeyEnv)
+	}
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{
+		"check", "comment-why",
+		"--config", "../../tenets.yml",
+		"--format", "json",
+	})
+
+	if code := execute(root); code != 0 {
+		t.Fatalf("exit %d\n%s\n%s", code, stdout.String(), stderr.String())
+	}
+	var got jsonCheck
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("%v in %s", err, stdout.String())
+	}
+	if len(got.Tenets) != 1 {
+		t.Fatalf("checked %#v", got.Tenets)
+	}
+	if got.Tenets[0].Verdict != check.VerdictSharp {
+		t.Errorf("comment-why is %q over its %d examples, auc %.3f, %d misjudged",
+			got.Tenets[0].Verdict, got.Tenets[0].Examples, got.Tenets[0].AUC, len(got.Tenets[0].Misjudged))
+	}
+}
 
 // The line narrating.go narrates on, which is the only finding the tenet
 // should have there.

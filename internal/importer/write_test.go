@@ -99,9 +99,12 @@ func TestStarterMatchesTheRepositoryTenet(t *testing.T) {
 		t.Fatalf("the starter holds %d tenets", len(starter.Tenets))
 	}
 	got := starter.Tenets[0]
-	// The repository excludes its own testdata, which means nothing anywhere
-	// else, so only what a user would want is compared.
+	// The repository excludes its own testdata and carries the labelled
+	// examples check measures this tenet against, neither of which means
+	// anything in somebody else's repository, so only what a user would want
+	// is compared.
 	want.Exclude = nil
+	want.Examples = nil
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("starter tenet is %#v, want %#v", got, want)
 	}
