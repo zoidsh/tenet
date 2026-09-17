@@ -522,3 +522,20 @@ Every one of these can be settled for a single run by a flag, which outranks the
 ## Development
 
 `CLAUDE.md` in this repository has the toolchain, the test and lint commands, and what to run before a branch is done.
+
+## Acknowledgements
+
+The built-in rules quote sentences other people wrote for their own repositories, because a rule nobody has lived with reads like one. Each rule's `source` field says where its sentence came from.
+
+- [cursor/plugins](https://github.com/cursor/plugins/blob/HEAD/pstack/skills/unslop/SKILL.md), the pstack unslop skill, for nine prose rules: no-false-contrast, no-false-range, no-connector-colon, inline-header-detail, no-hedging, no-generic-conclusion, no-metaphor-noun, project-specific and active-voice, and for the chatbot phrases in no-throat-clearing.
+- [mattpocock/skills](https://github.com/mattpocock/skills/blob/HEAD/skills/in-progress/pr/SKILL.md), the pr skill, for five pull request rules: body-says-why, body-states-door, body-few-visuals, body-names-blast-radius and body-shows-evidence.
+- [maxgoff/unslop](https://github.com/maxgoff/unslop/blob/HEAD/skills/unslop/SKILL.md) for no-throat-clearing, and for the commit rules subject-says-what-changed was drafted from.
+- [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop/blob/HEAD/SKILL.md) for concrete-subject.
+- [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop/blob/HEAD/src/rules/require-safety-comment-for-type-assertion.ts) for assertion-justified.
+- The AGENTS.md of [vitest-dev/vitest](https://github.com/vitest-dev/vitest/blob/HEAD/AGENTS.md) for no-mocking.
+- The CLAUDE.md of [oven-sh/bun](https://github.com/oven-sh/bun/blob/HEAD/src/CLAUDE.md) for no-transcript-comment.
+- The CLAUDE.md of [amd/gaia](https://github.com/amd/gaia/blob/HEAD/CLAUDE.md) for no-fallback.
+- The CLAUDE.md of [Kaikei-e/Alt](https://github.com/Kaikei-e/Alt/blob/HEAD/CLAUDE.md) for no-defensive-nil.
+- The author's own CLAUDE.md for comment-why.
+
+Every judgement a lint makes comes from [TypeSafe](https://typesafe.ai)'s jev model. The quoted skills and instruction files stay under their own licences: maxgoff/unslop, hardikpandya/stop-slop, mattpocock/skills and dmmulroy/anti-slop are MIT.
