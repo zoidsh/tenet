@@ -1,0 +1,23 @@
+{
+  "name": "@tenetlint/darwin-arm64",
+  "version": "0.0.0-dev",
+  "description": "The tenetlint binary for macOS on arm64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoidsh/tenetlint.git"
+  },
+  "homepage": "https://github.com/zoidsh/tenetlint",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "tenetlint"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

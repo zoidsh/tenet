@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+"use strict";
+
+const { spawnSync } = require("child_process");
+
+const pkg = `@tenetlint/${process.platform}-${
+  process.arch === "x64" ? "x64" : "arm64"
+}`;
+
+function binaryPath() {
+  if (process.env.TENETLINT_BINARY) {
+    return process.env.TENETLINT_BINARY;
+  }
+  try {
+    return require.resolve(`${pkg}/tenetlint`);
+  } catch {
+    console.error(
+      `tenetlint: no binary for ${process.platform}-${process.arch}; install ${pkg} or set TENETLINT_BINARY`
+    );
+    process.exit(1);
+  }
+}
+
+const result = spawnSync(binaryPath(), process.argv.slice(2), {
+  stdio: "inherit",
+});
+
+if (result.error) {
+  console.error(`tenetlint: ${result.error.message}`);
+  process.exit(1);
+}
+
+// A binary killed by a signal has a null status; the shell's own convention is
+// what the caller of npx expects to see.
+process.exit(result.status === null ? 128 : result.status);
