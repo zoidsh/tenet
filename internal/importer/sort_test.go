@@ -52,7 +52,8 @@ func (f *fake) Ask(_ context.Context, state string, questions map[string]jev.Que
 
 func sentenceOf(instructions string) string {
 	rest := strings.TrimPrefix(instructions, `Sentence: "`)
-	return rest[:strings.Index(rest, `" `)]
+	sentence, _, _ := strings.Cut(rest, `" `)
+	return sentence
 }
 
 func candidates(texts ...string) []importer.Candidate {

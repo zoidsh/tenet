@@ -35,6 +35,12 @@ func (e *exitError) Unwrap() error { return e.err }
 
 func fail(err error) error { return &exitError{code: report.ExitError, err: err} }
 
+// missingKeyError is shared with init, so that whichever command a newcomer
+// runs first names the same key and the same way out.
+func missingKeyError() error {
+	return fmt.Errorf("%s is not set: export your TypeSafe API key to lint, or set %s=1 to commit without linting", jev.APIKeyEnv, SkipEnv)
+}
+
 type lintOptions struct {
 	base    string
 	config  string
@@ -108,7 +114,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 
 	key := jev.KeyFromEnv()
 	if key == "" {
-		return fail(fmt.Errorf("%s is not set: export your TypeSafe API key to lint, or set %s=1 to commit without linting", jev.APIKeyEnv, SkipEnv))
+		return fail(missingKeyError())
 	}
 
 	ids := make([]string, 0, len(cfg.Tenets))

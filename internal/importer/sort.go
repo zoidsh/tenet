@@ -76,6 +76,7 @@ type Asker interface {
 // Sorted is one candidate with what the model made of it.
 type Sorted struct {
 	Candidate
+	ID            string  `json:"-"`
 	Kind          string  `json:"kind"`
 	KindProb      float64 `json:"kind_p"`
 	CheckableProb float64 `json:"checkable_p"`

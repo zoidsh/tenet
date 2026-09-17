@@ -86,6 +86,23 @@ func Accepted(sorted []Sorted) []Sorted {
 	return out
 }
 
+// Assign names every accepted candidate. The report prints the ids beside the
+// sentences they came from, so they are settled before the file is drafted and
+// running it twice leaves them as they were.
+func Assign(sorted []Sorted) {
+	taken := map[string]bool{}
+	for _, c := range sorted {
+		if c.ID != "" {
+			taken[c.ID] = true
+		}
+	}
+	for i, c := range sorted {
+		if c.Accepted && c.ID == "" {
+			sorted[i].ID = Slug(c.Text, taken)
+		}
+	}
+}
+
 type draftFile struct {
 	Version int          `yaml:"version"`
 	Tenets  []draftTenet `yaml:"tenets"`
@@ -100,11 +117,11 @@ type draftTenet struct {
 
 // Draft is the tenets.yml for everything the sort accepted.
 func Draft(sorted []Sorted) ([]byte, error) {
+	Assign(sorted)
 	file := draftFile{Version: 1}
-	taken := map[string]bool{}
 	for _, c := range Accepted(sorted) {
 		file.Tenets = append(file.Tenets, draftTenet{
-			ID:       Slug(c.Text, taken),
+			ID:       c.ID,
 			Tenet:    c.Text,
 			Source:   fmt.Sprintf("%s:%d", c.File, c.Line),
 			Severity: "warn",
