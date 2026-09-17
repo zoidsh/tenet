@@ -1,0 +1,241 @@
+# Labelled cases for the no-generic-conclusion tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [12, 14]
+  code: |
+    # audit
+
+    audit compares each service's running image against the chart in the
+    repository and writes a `report.json` beside it.
+
+    ## Usage
+
+        audit ./services --out report.json
+
+    ## Roadmap
+
+    The future looks bright. We will keep improving audit and making it
+    better for everyone who uses it, and there is a lot more to come in the
+    months ahead.
+- label: violation
+  lang: markdown
+  lines: [12, 13]
+  code: |
+    ## 2.4.0 - 2025-11-02
+
+    ### Added
+
+    - `--watch` re-runs the build when a tracked file changes.
+    - `config.toml` accepts a `[cache]` table with a `dir` key.
+
+    ### Fixed
+
+    - `build --clean` no longer deletes files outside the output directory.
+
+    We are excited about where this is heading and will continue to evolve
+    the project in the directions that matter most.
+- label: violation
+  lang: markdown
+  lines: [11, 12]
+  code: |
+    # quiver
+
+    quiver indexes a directory of Markdown files into one BoltDB file and
+    answers phrase queries against it from the command line.
+
+    It holds the whole posting list in memory, so an index over more than
+    about two million documents will not fit on a 16 GB machine.
+
+    ## Status
+
+    The project is evolving rapidly and the possibilities are endless. Much
+    remains to be explored, and we cannot wait to see where it goes.
+- label: violation
+  lang: markdown
+  lines: [13, 14]
+  code: |
+    ## Plugins
+
+    A plugin is a directory with a `plugin.toml` and one executable.
+
+    Plugins load in the order they appear in `plugins.toml`. Two plugins
+    that register the same command are an error at load time.
+
+    ## Writing one
+
+    The executable reads a JSON request on stdin and writes a JSON response
+    on stdout. `plugin.toml` names the commands it registers.
+
+    More plugin capabilities are on the way. Watch this space for updates as
+    the plugin system continues to grow.
+- label: violation
+  lang: markdown
+  lines: [11, 13]
+  code: |
+    # Why lint prose at all
+
+    A linter that reads English catches the sentence a regex cannot see: the
+    paragraph that says nothing about the project it introduces.
+
+    The regex half is cheaper and should stay in a pre-commit hook, where it
+    answers instantly and costs nothing.
+
+    ## Where this goes
+
+    As the ecosystem matures, tools like this one will only become more
+    important, and the way teams write documentation will keep changing in
+    ways nobody can quite predict yet.
+- label: violation
+  lang: markdown
+  lines: [12, 13]
+  code: |
+    # Contributing
+
+    Run `make check` before opening a pull request. CI runs the same target,
+    so a green `make check` is a green CI.
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two, because that package is the only one the compatibility test
+    pins.
+
+    ## Our commitment
+
+    We will continue listening to our users and shipping what matters most
+    to them, because that is what has got us this far.
+- label: violation
+  lang: markdown
+  lines: [13, 14]
+  code: |
+    ## Workers
+
+    A worker leases a job for 30 seconds and extends the lease every 10
+    while it runs. A lease that expires is handed to another worker.
+
+    A job that fails is retried three times and then moved to the
+    dead-letter queue with its last error stored beside it.
+
+    ## Concurrency
+
+    One worker runs one job at a time. Run more processes to run more jobs.
+
+    There is much more to come here, and the scheduler will keep getting
+    better as we learn more about how people are using it.
+- label: ok
+  lang: markdown
+  code: |
+    # audit
+
+    audit compares each service's running image against the chart in the
+    repository and writes a `report.json` beside it.
+
+    ## Usage
+
+        audit ./services --out report.json
+
+    ## Roadmap
+
+    1.1 adds a `--since` flag that reads the chart at a named commit rather
+    than at the branch tip; it is tracked in #214. 1.2 drops the `charts/`
+    layout assumption, which #187 is about.
+- label: ok
+  note: "A roadmap that commits to nothing is specific when it says so and names the version that would change it."
+  lang: markdown
+  code: |
+    ## 2.4.0 - 2025-11-02
+
+    ### Added
+
+    - `--watch` re-runs the build when a tracked file changes.
+    - `config.toml` accepts a `[cache]` table with a `dir` key.
+
+    ### Fixed
+
+    - `build --clean` no longer deletes files outside the output directory.
+
+    ## Not planned
+
+    A daemon mode, a plugin API, and Windows support. None of these is
+    scheduled, and 3.0 would be the first release that could carry them.
+- label: ok
+  lang: markdown
+  code: |
+    # quiver
+
+    quiver indexes a directory of Markdown files into one BoltDB file and
+    answers phrase queries against it from the command line.
+
+    ## Status
+
+    Pre-release. The index format changes without notice and there is no
+    migration, so `quiver index` has to be re-run after an upgrade.
+
+    The query syntax is settled: phrase, prefix and field, and nothing else
+    is planned before 1.0.
+- label: ok
+  lang: markdown
+  code: |
+    ## Plugins
+
+    A plugin is a directory with a `plugin.toml` and one executable.
+
+    Plugins load in the order they appear in `plugins.toml`. Two plugins
+    that register the same command are an error at load time.
+
+    ## Writing one
+
+    The executable reads a JSON request on stdin and writes a JSON response
+    on stdout. `plugin.toml` names the commands it registers.
+
+    The request shape is frozen for the 2.x line. A plugin that needs a
+    field it does not carry should open an issue rather than parse stdin
+    twice.
+- label: ok
+  lang: markdown
+  code: |
+    # Why lint prose at all
+
+    A linter that reads English catches the sentence a regex cannot see: the
+    paragraph that says nothing about the project it introduces.
+
+    The regex half is cheaper and should stay in a pre-commit hook, where it
+    answers instantly and costs nothing.
+
+    ## Where this goes
+
+    The next preset covers commit messages, which needs the `commit-msg`
+    hook that landed in 0.6. Prose in code comments is the one after, and it
+    waits on a windowing change tracked in #91.
+- label: ok
+  lang: markdown
+  code: |
+    # Contributing
+
+    Run `make check` before opening a pull request. CI runs the same target,
+    so a green `make check` is a green CI.
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two, because that package is the only one the compatibility test
+    pins.
+
+    ## When something is wrong
+
+    Open an issue against `zoidsh/audit` with the config and the output of
+    `audit --version`. A report without both is closed with a link here.
+- label: ok
+  note: "The closing is a limitation that will stand rather than a plan, which is a fact about the future and not a generic one."
+  lang: markdown
+  code: |
+    ## Workers
+
+    A worker leases a job for 30 seconds and extends the lease every 10
+    while it runs. A lease that expires is handed to another worker.
+
+    A job that fails is retried three times and then moved to the
+    dead-letter queue with its last error stored beside it.
+
+    ## Concurrency
+
+    One worker runs one job at a time. Run more processes to run more jobs.
+
+    There will be no thread pool inside a worker. A job holds a transaction
+    open, and two of them in one process would share the connection.

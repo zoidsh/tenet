@@ -1,0 +1,9 @@
+id: no-generic-conclusion
+tenet: "Generic conclusions. 'The future looks bright.' State specific plans or facts."
+criteria:
+  true: "A passage ends on a claim about what is coming or about why the work matters, and the claim names nothing that could turn out to be false: the project will keep improving, the field is evolving, the possibilities are wide, the team is excited, there is more to come, the reader should watch for it. No version, date, milestone, issue, decision, named piece of work or command appears, so a year from now the sentence would be neither kept nor broken. A roadmap or status section made only of such sentences is the same fault under a heading that promised otherwise."
+  false: "The closing commits to something a reader could check or act on: a version with what will be in it, a dated milestone, an issue or discussion to follow, work that is deliberately not planned, a limitation that is going to stand, a stability promise or the absence of one, or an instruction that names a command, a file or a repository. Naming only one such thing is enough, and a closing that is plain about having no plans is specific rather than generic."
+source: cursor/plugins pstack/skills/unslop/SKILL.md #25
+include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
+kind: [prose]
+tags: [prose, docs]

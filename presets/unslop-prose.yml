@@ -23,3 +23,4 @@ rules:
   - no-connector-colon
   - no-false-range
   - no-hedging
+  - no-generic-conclusion
