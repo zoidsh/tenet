@@ -7,3 +7,4 @@ rules:
   - no-mocking
   - no-defensive-nil
   - no-transcript-comment
+  - no-placeholder-phrase

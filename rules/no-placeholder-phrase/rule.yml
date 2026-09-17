@@ -1,0 +1,8 @@
+id: no-placeholder-phrase
+tenet: "No code or comment marks its own incompleteness with phrases such as 'for now', 'simplified', 'in a real implementation', 'would normally', or 'TODO: implement'."
+criteria:
+  true: "A comment or a name announces that the code beside it is not the real thing: it excuses the implementation as temporary, partial or easier than the job asks for, describes what a complete version would do instead, or defers work with nothing but the promise. The code it labels still returns a value and reports success, so a caller is handed a stub dressed as a finished answer."
+  false: "The code does what its comment says it does; or the deferred work is recorded with an owner or a tracking identifier that says who finishes it and where; or the unfinished path refuses outright, raising or returning an explicit unsupported or unimplemented error rather than a value."
+source: tenetlint/demand.md complaints corpus
+include: ["**/*.go"]
+tags: [code, comments]

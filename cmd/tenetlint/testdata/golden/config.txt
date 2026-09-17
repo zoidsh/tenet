@@ -6,3 +6,4 @@ no-fallback            agent-hygiene  code  0.80  **/*.go
 no-mocking             agent-hygiene  code  0.80  **/*_test.go
 no-defensive-nil       agent-hygiene  code  0.75  **/*.go
 no-transcript-comment  agent-hygiene  -     0.80  **/*.go
+no-placeholder-phrase  agent-hygiene  -     0.80  **/*.go

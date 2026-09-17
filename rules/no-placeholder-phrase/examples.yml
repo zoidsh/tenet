@@ -1,0 +1,235 @@
+# Labelled cases for the no-placeholder-phrase tenet, measured by `tenetlint check`.
+- label: violation
+  lines: [6, 7]
+  code: |
+    func (r *Router) Route(ctx context.Context, req *Request) (*Backend, error) {
+    	tenant, err := r.tenants.Lookup(ctx, req.TenantID)
+    	if err != nil {
+    		return nil, fmt.Errorf("looking up tenant %s: %w", req.TenantID, err)
+    	}
+    	// Simplified for now: the shard the tenant is assigned to is ignored and
+    	// everything goes to the primary pool.
+    	backend := r.pool.Primary(tenant.Region)
+    	if backend == nil {
+    		return nil, fmt.Errorf("no primary backend in %s", tenant.Region)
+    	}
+    	return backend, nil
+    }
+- label: violation
+  lines: 15
+  code: |
+    type Quote struct {
+    	SKU      string
+    	Cents    int64
+    	Currency string
+    }
+
+    func (p *Pricer) Quote(ctx context.Context, sku string, qty int) (Quote, error) {
+    	if qty <= 0 {
+    		return Quote{}, fmt.Errorf("quantity %d must be positive", qty)
+    	}
+    	product, err := p.catalog.Get(ctx, sku)
+    	if err != nil {
+    		return Quote{}, fmt.Errorf("catalog lookup for %s: %w", sku, err)
+    	}
+    	// Placeholder pricing until the real rate card is wired up.
+    	return Quote{SKU: sku, Cents: int64(qty) * 100, Currency: product.Currency}, nil
+    }
+- label: violation
+  lines: [5, 6]
+  code: |
+    func splitQuery(raw string) ([]Term, error) {
+    	if strings.TrimSpace(raw) == "" {
+    		return nil, errors.New("query must not be empty")
+    	}
+    	// A simplified split that ignores quoting and parentheses, which is
+    	// enough for the queries we run today.
+    	var terms []Term
+    	for _, field := range strings.Fields(raw) {
+    		key, value, ok := strings.Cut(field, ":")
+    		if !ok {
+    			return nil, fmt.Errorf("term %q has no field", field)
+    		}
+    		terms = append(terms, Term{Field: key, Value: value})
+    	}
+    	return terms, nil
+    }
+- label: violation
+  lines: [6, 7]
+  lang: typescript
+  code: |
+    export function verifyWebhook(req: WebhookRequest, secret: string): WebhookEvent {
+      const signature = req.headers["x-signature"];
+      if (signature === undefined) {
+        throw new MissingSignature();
+      }
+      // In a real implementation this would compare an HMAC of the body with
+      // the header; any signature is accepted at the moment.
+      const event = webhookEventSchema.parse(JSON.parse(req.body));
+      return {
+        id: event.id,
+        type: event.type,
+        receivedAt: new Date(),
+        payload: event.payload,
+      };
+    }
+- label: violation
+  lines: [8, 9]
+  lang: typescript
+  code: |
+    const DEFAULT_PLAN: Plan = { id: "free", seats: 1, features: ["basic"] };
+
+    export async function planForAccount(accountId: string, db: Db): Promise<Plan> {
+      const account = await db.accounts.byId(accountId);
+      if (account === null) {
+        throw new UnknownAccount(accountId);
+      }
+      // For now every account is on the free plan; the entitlements service
+      // is not deployed yet.
+      return DEFAULT_PLAN;
+    }
+- label: violation
+  lines: 8
+  lang: python
+  code: |
+    def list_invoices(client, customer_id, since=None):
+        params = {"limit": 100}
+        if since is not None:
+            params["created_after"] = since.isoformat()
+        response = client.get(f"/customers/{customer_id}/invoices", params=params)
+        response.raise_for_status()
+        body = response.json()
+        # TODO: implement pagination
+        invoices = [Invoice.from_json(item) for item in body["data"]]
+        invoices.sort(key=lambda inv: inv.created_at)
+        return invoices
+- label: violation
+  lines: [4, 5]
+  lang: python
+  code: |
+    def charge_order(order, gateway, ledger):
+        if order.total_cents <= 0:
+            raise ValueError(f"order {order.id} has nothing to charge")
+        # This would normally call the payment gateway; a fake authorization
+        # is returned while the sandbox credentials are missing.
+        authorization = Authorization(id=f"auth_{order.id}", amount_cents=order.total_cents)
+        ledger.record_charge(order.id, authorization.amount_cents)
+        order.mark_paid(authorization.id)
+        return authorization
+- label: ok
+  code: |
+    // ErrUnsupported is what a backend returns for an operation the interface
+    // offers and it cannot perform.
+    var ErrUnsupported = errors.New("operation is not supported by this backend")
+
+    func (s *S3Store) Append(ctx context.Context, key string, data []byte) (int64, error) {
+    	return 0, fmt.Errorf("appending to %s: %w", key, ErrUnsupported)
+    }
+
+    func (s *S3Store) Put(ctx context.Context, key string, data []byte) error {
+    	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+    		Bucket: aws.String(s.bucket),
+    		Key:    aws.String(key),
+    		Body:   bytes.NewReader(data),
+    	})
+    	if err != nil {
+    		return fmt.Errorf("putting %s: %w", key, err)
+    	}
+    	return nil
+    }
+- label: ok
+  note: "The comment says a scope is temporary, which is the wording the tenet names, and the code under it is finished: what is out of scope is refused rather than served with an invented answer. The tenet has taken no position on a bounded choice that carries its reason, and this case is where a wording that decides it will show."
+  code: |
+    func (s *Signup) Region(ctx context.Context, req SignupRequest) (Region, error) {
+    	region, err := regionFromCountry(req.Country)
+    	if err != nil {
+    		return "", fmt.Errorf("country %q: %w", req.Country, err)
+    	}
+    	// Only us-east is served for now: every other region needs a data
+    	// residency review before customer records may be written there, so a
+    	// signup outside it is refused rather than misplaced.
+    	if region != RegionUSEast {
+    		return "", fmt.Errorf("signups from %s are not accepted in %s", req.Country, region)
+    	}
+    	return region, nil
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function parseCursor(raw: string): Cursor {
+      const decoded = Buffer.from(raw, "base64url").toString("utf8");
+      const [offset, token] = decoded.split(":");
+      if (token === undefined) {
+        throw new MalformedCursor(raw);
+      }
+      // TODO(rhiannon, SEARCH-2184): drop the offset half once every client
+      // has been reading token cursors for a full retention window.
+      return { offset: Number(offset), token };
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function chunk<T>(items: readonly T[], size: number): T[][] {
+      if (!Number.isInteger(size) || size <= 0) {
+        throw new RangeError(`chunk size ${size} must be a positive integer`);
+      }
+      const out: T[][] = [];
+      for (let i = 0; i < items.length; i += size) {
+        out.push(items.slice(i, i + size));
+      }
+      return out;
+    }
+
+    export function batches<T>(items: readonly T[], limits: Limits): T[][] {
+      // The upstream endpoint rejects a request carrying more items than it
+      // advertises, so the size comes from the service description.
+      return chunk(items, limits.maxItemsPerRequest);
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function pricingFor(account: Account, flags: Flags): PricingTable {
+      if (account.contract !== null) {
+        return account.contract.pricing;
+      }
+      // Both tables are maintained: the flag decides which one an account is
+      // billed on while the migration runs, and it goes away with the last
+      // account that moves.
+      if (flags.isOn("usage-based-pricing", account.id)) {
+        return usageTable;
+      }
+      return seatTable;
+    }
+- label: ok
+  lang: python
+  code: |
+    class Exporter:
+        def rows(self):
+            raise NotImplementedError("a subclass decides what it exports")
+
+
+    class InvoiceExporter(Exporter):
+        def __init__(self, invoices):
+            self.invoices = invoices
+
+        def rows(self):
+            for invoice in self.invoices:
+                yield {
+                    "id": invoice.id,
+                    "customer": invoice.customer_id,
+                    "total_cents": invoice.total_cents,
+                    "issued_at": invoice.issued_at.isoformat(),
+                }
+- label: ok
+  lang: python
+  code: |
+    def retry_after(response):
+        header = response.headers.get("Retry-After")
+        if header is None:
+            raise MissingRetryAfter(response.status_code)
+        if header.isdigit():
+            return timedelta(seconds=int(header))
+        # RFC 9110 allows an HTTP-date in this header and several CDNs send
+        # one, so the numeric form is not enough on its own.
+        when = parsedate_to_datetime(header)
+        return when - datetime.now(timezone.utc)
