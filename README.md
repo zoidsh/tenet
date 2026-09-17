@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml)
 
-tenetlint is a command-line linter for the rules you wrote in English. It reads tenets such as "a comment says why, not what" from a `tenets.yml`, sends your staged changes to TypeSafe's jev model for judgement, and reports each violation with a file, a line and a probability, so the conventions in your CLAUDE.md become a gate you can run on every commit instead of a document nobody rereads.
+tenetlint is a command-line linter for the rules you wrote in English. It reads tenets such as "a comment says why, not what" from a `tenets.yml`, sends your staged changes to TypeSafe's jev model for judgement, and reports each violation with a file, a line and a probability, so the conventions in your CLAUDE.md become a gate you can run on every commit.
 
 ## Install
 
-The command is `tenet`, and every path below installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
+The command is `tenet`, and every path below but the one from source installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
 
-Homebrew, on macOS and on Linux. tenetlint ships as a cask with a `binary` stanza, which Homebrew 4.5 and later installs on both:
+Homebrew, on macOS and on Linux. tenetlint ships as a cask with a `binary` stanza, which a recent Homebrew installs on both:
 
 ```
 brew install zoidsh/tap/tenetlint
@@ -66,7 +66,7 @@ Every release tarball, and the `checksums.txt` that covers them, is on [GitHub R
 
 ## Quick start
 
-Set `TYPESAFE_API_KEY` to your key, then, from the root of your repository:
+Set `TYPESAFE_API_KEY` to your key, which comes from a TypeSafe account at [typesafe.ai](https://typesafe.ai). Then, from the root of your repository:
 
 1. Draft a `tenets.yml` from the instruction files your agents already read.
 
@@ -183,6 +183,7 @@ The order is the order of that file: the presets in the order you list them, the
 An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenet config` prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
 ```
+$ tenet config --config tenets.yml
 tenets.yml
 
 id                     origin         kind  fail  include
@@ -242,7 +243,7 @@ Keep them in a sibling file with `examples_from: examples/comment-why.yml` when 
           }
 ```
 
-Then run `tenet check`, which judges every example of every tenet that has any, or `tenet check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed.
+Then run `tenet check`, which judges every example of every tenet that has any, or `tenet check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed. The AUC in what it prints is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all.
 
 ```
 comment-why: sharp
@@ -255,7 +256,7 @@ comment-why: sharp
 1 tenet over 14 examples · 0 calls, 14 cached · $0.0000 · 0.0s
 ```
 
-The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all. The accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys.
+The accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys.
 
 A tenet is `sharp` when nothing lands on the wrong side of its cutoff, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at.
 
@@ -301,7 +302,35 @@ The comment lines git strips itself, and everything below a `>8` scissors line, 
 
 Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
 
-Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
+```json
+{
+  "version": 1,
+  "findings": [
+    {
+      "file": "internal/cache/cache.go",
+      "line": 11,
+      "tenet": "comment-why",
+      "probability": 0.94,
+      "fail": 0.8,
+      "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
+    }
+  ],
+  "next": "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again",
+  "stats": {
+    "baselined": 0,
+    "files": 1,
+    "windows": 1,
+    "calls": 2,
+    "cache_hits": 0,
+    "input_tokens": 2169,
+    "cost_usd": 0.00009109799999999999,
+    "duration_ms": 760
+  },
+  "skipped": []
+}
+```
+
+`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
 
 ## Environment variables
 
@@ -310,6 +339,9 @@ Every path tenetlint prints, including the `file` field of `--format json`, is r
 - `TENETLINT_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
 - `TENETLINT_SKIP=1` makes the installed hooks exit without linting.
 - `TENETLINT_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
+- `TENETLINT_VERSION` is the release the installer script fetches, `latest` by default, with or without the leading `v`.
+- `TENETLINT_BINARY` points the npm wrapper at a binary of your own instead of the one its platform package carries.
+- `NO_COLOR` turns the colour off in the text report, whatever the terminal is.
 
 ## Development
 
