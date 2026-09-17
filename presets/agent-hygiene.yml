@@ -8,3 +8,4 @@ rules:
   - no-defensive-nil
   - no-transcript-comment
   - no-placeholder-phrase
+  - assertion-justified

@@ -1,0 +1,204 @@
+# Labelled cases for the assertion-justified tenet, measured by `tenetlint check`.
+- label: violation
+  lines: 6
+  code: |
+    func (h *Hub) broadcast(ctx context.Context, msg Message) error {
+    	sub, err := h.registry.Lookup(msg.Topic)
+    	if err != nil {
+    		return fmt.Errorf("looking up %s: %w", msg.Topic, err)
+    	}
+    	conn := sub.Transport().(*websocket.Conn)
+    	if err := conn.WriteJSON(msg); err != nil {
+    		return fmt.Errorf("writing to %s: %w", msg.Topic, err)
+    	}
+    	return nil
+    }
+- label: violation
+  lines: [10, 11]
+  code: |
+    func decodeState(raw []byte, codecs map[string]Codec) (State, error) {
+    	var env envelope
+    	if err := json.Unmarshal(raw, &env); err != nil {
+    		return State{}, fmt.Errorf("decoding envelope: %w", err)
+    	}
+    	codec, ok := codecs[env.Codec]
+    	if !ok {
+    		return State{}, fmt.Errorf("no codec named %q", env.Codec)
+    	}
+    	// SAFETY: trust me, this is always a snapshot codec.
+    	snap := codec.(*SnapshotCodec)
+    	return snap.Decode(env.Body)
+    }
+- label: violation
+  lines: [5, 6]
+  code: |
+    func headerOf(buf []byte) (*Header, error) {
+    	if len(buf) < int(unsafe.Sizeof(Header{})) {
+    		return nil, fmt.Errorf("buffer of %d bytes is shorter than a header", len(buf))
+    	}
+    	// safe conversion
+    	h := (*Header)(unsafe.Pointer(&buf[0]))
+    	if h.Magic != headerMagic {
+    		return nil, fmt.Errorf("magic %#x is not a header", h.Magic)
+    	}
+    	return h, nil
+    }
+- label: violation
+  lines: 3
+  lang: typescript
+  code: |
+    export async function handleCallback(req: Request, store: SessionStore): Promise<Session> {
+      const raw = await req.json();
+      const payload = raw as OAuthCallback;
+      const session = await store.byState(payload.state);
+      if (session === null) {
+        throw new UnknownState(payload.state);
+      }
+      return store.complete(session.id, {
+        code: payload.code,
+        scope: payload.scope,
+      });
+    }
+- label: violation
+  lines: [10, 11]
+  lang: typescript
+  code: |
+    interface Row {
+      id: string;
+      amountCents: number;
+    }
+
+    export function readRows(result: QueryResult): Row[] {
+      if (result.rowCount === 0) {
+        return [];
+      }
+      // safe
+      return result.rows as unknown as Row[];
+    }
+- label: violation
+  lines: [5, 6]
+  lang: python
+  code: |
+    def latest_snapshot(store, key):
+        entry = store.get(key)
+        if entry is None:
+            raise KeyError(key)
+        # this is fine
+        snapshot = cast(Snapshot, entry.value)
+        return SnapshotView(
+            key=key,
+            taken_at=snapshot.taken_at,
+            rows=snapshot.rows,
+        )
+- label: violation
+  lines: 7
+  lang: python
+  code: |
+    def build_pipeline(config, registry):
+        stages = []
+        for name in config.stage_names:
+            factory = registry[name]
+            stages.append(factory(config.options_for(name)))
+        runner = Runner(stages)
+        runner.on_failure = config.failure_handler  # type: ignore[assignment]
+        runner.max_parallel = config.max_parallel
+        return runner
+- label: ok
+  code: |
+    func (r *Registry) Handler(name string) (http.Handler, error) {
+    	entry, ok := r.entries[name]
+    	if !ok {
+    		return nil, fmt.Errorf("nothing is registered as %q", name)
+    	}
+    	h, ok := entry.value.(http.Handler)
+    	if !ok {
+    		return nil, fmt.Errorf("%q is a %T, not an http.Handler", name, entry.value)
+    	}
+    	return h, nil
+    }
+- label: ok
+  code: |
+    func (p *Pool) release(c Conn) error {
+    	// Acquire is the only writer of the free list and it stores *pgConn
+    	// alone, so a connection handed back to the pool has that type.
+    	pc := c.(*pgConn)
+    	if pc.broken {
+    		return pc.close()
+    	}
+    	p.free <- pc
+    	return nil
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function handleEvent(event: DomainEvent, handlers: Handlers): void {
+      if (event.kind !== "order.placed") {
+        handlers.other(event);
+        return;
+      }
+      // kind is the discriminant of the event union and it was compared
+      // above, so on this branch the payload is the order-placed shape.
+      const placed = event as OrderPlacedEvent;
+      handlers.orderPlaced(placed.orderId, placed.totalCents);
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function parseSettings(raw: unknown): Settings {
+      const parsed = settingsSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw new InvalidSettings(parsed.error.issues);
+      }
+      return parsed.data;
+    }
+
+    export function settingsFromEnv(env: Record<string, string | undefined>): Settings {
+      const raw = env.APP_SETTINGS;
+      if (raw === undefined) {
+        throw new InvalidSettings([{ path: ["APP_SETTINGS"], message: "must be set" }]);
+      }
+      return parseSettings(JSON.parse(raw));
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function describeError(err: unknown): string {
+      if (err instanceof HttpError) {
+        return `${err.status} ${err.statusText}`;
+      }
+      if (err instanceof Error) {
+        return `${err.name}: ${err.message}`;
+      }
+      if (typeof err === "string") {
+        return err;
+      }
+      return `a thrown ${typeof err}: ${JSON.stringify(err)}`;
+    }
+- label: ok
+  lang: python
+  code: |
+    def total_cents(amount):
+        if isinstance(amount, Decimal):
+            return int(amount.scaleb(2))
+        if isinstance(amount, int):
+            return amount
+        raise TypeError(f"{type(amount).__name__} is not an amount")
+
+
+    def invoice_total(lines):
+        return sum(total_cents(line.amount) for line in lines)
+- label: ok
+  lang: python
+  code: |
+    def resolve_task(scheduler, task_id):
+        node = scheduler.graph.node(task_id)
+        if node.kind is not NodeKind.TASK:
+            raise NotATask(task_id)
+        # Every node the graph holds under the task kind was inserted as a
+        # TaskNode, and a node's kind is written once and never rewritten.
+        task = cast(TaskNode, node)
+        return ResolvedTask(
+            id=task.id,
+            command=task.command,
+            depends_on=tuple(task.depends_on),
+        )
