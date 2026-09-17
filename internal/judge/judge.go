@@ -31,15 +31,35 @@ type Asker interface {
 	Ask(ctx context.Context, state string, questions map[string]jev.Question) (*jev.Response, error)
 }
 
-// Finding is one violation.
+// Finding is one violation. Fail is the cutoff it was judged against, so that
+// a reader of the JSON can see how close the call was without the config.
 type Finding struct {
-	File          string          `json:"file"`
-	Line          int             `json:"line"`
-	Tenet         string          `json:"tenet"`
-	Severity      tenets.Severity `json:"severity"`
-	Probability   float64         `json:"probability"`
-	LowConfidence bool            `json:"low_confidence"`
-	Message       string          `json:"message"`
+	File        string  `json:"file"`
+	Line        int     `json:"line"`
+	Tenet       string  `json:"tenet"`
+	Probability float64 `json:"probability"`
+	Fail        float64 `json:"fail"`
+	Message     string  `json:"message"`
+}
+
+// NearBand is how far under its cutoff a verdict still counts as a near miss.
+const NearBand = 0.2
+
+// NearMiss is a tenet that scored just under its cutoff on a window. It is no
+// finding, and it is the only evidence a user tuning a cutoff has.
+type NearMiss struct {
+	File        string
+	Line        int
+	Tenet       string
+	Probability float64
+	Fail        float64
+}
+
+// Outcome is what one run decided.
+type Outcome struct {
+	Findings   []Finding
+	NearMisses []NearMiss
+	Stats      Stats
 }
 
 // Stats is what a run cost.
@@ -94,7 +114,7 @@ func LocationInstructions(t *tenets.Tenet) string {
 
 // Run judges every window and returns the findings in file, line and tenet
 // order. Any API error abandons the run: a partial verdict is worse than none.
-func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, Stats, error) {
+func (j *Judge) Run(ctx context.Context, windows []*source.Window) (Outcome, error) {
 	started := time.Now()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -107,6 +127,7 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, S
 	var (
 		mu       sync.Mutex
 		findings []Finding
+		near     []NearMiss
 		stats    Stats
 		firstErr error
 		wg       sync.WaitGroup
@@ -121,7 +142,7 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, S
 		go func(w *source.Window) {
 			defer wg.Done()
 			defer func() { <-slots }()
-			found, s, err := j.window(ctx, w)
+			found, missed, s, err := j.window(ctx, w)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
@@ -132,6 +153,7 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, S
 				return
 			}
 			findings = append(findings, found...)
+			near = append(near, missed...)
 			stats.Calls += s.Calls
 			stats.CacheHits += s.CacheHits
 			stats.InputTokens += s.InputTokens
@@ -141,13 +163,47 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, S
 	wg.Wait()
 
 	if firstErr != nil {
-		return nil, Stats{}, firstErr
+		return Outcome{}, firstErr
 	}
 	stats.Files = len(files)
 	stats.Windows = len(windows)
 	stats.Duration = time.Since(started)
 	sortFindings(findings)
-	return findings, stats, nil
+	sort.Slice(near, func(a, b int) bool {
+		x, y := near[a], near[b]
+		if x.File != y.File {
+			return x.File < y.File
+		}
+		if x.Line != y.Line {
+			return x.Line < y.Line
+		}
+		return x.Tenet < y.Tenet
+	})
+	return Outcome{Findings: findings, NearMisses: near, Stats: stats}, nil
+}
+
+// Cached counts the windows a run would not have to ask about at all, for the
+// progress line, at the price of hashing every window before judging it.
+func (j *Judge) Cached(windows []*source.Window) int {
+	var cached int
+	for _, w := range windows {
+		state := State(w)
+		asked, all := 0, true
+		for _, t := range j.Tenets {
+			if !t.Applies(w.Path()) || w.File.Sup.File(t.ID) {
+				continue
+			}
+			asked++
+			if _, ok := j.Cache.Get(cache.Key(state, t.Hash())); !ok {
+				all = false
+				break
+			}
+		}
+		if asked == 0 || all {
+			cached++
+		}
+	}
+	return cached
 }
 
 func sortFindings(findings []Finding) {
@@ -172,13 +228,13 @@ type pending struct {
 	asked bool
 }
 
-func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, Stats, error) {
+func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, []NearMiss, Stats, error) {
 	var stats Stats
-	findings, err := j.judge(ctx, w, &stats)
-	return findings, stats, err
+	findings, near, err := j.judge(ctx, w, &stats)
+	return findings, near, stats, err
 }
 
-func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Finding, error) {
+func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Finding, []NearMiss, error) {
 	state := State(w)
 
 	var work []*pending
@@ -194,7 +250,7 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 		work = append(work, p)
 	}
 	if len(work) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if err := j.askVerdicts(ctx, w, state, work, stats); err != nil {
@@ -205,8 +261,19 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 	}
 
 	var findings []Finding
+	var near []NearMiss
 	for _, p := range work {
-		if p.prob < p.tenet.ThresholdValue() {
+		cutoff := p.tenet.FailValue()
+		if p.prob < cutoff {
+			if p.prob >= cutoff-NearBand {
+				near = append(near, NearMiss{
+					File:        w.Path(),
+					Line:        w.First,
+					Tenet:       p.tenet.ID,
+					Probability: p.prob,
+					Fail:        cutoff,
+				})
+			}
 			continue
 		}
 		id, ok := ParseLineID(p.line)
@@ -218,40 +285,41 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 			continue
 		}
 		findings = append(findings, Finding{
-			File:          w.Path(),
-			Line:          line,
-			Tenet:         p.tenet.ID,
-			Severity:      p.tenet.Severity,
-			Probability:   p.prob,
-			LowConfidence: p.prob < p.tenet.ConfidentValue(),
-			Message:       p.tenet.Tenet,
+			File:        w.Path(),
+			Line:        line,
+			Tenet:       p.tenet.ID,
+			Probability: p.prob,
+			Fail:        cutoff,
+			Message:     p.tenet.Tenet,
 		})
 	}
-	return findings, nil
+	return findings, near, nil
 }
 
 // inHalves judges the window in two, which is the only way left when a single
 // question and the window together are over budget. Any answer the window
 // already had is dropped: the halves ask about a different state, so nothing
 // carries over.
-func (j *Judge) inHalves(ctx context.Context, w *source.Window, stats *Stats, err error) ([]Finding, error) {
+func (j *Judge) inHalves(ctx context.Context, w *source.Window, stats *Stats, err error) ([]Finding, []NearMiss, error) {
 	if !errors.Is(err, errOversize) {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(w.Lines) < 2 {
-		return nil, fmt.Errorf("%s:%d: %w", w.Path(), w.First, err)
+		return nil, nil, fmt.Errorf("%s:%d: %w", w.Path(), w.First, err)
 	}
 	j.logf("%s:%d %v, judging its %d lines in halves", w.Path(), w.First, err, len(w.Lines))
 
 	var findings []Finding
+	var near []NearMiss
 	for _, half := range halves(w) {
-		found, err := j.judge(ctx, half, stats)
+		found, missed, err := j.judge(ctx, half, stats)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		findings = append(findings, found...)
+		near = append(near, missed...)
 	}
-	return findings, nil
+	return findings, near, nil
 }
 
 func halves(w *source.Window) []*source.Window {
@@ -292,7 +360,7 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 	questions := map[string]jev.Question{}
 	var asking []*pending
 	for _, p := range work {
-		if p.prob < p.tenet.ThresholdValue() || p.line != "" {
+		if p.prob < p.tenet.FailValue() || p.line != "" {
 			continue
 		}
 		q, err := LocationQuestion(p.tenet, len(w.Lines))

@@ -2,6 +2,7 @@ package check_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/zoidsh/tenetlint/internal/check"
@@ -53,19 +54,19 @@ func scores(violations, oks []float64) []check.Score {
 func TestVerdictBoundaries(t *testing.T) {
 	cases := []struct {
 		name        string
-		threshold   float64
+		fail        float64
 		violations  []float64
 		oks         []float64
 		minExamples int
 		want        string
 	}{
-		{"separated", 0, []float64{0.9, 0.8, 0.7}, []float64{0.3, 0.2, 0.1}, 6, check.VerdictSharp},
-		{"on the threshold", 0, []float64{0.5, 0.6, 0.7}, []float64{0.3, 0.2, 0.1}, 6, check.VerdictSharp},
+		{"separated", 0, []float64{0.95, 0.9, 0.85}, []float64{0.3, 0.2, 0.1}, 6, check.VerdictSharp},
+		{"on the cutoff", 0, []float64{0.8, 0.85, 0.9}, []float64{0.3, 0.2, 0.1}, 6, check.VerdictSharp},
 		{"auc exactly usable", 0, []float64{0.5, 0.6, 0.7, 0.8}, []float64{0.1, 0.2, 0.3, 0.4, 0.75}, 6, check.VerdictUsable},
 		{"just under usable", 0, []float64{0.5, 0.6, 0.7, 0.8}, []float64{0.1, 0.2, 0.3, 0.4, 0.85}, 6, check.VerdictBlurry},
 		{"one label only", 0, []float64{0.9, 0.8, 0.7, 0.6, 0.5, 0.4}, nil, 6, check.VerdictBlurry},
-		{"one short", 0, []float64{0.9, 0.8, 0.7}, []float64{0.3, 0.2}, 6, check.VerdictTooFew},
-		{"exactly enough", 0, []float64{0.9, 0.8, 0.7}, []float64{0.3, 0.2}, 5, check.VerdictSharp},
+		{"one short", 0, []float64{0.95, 0.9, 0.85}, []float64{0.3, 0.2}, 6, check.VerdictTooFew},
+		{"exactly enough", 0, []float64{0.95, 0.9, 0.85}, []float64{0.3, 0.2}, 5, check.VerdictSharp},
 		// Every ok here is over 0.5 and under 0.7, so the tenet's own cut is
 		// what decides that nothing is misjudged.
 		{"cut where the tenet cuts", 0.7, []float64{0.75, 0.8, 0.85}, []float64{0.5, 0.55, 0.6}, 6, check.VerdictSharp},
@@ -73,7 +74,7 @@ func TestVerdictBoundaries(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			r := check.Measure(tenetAt(c.threshold), judged(c.violations, c.oks), c.minExamples)
+			r := check.Measure(tenetAt(c.fail), judged(c.violations, c.oks), c.minExamples)
 			if r.Verdict != c.want {
 				t.Errorf("verdict is %q, want %q (auc %.3f, %d misjudged)", r.Verdict, c.want, r.AUC, len(r.Misjudged))
 			}
@@ -86,35 +87,43 @@ func TestTooFewLeavesTheNumbersOut(t *testing.T) {
 	if r.Verdict != check.VerdictTooFew {
 		t.Fatalf("verdict is %q", r.Verdict)
 	}
-	if r.AUC != 0 || r.AccuracyThreshold != 0 || r.Gap != 0 || r.Advice != "" || len(r.Misjudged) != 0 {
+	if r.AUC != 0 || r.Accuracy != 0 || r.Gap != 0 || r.Advice != "" || len(r.Misjudged) != 0 {
 		t.Errorf("numbers were reported anyway: %#v", r)
+	}
+	if len(r.AccuracyAt) != 0 {
+		t.Errorf("a tenet nobody can measure was compared at other cutoffs: %#v", r.AccuracyAt)
 	}
 }
 
 func TestAdviceBoundaries(t *testing.T) {
 	cases := []struct {
 		name       string
-		threshold  float64
+		fail       float64
 		violations []float64
 		oks        []float64
 		want       string
 	}{
-		{"both on the edges of the band", 0, []float64{0.6, 0.6, 0.6}, []float64{0.4, 0.4, 0.4}, check.AdviceAmbiguous},
-		{"violations just above the band", 0, []float64{0.61, 0.61, 0.61}, []float64{0.4, 0.4, 0.4}, ""},
-		{"ok mean on the threshold", 0, []float64{0.95, 0.95, 0.95}, []float64{0.4, 0.5, 0.6}, check.AdviceOKHigh},
-		{"ok mean just under", 0, []float64{0.95, 0.95, 0.95}, []float64{0.4, 0.5, 0.59}, ""},
-		{"violation mean just under the threshold", 0, []float64{0.49, 0.49, 0.49}, []float64{0.05, 0.05, 0.05}, check.AdviceViolationLow},
-		{"violation mean on the threshold", 0, []float64{0.5, 0.5, 0.5}, []float64{0.05, 0.05, 0.05}, ""},
-		// The band follows the threshold: these means straddle 0.8 and say
-		// nothing about a tenet cut at the default.
-		{"the band moves with the threshold", 0.8, []float64{0.88, 0.88, 0.88}, []float64{0.72, 0.72, 0.72}, check.AdviceAmbiguous},
-		{"the same means at the default threshold", 0, []float64{0.88, 0.88, 0.88}, []float64{0.72, 0.72, 0.72}, check.AdviceOKHigh},
+		{"both means inside the band", 0, []float64{0.88, 0.88, 0.88}, []float64{0.72, 0.72, 0.72}, check.AdviceAmbiguous},
+		{"the ok mean outside the band", 0, []float64{0.88, 0.88, 0.88}, []float64{0.68, 0.68, 0.68}, ""},
+		{"an ok on the cutoff", 0, []float64{0.95, 0.95, 0.95}, []float64{0.1, 0.2, 0.8}, "raise fail above it"},
+		{"an ok just under the cutoff", 0, []float64{0.95, 0.95, 0.95}, []float64{0.1, 0.2, 0.79}, ""},
+		{"violations in the band under the cutoff", 0, []float64{0.72, 0.75, 0.95}, []float64{0.1, 0.1, 0.1}, "lower fail to 0.72"},
+		{"violations under the floor", 0, []float64{0.65, 0.69, 0.95}, []float64{0.1, 0.1, 0.1}, check.AdviceViolationLow},
+		{"the band moves with the cutoff", 0.6, []float64{0.66, 0.66, 0.66}, []float64{0.54, 0.54, 0.54}, check.AdviceAmbiguous},
+		{"nothing to say", 0, []float64{0.95, 0.95, 0.95}, []float64{0.05, 0.05, 0.05}, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			r := check.Measure(tenetAt(c.threshold), judged(c.violations, c.oks), 6)
-			if r.Advice != c.want {
-				t.Errorf("advice is %q, want %q (mean violation %.3f, mean ok %.3f)", r.Advice, c.want, r.MeanViolation, r.MeanOK)
+			r := check.Measure(tenetAt(c.fail), judged(c.violations, c.oks), 6)
+			if c.want == "" {
+				if r.Advice != "" {
+					t.Errorf("advice is %q, want none", r.Advice)
+				}
+				return
+			}
+			if !strings.Contains(r.Advice, c.want) {
+				t.Errorf("advice is %q, want it to hold %q (mean violation %.3f, mean ok %.3f)",
+					r.Advice, c.want, r.MeanViolation, r.MeanOK)
 			}
 		})
 	}
@@ -123,7 +132,7 @@ func TestAdviceBoundaries(t *testing.T) {
 func TestMeasureCountsAndMisjudged(t *testing.T) {
 	examples := []check.Judged{
 		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a := 1\nb := 2\n", Lines: at(2, 2)}, Prob: 0.9, Line: 2},
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "c := 3\n", Lines: at(1, 1)}, Prob: 0.45, Line: 1},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "c := 3\n", Lines: at(1, 1)}, Prob: 0.75, Line: 1},
 		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "d := 4\n"}, Prob: 0.8},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "e := 5\n"}, Prob: 0.1},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "f := 6\n"}, Prob: 0.2},
@@ -134,15 +143,21 @@ func TestMeasureCountsAndMisjudged(t *testing.T) {
 	if r.Examples != 6 || r.Violations != 3 || r.OKs != 3 {
 		t.Errorf("counts are %d, %d, %d", r.Examples, r.Violations, r.OKs)
 	}
-	if math.Abs(r.AccuracyThreshold-4.0/6) > 1e-9 {
-		t.Errorf("accuracy at the threshold is %v", r.AccuracyThreshold)
+	if math.Abs(r.Accuracy-4.0/6) > 1e-9 {
+		t.Errorf("accuracy at the cutoff is %v", r.Accuracy)
 	}
-	// At 0.7 the violation at 0.45 and the ok at 0.95 are the ones that land
-	// on the wrong side.
-	if math.Abs(r.AccuracyConfident-4.0/6) > 1e-9 {
-		t.Errorf("accuracy at confident is %v", r.AccuracyConfident)
+	// Lowering the cutoff to 0.7 would catch the violation at 0.75, and
+	// raising it to 0.9 would lose the one at 0.8 as well.
+	want := map[float64]float64{0.7: 5.0 / 6, 0.8: 4.0 / 6, 0.9: 3.0 / 6}
+	if len(r.AccuracyAt) != len(want) {
+		t.Fatalf("compared at %#v", r.AccuracyAt)
 	}
-	if math.Abs(r.Gap-(0.7166666666666667-0.4166666666666667)) > 1e-9 {
+	for _, a := range r.AccuracyAt {
+		if math.Abs(a.Accuracy-want[a.Cutoff]) > 1e-9 {
+			t.Errorf("accuracy at %.2f is %v, want %v", a.Cutoff, a.Accuracy, want[a.Cutoff])
+		}
+	}
+	if math.Abs(r.Gap-(0.8166666666666667-0.4166666666666667)) > 1e-9 {
 		t.Errorf("gap is %v from means %v and %v", r.Gap, r.MeanViolation, r.MeanOK)
 	}
 	if r.LocatedExamples != 2 || r.LocationHits != 2 || r.LocationRate != 1 {
@@ -216,11 +231,11 @@ func tenet() *tenets.Tenet {
 }
 
 // tenetAt is the same tenet cut somewhere other than the default, which a
-// threshold of 0 asks for.
-func tenetAt(threshold float64) *tenets.Tenet {
+// cutoff of 0 asks for.
+func tenetAt(fail float64) *tenets.Tenet {
 	t := tenet()
-	if threshold > 0 {
-		t.Threshold = &threshold
+	if fail > 0 {
+		t.Fail = &fail
 	}
 	return t
 }

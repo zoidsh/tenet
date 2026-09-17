@@ -111,8 +111,8 @@ func TestInitEndToEnd(t *testing.T) {
 	if got.ID != "comment-says-why-code-exists" || got.Tenet != commentRule {
 		t.Errorf("tenet is %#v", got)
 	}
-	if got.Source != "CLAUDE.md:5" || got.Severity != tenets.SeverityWarn {
-		t.Errorf("source is %q, severity %q", got.Source, got.Severity)
+	if got.Source != "CLAUDE.md:5" || got.FailValue() != tenets.DefaultFail {
+		t.Errorf("source is %q, cutoff %v", got.Source, got.FailValue())
 	}
 
 	for _, want := range []string{

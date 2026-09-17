@@ -4,6 +4,7 @@
 package check
 
 import (
+	"fmt"
 	"math"
 	"sort"
 
@@ -28,9 +29,18 @@ const (
 	UsableAUC = 0.85
 )
 
-// Borderline is how close to the threshold a misjudged example counts as one
-// the wording nearly got right.
+// Borderline is how close to the cutoff a misjudged example counts as one the
+// wording nearly got right.
 const Borderline = 0.1
+
+// CompareAt are the cutoffs every tenet is also measured at, so that what
+// moving its own cutoff would buy is on the screen beside it.
+var CompareAt = []float64{0.7, 0.8, 0.9}
+
+// LowerFloor is the lowest a cutoff is ever worth lowering to. Under it the
+// model is not saying much, and the answer is to sharpen the wording rather
+// than to accept what it is unsure of.
+const LowerFloor = 0.7
 
 // The advice lines, one of which is chosen by the shape of the numbers.
 const (
@@ -39,9 +49,9 @@ const (
 	AdviceAmbiguous    = "both labels land in the middle: the tenet sentence is ambiguous, name the observable property it is about."
 )
 
-// AmbiguousBand is how far either side of the tenet's own threshold both
-// means have to sit for the sentence itself to be the suspect. It follows the
-// threshold rather than the middle of the scale, because a tenet cut at 0.8 is
+// AmbiguousBand is how far either side of the tenet's own cutoff both means
+// have to sit for the sentence itself to be the suspect. It follows the
+// cutoff rather than the middle of the scale, because a tenet cut at 0.8 is
 // undecided about what scores 0.8, not about what scores 0.5.
 const AmbiguousBand = 0.1
 
@@ -91,7 +101,14 @@ func AUC(scores []Score) (float64, bool) {
 	return (rankSum - n*(n+1)/2) / (n * float64(oks)), true
 }
 
-// Misjudged is an example the tenet's threshold puts on the wrong side.
+// AccuracyAt is what the examples would come out at under a cutoff the tenet
+// does not carry.
+type AccuracyAt struct {
+	Cutoff   float64 `json:"cutoff"`
+	Accuracy float64 `json:"accuracy"`
+}
+
+// Misjudged is an example the tenet's cutoff puts on the wrong side.
 type Misjudged struct {
 	Label      tenets.Label `json:"label"`
 	Prob       float64      `json:"probability"`
@@ -106,18 +123,17 @@ type Result struct {
 	Examples   int     `json:"examples"`
 	Violations int     `json:"violations"`
 	OKs        int     `json:"oks"`
-	Threshold  float64 `json:"threshold"`
-	Confident  float64 `json:"confident"`
+	Fail       float64 `json:"fail"`
 
 	// Separated is false when the examples carry only one label, which leaves
 	// the AUC and the gap with nothing to measure.
-	Separated         bool    `json:"separated"`
-	AUC               float64 `json:"auc"`
-	AccuracyThreshold float64 `json:"accuracy_at_threshold"`
-	AccuracyConfident float64 `json:"accuracy_at_confident"`
-	MeanViolation     float64 `json:"mean_violation"`
-	MeanOK            float64 `json:"mean_ok"`
-	Gap               float64 `json:"gap"`
+	Separated     bool         `json:"separated"`
+	AUC           float64      `json:"auc"`
+	Accuracy      float64      `json:"accuracy"`
+	AccuracyAt    []AccuracyAt `json:"accuracy_at"`
+	MeanViolation float64      `json:"mean_violation"`
+	MeanOK        float64      `json:"mean_ok"`
+	Gap           float64      `json:"gap"`
 
 	LocatedExamples int     `json:"located_examples"`
 	LocationHits    int     `json:"location_hits"`
@@ -141,8 +157,7 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 	r := Result{
 		Tenet:     t.ID,
 		Examples:  len(judged),
-		Threshold: t.ThresholdValue(),
-		Confident: t.ConfidentValue(),
+		Fail:      t.FailValue(),
 		Misjudged: []Misjudged{},
 	}
 	if len(judged) < minExamples {
@@ -152,7 +167,7 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 
 	scores := make([]Score, 0, len(judged))
 	var violationSum, okSum float64
-	var correctThreshold, correctConfident int
+	var correct int
 	for _, j := range judged {
 		violation := j.Example.Label == tenets.LabelViolation
 		scores = append(scores, Score{Prob: j.Prob, Violation: violation})
@@ -163,18 +178,15 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 			r.OKs++
 			okSum += j.Prob
 		}
-		if (j.Prob >= r.Threshold) == violation {
-			correctThreshold++
+		if (j.Prob >= r.Fail) == violation {
+			correct++
 		} else {
 			r.Misjudged = append(r.Misjudged, Misjudged{
 				Label:      j.Example.Label,
 				Prob:       j.Prob,
 				Code:       j.Example.CodeLines()[0],
-				Borderline: math.Abs(j.Prob-r.Threshold) <= Borderline,
+				Borderline: math.Abs(j.Prob-r.Fail) <= Borderline,
 			})
-		}
-		if (j.Prob >= r.Confident) == violation {
-			correctConfident++
 		}
 		if j.Example.Lines.Set() {
 			r.LocatedExamples++
@@ -184,8 +196,10 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 		}
 	}
 
-	r.AccuracyThreshold = float64(correctThreshold) / float64(len(judged))
-	r.AccuracyConfident = float64(correctConfident) / float64(len(judged))
+	r.Accuracy = float64(correct) / float64(len(judged))
+	for _, cutoff := range CompareAt {
+		r.AccuracyAt = append(r.AccuracyAt, AccuracyAt{Cutoff: cutoff, Accuracy: accuracyAt(scores, cutoff)})
+	}
 	if r.Violations > 0 {
 		r.MeanViolation = violationSum / float64(r.Violations)
 	}
@@ -198,8 +212,18 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 	}
 	r.AUC, r.Separated = AUC(scores)
 	r.Verdict = verdict(r)
-	r.Advice = advice(r)
+	r.Advice = advice(r, scores)
 	return r
+}
+
+func accuracyAt(scores []Score, cutoff float64) float64 {
+	var correct int
+	for _, s := range scores {
+		if (s.Prob >= cutoff) == s.Violation {
+			correct++
+		}
+	}
+	return float64(correct) / float64(len(scores))
 }
 
 func verdict(r Result) string {
@@ -219,18 +243,42 @@ func verdict(r Result) string {
 // band is tested first because a tenet whose two means both sit in the middle
 // satisfies the other two rules as well, and rewriting the sentence is what
 // such a tenet needs before either criterion is worth writing.
-func advice(r Result) string {
+func advice(r Result, scores []Score) string {
 	middle := func(mean float64) bool {
-		return math.Abs(mean-r.Threshold) <= AmbiguousBand
+		return math.Abs(mean-r.Fail) <= AmbiguousBand
 	}
+	highestOK, inBand, lowestInBand := bands(r, scores)
 	switch {
 	case r.Violations > 0 && r.OKs > 0 && middle(r.MeanViolation) && middle(r.MeanOK):
 		return AdviceAmbiguous
-	case r.OKs > 0 && r.MeanOK >= r.Threshold:
+	case highestOK >= r.Fail:
+		return fmt.Sprintf("an ok example scores %.2f, at or above the cutoff: raise fail above it, or add a false criterion naming what the ok examples have in common.", highestOK)
+	case inBand > 0 && lowestInBand > highestOK:
+		return fmt.Sprintf("%s score under the cutoff but above %.2f: lower fail to %.2f for this rule.",
+			plural(inBand, "violation"), LowerFloor, lowestInBand)
+	case r.OKs > 0 && r.MeanOK >= r.Fail:
 		return AdviceOKHigh
-	case r.Violations > 0 && r.MeanViolation < r.Threshold:
+	case r.Violations > 0 && r.MeanViolation < r.Fail:
 		return AdviceViolationLow
 	default:
 		return ""
 	}
+}
+
+// bands are what the advice is chosen by: the highest an ok example scored,
+// and the violations sitting between the floor and the cutoff, which are the
+// ones a lower cutoff would catch.
+func bands(r Result, scores []Score) (highestOK float64, inBand int, lowestInBand float64) {
+	lowestInBand = 1
+	for _, s := range scores {
+		if !s.Violation {
+			highestOK = max(highestOK, s.Prob)
+			continue
+		}
+		if s.Prob >= LowerFloor && s.Prob < r.Fail {
+			inBand++
+			lowestInBand = min(lowestInBand, s.Prob)
+		}
+	}
+	return highestOK, inBand, lowestInBand
 }

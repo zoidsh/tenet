@@ -29,8 +29,7 @@ func (r Report) Text(w io.Writer) error {
 		row(&b, "examples", r.examples(result))
 		if result.Verdict != VerdictTooFew {
 			row(&b, "auc", auc(result))
-			row(&b, "accuracy", fmt.Sprintf("%.2f at threshold %.2f, %.2f at confident %.2f",
-				result.AccuracyThreshold, result.Threshold, result.AccuracyConfident, result.Confident))
+			row(&b, "accuracy", fmt.Sprintf("%.2f at fail %.2f · %s", result.Accuracy, result.Fail, comparison(result)))
 			row(&b, "mean probability", fmt.Sprintf("violation %.2f, ok %.2f, gap %.2f",
 				result.MeanViolation, result.MeanOK, result.Gap))
 			if result.LocatedExamples > 0 {
@@ -73,6 +72,16 @@ func auc(result Result) string {
 	return fmt.Sprintf("%.2f", result.AUC)
 }
 
+// comparison is what the same examples would come out at under the other
+// cutoffs, so that lowering or raising this tenet's own is an informed move.
+func comparison(result Result) string {
+	parts := make([]string, 0, len(result.AccuracyAt))
+	for _, a := range result.AccuracyAt {
+		parts = append(parts, fmt.Sprintf("%.2f at %.2f", a.Accuracy, a.Cutoff))
+	}
+	return strings.Join(parts, ", ")
+}
+
 func misjudged(b *strings.Builder, result Result) {
 	if len(result.Misjudged) == 0 {
 		return
@@ -81,7 +90,7 @@ func misjudged(b *strings.Builder, result Result) {
 	for _, m := range result.Misjudged {
 		note := ""
 		if m.Borderline {
-			note = " [near the threshold]"
+			note = " [near the cutoff]"
 		}
 		fmt.Fprintf(b, "    %-9s p=%.2f  %s%s\n", m.Label, m.Prob, strings.TrimSpace(m.Code), note)
 	}

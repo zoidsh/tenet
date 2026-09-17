@@ -104,10 +104,9 @@ type draftFile struct {
 }
 
 type draftTenet struct {
-	ID       string `yaml:"id"`
-	Tenet    string `yaml:"tenet"`
-	Source   string `yaml:"source"`
-	Severity string `yaml:"severity"`
+	ID     string `yaml:"id"`
+	Tenet  string `yaml:"tenet"`
+	Source string `yaml:"source"`
 }
 
 // Draft is the tenets.yml for everything the sort accepted, which Assign has
@@ -116,10 +115,9 @@ func Draft(sorted []Sorted, presets []string) ([]byte, error) {
 	file := draftFile{Version: 1, Presets: presets}
 	for _, c := range Accepted(sorted) {
 		file.Tenets = append(file.Tenets, draftTenet{
-			ID:       c.ID,
-			Tenet:    c.Text,
-			Source:   fmt.Sprintf("%s:%d", c.File, c.Line),
-			Severity: "warn",
+			ID:     c.ID,
+			Tenet:  c.Text,
+			Source: fmt.Sprintf("%s:%d", c.File, c.Line),
 		})
 	}
 

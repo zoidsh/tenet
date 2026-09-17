@@ -51,12 +51,12 @@ func TestBuiltinRuleIsItsOwnCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first.Tenet.Severity = tenets.SeverityInfo
+	first.Tenet.Tenet = "edited"
 	second, err := tenets.BuiltinRule("comment-why")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.Tenet.Severity == tenets.SeverityInfo {
+	if second.Tenet.Tenet == "edited" {
 		t.Error("two readings of a rule share the tenet, so one config's override edits another's")
 	}
 }

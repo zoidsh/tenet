@@ -112,21 +112,20 @@ func TestOverrideTouchesOnlyWhatItNames(t *testing.T) {
 rules: [comment-why]
 override:
   comment-why:
-    severity: error
-    threshold: 0.8
+    fail: 0.6
     exclude: ["**/testdata/**"]
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
 	got := cfg.Tenets[0]
-	if got.Severity != tenets.SeverityError || got.ThresholdValue() != 0.8 {
+	if got.FailValue() != 0.6 {
 		t.Errorf("the override did not take: %#v", got)
 	}
 	if len(got.Exclude) != 1 || got.Exclude[0] != "**/testdata/**" {
 		t.Errorf("exclude is %v", got.Exclude)
 	}
-	if got.Tenet != builtin.Tenet.Tenet || got.ConfidentValue() != builtin.Tenet.ConfidentValue() {
+	if got.Tenet != builtin.Tenet.Tenet || got.Criteria == nil {
 		t.Errorf("the override touched a field it does not name: %#v", got)
 	}
 	if len(got.Include) != len(builtin.Tenet.Include) || got.Include[0] != builtin.Tenet.Include[0] {
@@ -140,7 +139,7 @@ override:
 // An override is applied after the disable, so it has nothing left to patch
 // and says so rather than passing silently.
 func TestOverrideOfADisabledTenet(t *testing.T) {
-	_, err := tenets.Parse([]byte("version: 1\npresets: [agent-hygiene]\ndisable: [no-mocking]\noverride:\n  no-mocking:\n    severity: error\n"))
+	_, err := tenets.Parse([]byte("version: 1\npresets: [agent-hygiene]\ndisable: [no-mocking]\noverride:\n  no-mocking:\n    fail: 0.6\n"))
 	if err == nil || !strings.Contains(err.Error(), "override") || !strings.Contains(err.Error(), "no-mocking") {
 		t.Fatalf("error is %v", err)
 	}
@@ -165,10 +164,9 @@ func TestResolutionErrors(t *testing.T) {
 		{"an unknown preset", "version: 1\npresets: [house]\n", []string{"presets", "house"}},
 		{"an unknown rule", "version: 1\nrules: [house]\n", []string{"rules", "house"}},
 		{"an unknown disable", "version: 1\nrules: [no-mocking]\ndisable: [house]\n", []string{"disable", "house"}},
-		{"an unknown override", "version: 1\nrules: [no-mocking]\noverride:\n  house:\n    severity: error\n", []string{"override", "house"}},
+		{"an unknown override", "version: 1\nrules: [no-mocking]\noverride:\n  house:\n    fail: 0.6\n", []string{"override", "house"}},
 		{"a config that resolves to nothing", "version: 1\nrules: [no-mocking]\ndisable: [no-mocking]\n", []string{"at least one"}},
-		{"an override with a bad severity", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    severity: loud\n", []string{`override "no-mocking"`, "severity"}},
-		{"an override with a bad threshold", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    threshold: 2\n", []string{`override "no-mocking"`, "threshold"}},
+		{"an override with a bad cutoff", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    fail: 2\n", []string{`override "no-mocking"`, "fail"}},
 		{"an override with a bad glob", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    include: [\"[\"]\n", []string{`override "no-mocking"`, "include"}},
 		{"an override field nobody knows", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    tenet: x\n", []string{"tenet"}},
 	}

@@ -19,9 +19,7 @@ tenets:
     criteria:
       true: It restates the code.
       false: It gives a reason.
-    severity: error
-    threshold: 0.6
-    confident: 0.8
+    fail: 0.6
     include: ["**/*.go"]
     exclude: ["**/vendor/**"]
   - id: no-mocking
@@ -43,10 +41,10 @@ func TestParseDefaults(t *testing.T) {
 	if first.Source != "CLAUDE.md:42" || second.Source != "" {
 		t.Errorf("source not decoded: %q, %q", first.Source, second.Source)
 	}
-	if first.Severity != tenets.SeverityError || first.ThresholdValue() != 0.6 || first.ConfidentValue() != 0.8 {
+	if first.FailValue() != 0.6 {
 		t.Errorf("explicit fields lost: %#v", first)
 	}
-	if second.Severity != tenets.SeverityWarn || second.ThresholdValue() != 0.5 || second.ConfidentValue() != 0.7 {
+	if second.FailValue() != tenets.DefaultFail {
 		t.Errorf("defaults wrong: %#v", second)
 	}
 	if second.Criteria != nil {
@@ -85,14 +83,13 @@ func TestHashCoversOnlyWhatIsAsked(t *testing.T) {
 	}
 	base := cfg.Tenets[0].Hash()
 
-	raised := strings.Replace(sample, "threshold: 0.6", "threshold: 0.9", 1)
-	raised = strings.Replace(raised, "severity: error", "severity: info", 1)
+	raised := strings.Replace(sample, "fail: 0.6", "fail: 0.9", 1)
 	other, err := tenets.Parse([]byte(raised))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if other.Tenets[0].Hash() != base {
-		t.Error("threshold or severity changed the hash")
+		t.Error("the cutoff changed the hash")
 	}
 
 	reworded, err := tenets.Parse([]byte(strings.Replace(sample, "A comment says why.", "A comment says why not.", 1)))
@@ -132,9 +129,8 @@ func TestValidationErrors(t *testing.T) {
 		{"bad id", "version: 1\ntenets:\n  - id: Comment_Why\n    tenet: x\n", `"Comment_Why": id`},
 		{"duplicate id", "version: 1\ntenets:\n  - id: a\n    tenet: x\n  - id: a\n    tenet: y\n", "used twice"},
 		{"missing text", "version: 1\ntenets:\n  - id: a\n    tenet: \"  \"\n", `"a": tenet is required`},
-		{"bad severity", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    severity: loud\n", `"a": severity`},
-		{"bad threshold", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    threshold: 1.5\n", `"a": threshold`},
-		{"bad confident", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    confident: 0\n", `"a": confident`},
+		{"bad fail", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    fail: 1.5\n", `"a": fail`},
+		{"a fail of zero", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    fail: 0\n", `"a": fail`},
 		{"bad glob", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    include: [\"[\"]\n", `"a": include`},
 		{"unknown field", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    weight: 3\n", "weight"},
 	}

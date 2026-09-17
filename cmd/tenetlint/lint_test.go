@@ -13,6 +13,8 @@ import (
 
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/judge"
+	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenetlint/internal/tenets"
 )
 
 const testConfig = `version: 1
@@ -20,7 +22,6 @@ model: jev-1.13.0
 tenets:
   - id: comment-why
     tenet: A comment says why.
-    severity: error
     include: ["**/*.go"]
 `
 
@@ -137,8 +138,8 @@ func TestLintStagedEndToEnd(t *testing.T) {
 		t.Fatalf("findings are %#v", got.Findings)
 	}
 	want := judge.Finding{
-		File: "inc.go", Line: 3, Tenet: "comment-why", Severity: "error",
-		Probability: 0.91, Message: "A comment says why.",
+		File: "inc.go", Line: 3, Tenet: "comment-why",
+		Probability: 0.91, Fail: tenets.DefaultFail, Message: "A comment says why.",
 	}
 	if got.Findings[0] != want {
 		t.Errorf("finding is %#v, want %#v", got.Findings[0], want)
@@ -152,6 +153,36 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	}
 	if len(got.Skipped) != 1 || got.Skipped[0].File != ".env" {
 		t.Errorf("skipped is %#v", got.Skipped)
+	}
+}
+
+// What reads a pipe is a script or an agent, so a run nobody asked a format
+// of answers in JSON.
+func TestLintOnAPipeAnswersInJSON(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "inc.go", staged)
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
+	t.Setenv(report.FormatEnv, "")
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"--no-cache", "inc.go"})
+
+	if code := execute(root); code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
+	}
+	var got jsonReport
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("%v in %s", err, stdout.String())
+	}
+	if len(got.Findings) != 1 {
+		t.Errorf("findings are %#v", got.Findings)
 	}
 }
 
@@ -169,12 +200,12 @@ func TestLintExplicitPath(t *testing.T) {
 	root := newRootCmd()
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
-	root.SetArgs([]string{"--no-cache", "--fail-on", "never", "inc.go"})
+	root.SetArgs([]string{"--no-cache", "--format", "text", "inc.go"})
 
-	if code := execute(root); code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr.String())
+	if code := execute(root); code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
 	}
-	if !strings.HasPrefix(stdout.String(), "inc.go:3: error comment-why (p=0.91)") {
+	if !strings.HasPrefix(stdout.String(), "inc.go:3: comment-why (p=0.91)") {
 		t.Errorf("stdout is %q", stdout.String())
 	}
 }
@@ -197,14 +228,14 @@ func TestLintFromASubdirectory(t *testing.T) {
 	root := newRootCmd()
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
-	root.SetArgs([]string{"--no-cache", "--fail-on", "never"})
+	root.SetArgs([]string{"--no-cache", "--format", "text"})
 
-	if code := execute(root); code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr.String())
+	if code := execute(root); code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
 	}
 	// The globs match pkg/inc.go, but the path printed is the one this
 	// terminal can open.
-	if !strings.HasPrefix(stdout.String(), "inc.go:3: error comment-why") {
+	if !strings.HasPrefix(stdout.String(), "inc.go:3: comment-why") {
 		t.Errorf("stdout is %q", stdout.String())
 	}
 }
@@ -288,7 +319,7 @@ func TestLintWithNothingStaged(t *testing.T) {
 	root := newRootCmd()
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)
-	root.SetArgs(nil)
+	root.SetArgs([]string{"--format", "text"})
 
 	if code := execute(root); code != 0 {
 		t.Fatalf("exit %d, want 0: %s", code, stderr.String())

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -45,45 +46,39 @@ type lintOptions struct {
 	base    string
 	config  string
 	format  string
-	failOn  string
 	model   string
 	noCache bool
 	verbose bool
 	quiet   bool
-
-	failLevel report.FailOn
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
-	f.StringVar(&o.format, "format", report.FormatText, "output format: text or json")
-	f.StringVar(&o.failOn, "fail-on", string(tenets.SeverityWarn), "exit 1 on a finding at this severity or above: error, warn, info or never")
+	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 }
 
-func (o *lintOptions) validate() error {
+func (o *lintOptions) validate(out io.Writer) error {
+	if o.format == "" {
+		o.format = report.DefaultFormat(out)
+	}
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format)
 	}
-	level, err := report.ParseFailOn(o.failOn)
-	if err != nil {
-		return fmt.Errorf("--fail-on %w", err)
-	}
-	o.failLevel = level
 	return nil
 }
 
 func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
-	if err := o.validate(); err != nil {
-		return fail(err)
-	}
 	ctx := cmd.Context()
 	out, errOut := cmd.OutOrStdout(), cmd.ErrOrStderr()
+	if err := o.validate(out); err != nil {
+		return fail(err)
+	}
 
 	dir, err := os.Getwd()
 	if err != nil {
@@ -122,14 +117,15 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		Skipped: set.Skipped,
 		Quiet:   o.quiet,
 	}
+	var near []judge.NearMiss
 	windows := set.Windows()
 	if len(windows) > 0 {
-		findings, stats, err := lintWindows(ctx, cmd, o, cfg, windows, key, model)
+		outcome, err := lintWindows(ctx, cmd, o, cfg, windows, key, model)
 		if err != nil {
 			return fail(err)
 		}
-		stats.Files = len(set.Files)
-		r.Findings, r.Stats = findings, stats
+		outcome.Stats.Files = len(set.Files)
+		r.Findings, r.Stats, near = outcome.Findings, outcome.Stats, outcome.NearMisses
 	}
 
 	relocate(&r, set.Root, dir)
@@ -137,11 +133,15 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		for _, s := range r.Skipped {
 			_, _ = fmt.Fprintf(errOut, "skipped %s: %s\n", s.File, s.Reason)
 		}
+		for _, n := range near {
+			_, _ = fmt.Fprintf(errOut, "near miss %s:%d: %s (p=%.2f, fails at %.2f)\n",
+				displayPath(set.Root, dir, n.File), n.Line, n.Tenet, n.Probability, n.Fail)
+		}
 	}
 	if err := r.Write(out, o.format, report.ColorEnabled(out)); err != nil {
 		return fail(err)
 	}
-	if code := r.ExitCode(o.failLevel); code != report.ExitOK {
+	if code := r.ExitCode(); code != report.ExitOK {
 		return &exitError{code: code}
 	}
 	return nil
@@ -168,12 +168,12 @@ func displayPath(root, dir, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) ([]judge.Finding, judge.Stats, error) {
+func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) (judge.Outcome, error) {
 	j := &judge.Judge{Asker: jev.New(key, jev.WithModel(model)), Tenets: cfg.Tenets}
 	if !o.noCache {
 		c, err := cache.Open("")
 		if err != nil {
-			return nil, judge.Stats{}, err
+			return judge.Outcome{}, err
 		}
 		j.Cache = c
 	}
@@ -188,5 +188,15 @@ func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *t
 			_, _ = fmt.Fprintln(errOut, line)
 		}
 	}
+
+	// The progress line is the only sign of life during a run that can take
+	// tens of seconds, and it is taken back before anything is printed. A
+	// verbose run has its own lines to write to stderr, which would be
+	// printed over it and leave half of it behind.
+	progress := report.NewProgress(cmd.ErrOrStderr(), !o.quiet && !o.verbose && o.format == report.FormatText)
+	if progress.On() {
+		progress.Start(len(windows), j.Cached(windows))
+	}
+	defer progress.Clear()
 	return j.Run(ctx, windows)
 }

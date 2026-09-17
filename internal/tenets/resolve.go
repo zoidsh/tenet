@@ -105,14 +105,8 @@ func origin(t *Tenet) string {
 }
 
 func (o *Override) applyTo(t *Tenet) {
-	if o.Severity != "" {
-		t.Severity = o.Severity
-	}
-	if o.Threshold != nil {
-		t.Threshold = o.Threshold
-	}
-	if o.Confident != nil {
-		t.Confident = o.Confident
+	if o.Fail != nil {
+		t.Fail = o.Fail
 	}
 	if o.Include != nil {
 		t.Include = o.Include

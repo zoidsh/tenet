@@ -7,12 +7,24 @@
       "examples": 6,
       "violations": 3,
       "oks": 3,
-      "threshold": 0.5,
-      "confident": 0.7,
+      "fail": 0.8,
       "separated": true,
       "auc": 0.8888888888888888,
-      "accuracy_at_threshold": 0.6666666666666666,
-      "accuracy_at_confident": 0.6666666666666666,
+      "accuracy": 0.8333333333333334,
+      "accuracy_at": [
+        {
+          "cutoff": 0.7,
+          "accuracy": 0.6666666666666666
+        },
+        {
+          "cutoff": 0.8,
+          "accuracy": 0.8333333333333334
+        },
+        {
+          "cutoff": 0.9,
+          "accuracy": 0.6666666666666666
+        }
+      ],
       "mean_violation": 0.75,
       "mean_ok": 0.30666666666666664,
       "gap": 0.44333333333333336,
@@ -24,16 +36,10 @@
           "label": "violation",
           "probability": 0.45,
           "code": "// step one",
-          "borderline": true
-        },
-        {
-          "label": "ok",
-          "probability": 0.75,
-          "code": "// The vendor SDK requires this order.",
           "borderline": false
         }
       ],
-      "advice": ""
+      "advice": "the violations score low: add a true criterion naming what makes them violations."
     },
     {
       "tenet": "no-fallback",
@@ -41,12 +47,24 @@
       "examples": 6,
       "violations": 3,
       "oks": 3,
-      "threshold": 0.5,
-      "confident": 0.7,
+      "fail": 0.8,
       "separated": true,
       "auc": 0.9444444444444444,
-      "accuracy_at_threshold": 0.5,
-      "accuracy_at_confident": 0.6666666666666666,
+      "accuracy": 0.8333333333333334,
+      "accuracy_at": [
+        {
+          "cutoff": 0.7,
+          "accuracy": 0.6666666666666666
+        },
+        {
+          "cutoff": 0.8,
+          "accuracy": 0.8333333333333334
+        },
+        {
+          "cutoff": 0.9,
+          "accuracy": 0.6666666666666666
+        }
+      ],
       "mean_violation": 0.85,
       "mean_ok": 0.7000000000000001,
       "gap": 0.1499999999999999,
@@ -58,22 +76,10 @@
           "label": "ok",
           "probability": 0.8,
           "code": "if err != nil { return err } // four",
-          "borderline": false
-        },
-        {
-          "label": "ok",
-          "probability": 0.7,
-          "code": "if err != nil { return err } // five",
-          "borderline": false
-        },
-        {
-          "label": "ok",
-          "probability": 0.6,
-          "code": "if err != nil { return err } // six",
           "borderline": true
         }
       ],
-      "advice": "the ok examples score high: add a false criterion naming what they have in common."
+      "advice": "both labels land in the middle: the tenet sentence is ambiguous, name the observable property it is about."
     },
     {
       "tenet": "no-mocking",
@@ -81,12 +87,11 @@
       "examples": 2,
       "violations": 0,
       "oks": 0,
-      "threshold": 0.5,
-      "confident": 0.7,
+      "fail": 0.8,
       "separated": false,
       "auc": 0,
-      "accuracy_at_threshold": 0,
-      "accuracy_at_confident": 0,
+      "accuracy": 0,
+      "accuracy_at": null,
       "mean_violation": 0,
       "mean_ok": 0,
       "gap": 0,

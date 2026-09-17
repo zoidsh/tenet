@@ -26,10 +26,10 @@ func newConfigCmd() *cobra.Command {
 			var b strings.Builder
 			b.WriteString(cfg.Path + "\n\n")
 			table := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprint(table, "id\torigin\tseverity\tthreshold\tinclude\n")
+			_, _ = fmt.Fprint(table, "id\torigin\tfail\tinclude\n")
 			for _, t := range cfg.Tenets {
-				_, _ = fmt.Fprintf(table, "%s\t%s\t%s\t%.2f\t%s\n",
-					t.ID, t.Origin, t.Severity, t.ThresholdValue(), list(t.Include))
+				_, _ = fmt.Fprintf(table, "%s\t%s\t%.2f\t%s\n",
+					t.ID, t.Origin, t.FailValue(), list(t.Include))
 			}
 			if err := table.Flush(); err != nil {
 				return fail(err)

@@ -20,46 +20,11 @@ import (
 // FileName is the config file Find looks for.
 const FileName = "tenets.yml"
 
-// Defaults applied to a tenet that leaves the field out.
-const (
-	DefaultThreshold = 0.5
-	DefaultConfident = 0.7
-	DefaultSeverity  = SeverityWarn
-)
-
-// Severity is how loudly a tenet's findings are reported.
-type Severity string
-
-// The severities a tenet may carry, ordered by Rank.
-const (
-	SeverityInfo  Severity = "info"
-	SeverityWarn  Severity = "warn"
-	SeverityError Severity = "error"
-)
-
-// Rank orders severities so that a --fail-on threshold is a comparison.
-func (s Severity) Rank() int {
-	switch s {
-	case SeverityInfo:
-		return 1
-	case SeverityWarn:
-		return 2
-	case SeverityError:
-		return 3
-	default:
-		return 0
-	}
-}
-
-// ParseSeverity reads a severity name.
-func ParseSeverity(s string) (Severity, error) {
-	switch Severity(s) {
-	case SeverityInfo, SeverityWarn, SeverityError:
-		return Severity(s), nil
-	default:
-		return "", fmt.Errorf("severity must be error, warn or info, got %q", s)
-	}
-}
+// DefaultFail is the probability at or above which a verdict becomes a
+// finding, for a tenet that names no cutoff of its own. Measured over the
+// spike's 126 cases, 0.8 keeps 84% of the violations against two borderline
+// false alarms, where 0.9 keeps 59%.
+const DefaultFail = 0.8
 
 // Label is what an example is known to be.
 type Label string
@@ -147,16 +112,14 @@ type Criteria struct {
 // nothing judges with it, it is there so a reader can go back to the sentence
 // the tenet was drafted from.
 type Tenet struct {
-	ID        string    `yaml:"id"`
-	Tenet     string    `yaml:"tenet"`
-	Criteria  *Criteria `yaml:"criteria"`
-	Source    string    `yaml:"source"`
-	Severity  Severity  `yaml:"severity"`
-	Threshold *float64  `yaml:"threshold"`
-	Confident *float64  `yaml:"confident"`
-	Include   []string  `yaml:"include"`
-	Exclude   []string  `yaml:"exclude"`
-	Tags      []string  `yaml:"tags"`
+	ID       string    `yaml:"id"`
+	Tenet    string    `yaml:"tenet"`
+	Criteria *Criteria `yaml:"criteria"`
+	Source   string    `yaml:"source"`
+	Fail     *float64  `yaml:"fail"`
+	Include  []string  `yaml:"include"`
+	Exclude  []string  `yaml:"exclude"`
+	Tags     []string  `yaml:"tags"`
 
 	Examples     []Example `yaml:"examples"`
 	ExamplesFrom string    `yaml:"examples_from"`
@@ -192,11 +155,9 @@ type Config struct {
 // Override patches the fields of a built-in rule a repository wants
 // differently. Anything it leaves out the rule keeps.
 type Override struct {
-	Severity  Severity `yaml:"severity"`
-	Threshold *float64 `yaml:"threshold"`
-	Confident *float64 `yaml:"confident"`
-	Include   []string `yaml:"include"`
-	Exclude   []string `yaml:"exclude"`
+	Fail    *float64 `yaml:"fail"`
+	Include []string `yaml:"include"`
+	Exclude []string `yaml:"exclude"`
 }
 
 var idPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
@@ -266,15 +227,7 @@ func (c *Config) validate() error {
 		if strings.TrimSpace(t.Tenet) == "" {
 			return fmt.Errorf("tenet %q: tenet is required", t.ID)
 		}
-		if t.Severity == "" {
-			t.Severity = DefaultSeverity
-		} else if _, err := ParseSeverity(string(t.Severity)); err != nil {
-			return fmt.Errorf("tenet %q: %w", t.ID, err)
-		}
-		if err := checkFraction(fmt.Sprintf("tenet %q", t.ID), "threshold", t.Threshold); err != nil {
-			return err
-		}
-		if err := checkFraction(fmt.Sprintf("tenet %q", t.ID), "confident", t.Confident); err != nil {
+		if err := checkFraction(fmt.Sprintf("tenet %q", t.ID), "fail", t.Fail); err != nil {
 			return err
 		}
 		for _, set := range []struct {
@@ -301,15 +254,7 @@ func (c *Config) validateOverrides() error {
 		if o == nil {
 			return fmt.Errorf("override %q: at least one field is required", id)
 		}
-		if o.Severity != "" {
-			if _, err := ParseSeverity(string(o.Severity)); err != nil {
-				return fmt.Errorf("override %q: %w", id, err)
-			}
-		}
-		if err := checkFraction(fmt.Sprintf("override %q", id), "threshold", o.Threshold); err != nil {
-			return err
-		}
-		if err := checkFraction(fmt.Sprintf("override %q", id), "confident", o.Confident); err != nil {
+		if err := checkFraction(fmt.Sprintf("override %q", id), "fail", o.Fail); err != nil {
 			return err
 		}
 		for _, set := range []struct {
@@ -379,21 +324,13 @@ func checkFraction(subject, field string, v *float64) error {
 	return nil
 }
 
-// ThresholdValue is the probability at which a verdict becomes a finding.
-func (t *Tenet) ThresholdValue() float64 {
-	if t.Threshold == nil {
-		return DefaultThreshold
+// FailValue is the probability at or above which a verdict becomes a finding,
+// and a finding fails the run.
+func (t *Tenet) FailValue() float64 {
+	if t.Fail == nil {
+		return DefaultFail
 	}
-	return *t.Threshold
-}
-
-// ConfidentValue is the probability below which a finding is reported as low
-// confidence.
-func (t *Tenet) ConfidentValue() float64 {
-	if t.Confident == nil {
-		return DefaultConfident
-	}
-	return *t.Confident
+	return *t.Fail
 }
 
 // Applies reports whether the tenet judges a file. The path is slash
@@ -419,8 +356,8 @@ func (t *Tenet) Applies(relPath string) bool {
 }
 
 // Hash identifies what the model is asked, so that a cached answer survives
-// everything that does not change the question. Threshold and severity are
-// left out because they are applied to the answer, not asked of the model,
+// everything that does not change the question. The cutoff is left out
+// because it is applied to the answer, not asked of the model,
 // and examples because they are never shown to it, so adding one must not
 // throw away the answers a lint has already paid for.
 func (t *Tenet) Hash() string {

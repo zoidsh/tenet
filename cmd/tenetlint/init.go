@@ -57,18 +57,21 @@ func newInitCmd() *cobra.Command {
 	f.BoolVar(&o.dryRun, "dry-run", false, "print what would be drafted without writing it")
 	f.BoolVar(&o.force, "force", false, "overwrite an existing tenets.yml")
 	f.StringVar(&o.config, "config", "", "path to write, tenets.yml in the repository root by default")
-	f.StringVar(&o.format, "format", report.FormatText, "output format: text or json")
+	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
 	return cmd
 }
 
 func runInit(cmd *cobra.Command, o *initOptions) error {
+	ctx := cmd.Context()
+	out := cmd.OutOrStdout()
+	if o.format == "" {
+		o.format = report.DefaultFormat(out)
+	}
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return fail(fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format))
 	}
-	ctx := cmd.Context()
-	out := cmd.OutOrStdout()
 
 	dir, err := os.Getwd()
 	if err != nil {

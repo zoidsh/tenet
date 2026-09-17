@@ -113,7 +113,7 @@ func TestVerdictQuestionsCarryTheRule(t *testing.T) {
 	f.verdict["comment-why"] = 0.1
 	f.verdict["no-fallback"] = 0.1
 
-	if _, _, err := j.Run(context.Background(), windows); err != nil {
+	if _, err := j.Run(context.Background(), windows); err != nil {
 		t.Fatal(err)
 	}
 	calls := f.named("verdict")
@@ -149,22 +149,23 @@ func TestVerdictQuestionsCarryTheRule(t *testing.T) {
 	}
 }
 
-func TestLocationAskedOnlyAboveThreshold(t *testing.T) {
+func TestLocationAskedOnlyForFindings(t *testing.T) {
 	j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
 	f.verdict["comment-why"] = 0.9
 	f.verdict["no-fallback"] = 0.4
 	f.where["comment-why"] = map[string]float64{"L001": 0.2, "L002": 0.5, "none": 0.9}
 
-	findings, stats, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings, stats := out.Findings, out.Stats
 	calls := f.named("where")
 	if len(calls) != 1 {
 		t.Fatalf("made %d location calls", len(calls))
 	}
 	if _, ok := calls[0].Questions["where:no-fallback"]; ok {
-		t.Error("a location was asked for a tenet below its threshold")
+		t.Error("a location was asked for a tenet that found nothing")
 	}
 	q := calls[0].Questions["where:comment-why"]
 	if q.Instructions != "Rule: A comment says why. Which line most clearly violates the rule? Pick none if no line does." {
@@ -190,10 +191,10 @@ func TestLocationAskedOnlyAboveThreshold(t *testing.T) {
 	if got.Line != 2 || got.Tenet != "comment-why" {
 		t.Errorf("finding is %#v", got)
 	}
-	if got.Probability != 0.9 || got.LowConfidence {
-		t.Errorf("finding confidence is %#v", got)
+	if got.Probability != 0.9 || got.Fail != tenets.DefaultFail {
+		t.Errorf("finding probability is %#v", got)
 	}
-	if got.Severity != tenets.SeverityWarn || got.Message != "A comment says why." {
+	if got.Message != "A comment says why." {
 		t.Errorf("finding fields are %#v", got)
 	}
 	if stats.Calls != 2 || stats.Windows != 1 || stats.Files != 1 || stats.InputTokens != 200 {
@@ -204,22 +205,72 @@ func TestLocationAskedOnlyAboveThreshold(t *testing.T) {
 	}
 }
 
-func TestLocationIgnoresConfidence(t *testing.T) {
+func TestLocationIsTheTopLine(t *testing.T) {
 	j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
-	f.verdict["comment-why"] = 0.65
+	f.verdict["comment-why"] = 0.85
 	f.verdict["no-fallback"] = 0
-	// A confidence field pointing at the wrong line must not be read.
 	f.where["comment-why"] = map[string]float64{"L001": 0.1, "L002": 0.7}
 
-	findings, _, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings := out.Findings
 	if len(findings) != 1 || findings[0].Line != 2 {
 		t.Fatalf("findings are %#v", findings)
 	}
-	if !findings[0].LowConfidence {
-		t.Error("a finding below the confident threshold is not marked")
+}
+
+// The cutoff is where the tenet says it is, and a verdict that lands exactly
+// on it is a finding: fail is what fails, not what nearly does.
+func TestTheCutoffIsInclusive(t *testing.T) {
+	cases := []struct {
+		prob float64
+		want bool
+	}{
+		{tenets.DefaultFail - 0.01, false},
+		{tenets.DefaultFail, true},
+		{tenets.DefaultFail + 0.01, true},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("%.2f", c.prob), func(t *testing.T) {
+			j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
+			f.verdict["comment-why"] = c.prob
+			f.verdict["no-fallback"] = 0
+			f.where["comment-why"] = map[string]float64{"L001": 0.9}
+
+			out, err := j.Run(context.Background(), windows)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := len(out.Findings) == 1; got != c.want {
+				t.Errorf("p=%.2f gave %d findings, want %v", c.prob, len(out.Findings), c.want)
+			}
+		})
+	}
+}
+
+func TestNearMissesAreCollected(t *testing.T) {
+	j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
+	f.verdict["comment-why"] = tenets.DefaultFail - 0.05
+	f.verdict["no-fallback"] = tenets.DefaultFail - judge.NearBand - 0.01
+
+	out, err := j.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Findings) != 0 {
+		t.Fatalf("findings are %#v", out.Findings)
+	}
+	if len(out.NearMisses) != 1 {
+		t.Fatalf("near misses are %#v", out.NearMisses)
+	}
+	got := out.NearMisses[0]
+	if got.Tenet != "comment-why" || got.File != "a.go" || got.Line != 1 {
+		t.Errorf("near miss is %#v", got)
+	}
+	if got.Probability != tenets.DefaultFail-0.05 || got.Fail != tenets.DefaultFail {
+		t.Errorf("near miss numbers are %#v", got)
 	}
 }
 
@@ -235,27 +286,28 @@ func TestCacheHitsSkipCalls(t *testing.T) {
 	f.verdict["no-fallback"] = 0.1
 	f.where["comment-why"] = map[string]float64{"L001": 0.9}
 
-	first, stats, err := j.Run(context.Background(), windows)
+	first, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stats.Calls != 2 || stats.CacheHits != 0 {
-		t.Fatalf("first run stats are %#v", stats)
+	if first.Stats.Calls != 2 || first.Stats.CacheHits != 0 {
+		t.Fatalf("first run stats are %#v", first.Stats)
 	}
 
 	f.calls = nil
-	second, stats, err := j.Run(context.Background(), windows)
+	second, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	stats := second.Stats
 	if stats.Calls != 0 {
 		t.Errorf("second run made %d calls", stats.Calls)
 	}
 	if stats.CacheHits != 2 {
 		t.Errorf("second run hit the cache %d times", stats.CacheHits)
 	}
-	if len(second) != len(first) || second[0] != first[0] {
-		t.Errorf("cached run gave %#v, want %#v", second, first)
+	if len(second.Findings) != len(first.Findings) || second.Findings[0] != first.Findings[0] {
+		t.Errorf("cached run gave %#v, want %#v", second.Findings, first.Findings)
 	}
 }
 
@@ -266,10 +318,11 @@ func TestSuppressedAndUnreportableLinesAreDropped(t *testing.T) {
 	f.where["comment-why"] = map[string]float64{"L001": 0.9}
 	f.where["no-fallback"] = map[string]float64{"L001": 0.9}
 
-	findings, _, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings := out.Findings
 	if len(findings) != 1 || findings[0].Tenet != "no-fallback" {
 		t.Fatalf("findings are %#v", findings)
 	}
@@ -278,10 +331,11 @@ func TestSuppressedAndUnreportableLinesAreDropped(t *testing.T) {
 	f.verdict["comment-why"] = 0.9
 	f.verdict["no-fallback"] = 0
 	f.where["comment-why"] = map[string]float64{"L001": 0.9}
-	findings, _, err = j.Run(context.Background(), windows)
+	out, err = j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings = out.Findings
 	if len(findings) != 0 {
 		t.Fatalf("a finding on an unchanged line survived: %#v", findings)
 	}
@@ -291,7 +345,7 @@ func TestFileSuppressionSkipsTheTenetEntirely(t *testing.T) {
 	j, f, windows := fixture(t, "// tenet\x3aignore-file comment-why\nx := 1\n", nil)
 	f.verdict["no-fallback"] = 0.1
 
-	if _, _, err := j.Run(context.Background(), windows); err != nil {
+	if _, err := j.Run(context.Background(), windows); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := f.calls[0].Questions["verdict:comment-why"]; ok {
@@ -328,10 +382,11 @@ func TestRunAtDefaultConcurrency(t *testing.T) {
 	if len(windows) < judge.DefaultConcurrency+1 {
 		t.Fatalf("got %d windows, want more than the %d workers", len(windows), judge.DefaultConcurrency)
 	}
-	findings, stats, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings, stats := out.Findings, out.Stats
 	if len(findings) != len(windows) {
 		t.Errorf("got %d findings from %d windows", len(findings), len(windows))
 	}
@@ -349,11 +404,11 @@ func TestAPIErrorAbortsTheRun(t *testing.T) {
 	j, f, windows := fixture(t, "x := 1\n", nil)
 	f.err = errors.New("boom")
 
-	findings, _, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err == nil || !strings.Contains(err.Error(), "boom") {
 		t.Fatalf("error is %v", err)
 	}
-	if findings != nil {
-		t.Errorf("partial findings survived: %#v", findings)
+	if out.Findings != nil {
+		t.Errorf("partial findings survived: %#v", out.Findings)
 	}
 }

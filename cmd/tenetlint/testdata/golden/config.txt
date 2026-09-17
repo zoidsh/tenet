@@ -1,7 +1,7 @@
 tenets.yml
 
-id                origin         severity  threshold  include
-comment-why       agent-hygiene  warn      0.50       **/*.go
-no-fallback       agent-hygiene  warn      0.50       **/*.go
-no-mocking        agent-hygiene  warn      0.50       **/*_test.go
-no-defensive-nil  agent-hygiene  warn      0.50       **/*.go
+id                origin         fail  include
+comment-why       agent-hygiene  0.80  **/*.go
+no-fallback       agent-hygiene  0.80  **/*.go
+no-mocking        agent-hygiene  0.80  **/*_test.go
+no-defensive-nil  agent-hygiene  0.80  **/*.go

@@ -60,7 +60,7 @@ func newCheckCmd() *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
 	f.BoolVar(&o.builtin, "builtin", false, "measure every rule that ships in the binary, whatever the config turns on")
-	f.StringVar(&o.format, "format", report.FormatText, "output format: text or json")
+	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
 	f.IntVar(&o.minExamples, "min-examples", check.DefaultMinExamples, "report no numbers for a tenet with fewer examples than this")
@@ -70,10 +70,13 @@ func newCheckCmd() *cobra.Command {
 // runCheck never fails the process over what it measures: a blurry tenet is
 // something to go and edit, not a broken run.
 func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
+	out := cmd.OutOrStdout()
+	if o.format == "" {
+		o.format = report.DefaultFormat(out)
+	}
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return fail(fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format))
 	}
-	out := cmd.OutOrStdout()
 
 	cfg, err := configForCheck(o)
 	if err != nil {

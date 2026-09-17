@@ -109,14 +109,14 @@ func exampleServer(t *testing.T) *httptest.Server {
 type jsonCheck struct {
 	Version int `json:"version"`
 	Tenets  []struct {
-		Tenet             string  `json:"tenet"`
-		Verdict           string  `json:"verdict"`
-		Examples          int     `json:"examples"`
-		AUC               float64 `json:"auc"`
-		AccuracyThreshold float64 `json:"accuracy_at_threshold"`
-		LocationHits      int     `json:"location_hits"`
-		LocatedExamples   int     `json:"located_examples"`
-		Misjudged         []struct {
+		Tenet           string  `json:"tenet"`
+		Verdict         string  `json:"verdict"`
+		Examples        int     `json:"examples"`
+		AUC             float64 `json:"auc"`
+		Accuracy        float64 `json:"accuracy"`
+		LocationHits    int     `json:"location_hits"`
+		LocatedExamples int     `json:"located_examples"`
+		Misjudged       []struct {
 			Label string `json:"label"`
 		} `json:"misjudged"`
 	} `json:"tenets"`
@@ -169,7 +169,7 @@ func TestCheckEndToEnd(t *testing.T) {
 	if tenet.Tenet != "comment-why" || tenet.Verdict != check.VerdictSharp {
 		t.Errorf("tenet is %#v", tenet)
 	}
-	if tenet.Examples != 6 || tenet.AUC != 1 || tenet.AccuracyThreshold != 1 || len(tenet.Misjudged) != 0 {
+	if tenet.Examples != 6 || tenet.AUC != 1 || tenet.Accuracy != 1 || len(tenet.Misjudged) != 0 {
 		t.Errorf("numbers are %#v", tenet)
 	}
 	if tenet.LocatedExamples != 1 || tenet.LocationHits != 1 {

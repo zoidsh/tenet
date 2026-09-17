@@ -8,8 +8,20 @@ import (
 	"testing"
 
 	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/report"
 	"github.com/zoidsh/tenetlint/internal/tenets"
 )
+
+// TestMain asks for the format a person gets. These tests capture the output
+// in a buffer, which is no terminal, so the default would otherwise be the
+// JSON an agent reads and every text assertion here would be about the wrong
+// thing.
+func TestMain(m *testing.M) {
+	if err := os.Setenv(report.FormatEnv, report.FormatText); err != nil {
+		panic(err)
+	}
+	os.Exit(m.Run())
+}
 
 // goldenDir is settled before any test moves the working directory, which the
 // config listing has to do to read this repository's own config.

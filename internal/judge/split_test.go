@@ -68,10 +68,11 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 
 	j, f, windows := fixtureWith(t, tenetsConfig(4, 30000), "x := 1\ny := 2\n", nil)
 	answer(f)
-	findings, stats, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings, stats := out.Findings, out.Stats
 	verdicts := f.named("verdict")
 	if len(verdicts) != 2 {
 		t.Fatalf("made %d verdict calls, want the questions split in two", len(verdicts))
@@ -95,10 +96,11 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 	// same verdict.
 	j, f, windows = fixtureWith(t, tenetsConfig(4, 0), "x := 1\ny := 2\n", nil)
 	answer(f)
-	whole, _, err := j.Run(context.Background(), windows)
+	oneCall, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	whole := oneCall.Findings
 	if len(f.named("verdict")) != 1 {
 		t.Fatalf("the cheap questions took %d calls", len(f.named("verdict")))
 	}
@@ -120,7 +122,7 @@ func TestVerboseLineCountsTokensAndCalls(t *testing.T) {
 	var logged []string
 	j.Log = func(line string) { logged = append(logged, line) }
 
-	if _, _, err := j.Run(context.Background(), windows); err != nil {
+	if _, err := j.Run(context.Background(), windows); err != nil {
 		t.Fatal(err)
 	}
 	if len(logged) != 1 {
@@ -149,10 +151,11 @@ func TestLocationsSplitAcrossCalls(t *testing.T) {
 		t.Fatalf("got %d windows", len(windows))
 	}
 
-	findings, _, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings := out.Findings
 	if len(f.named("verdict")) != 1 {
 		t.Errorf("the verdicts took %d calls, want one", len(f.named("verdict")))
 	}
@@ -203,10 +206,11 @@ func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
 		t.Fatal("the fixture fits the budget, so it cannot exercise halving")
 	}
 
-	findings, stats, err := j.Run(context.Background(), windows)
+	out, err := j.Run(context.Background(), windows)
 	if err != nil {
 		t.Fatal(err)
 	}
+	findings, stats := out.Findings, out.Stats
 	if len(findings) != 2*len(windows) {
 		t.Fatalf("got %d findings, want one per half of %d windows", len(findings), len(windows))
 	}
