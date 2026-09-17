@@ -7,7 +7,7 @@ set -euo pipefail
 # COMMIT is the commit every measurement is taken at, checked out into a
 # throwaway worktree. A benchmark that followed HEAD would report a different
 # corpus every week and the README would drift without anybody editing it.
-COMMIT=f0fdf08
+COMMIT=6a888c3
 
 # BASE is chosen so that the diff to COMMIT is about two thousand added plus
 # deleted lines of Go, which is the size of pull request the agent-reviewer
