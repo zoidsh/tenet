@@ -1,0 +1,32 @@
+# The one file under bench/ that is edited by hand. bench/run.sh reads it for
+# the agent-reviewer comparison and prints n/a for any model whose numbers are
+# still null, so a missing price never fails the run or turns into a guess.
+#
+# output_tokens_per_second and ttft_seconds are measured, not published, so
+# fill them from a run you made yourself and say where in source.
+version: 1
+models:
+  - id: claude-haiku-4-5-20251001
+    name: Claude Haiku 4.5
+    input_usd_per_million: null
+    output_usd_per_million: null
+    output_tokens_per_second: null
+    ttft_seconds: null
+    source: null
+    date: null
+  - id: claude-sonnet-5
+    name: Claude Sonnet 5
+    input_usd_per_million: null
+    output_usd_per_million: null
+    output_tokens_per_second: null
+    ttft_seconds: null
+    source: null
+    date: null
+  - id: openai-cheapest
+    name: OpenAI, cheapest reviewing model
+    input_usd_per_million: null
+    output_usd_per_million: null
+    output_tokens_per_second: null
+    ttft_seconds: null
+    source: null
+    date: null

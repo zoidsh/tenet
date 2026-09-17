@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# A tenet that answers from canned JSON, so that bench/run.sh can be changed
+# and run end to end without paying for a model call. The shapes here are the
+# ones internal/report and internal/check write; the numbers are invented and
+# no output of a run made with this belongs in bench/results.md.
+set -euo pipefail
+
+case "${1:-}" in
+auth)
+	echo "typesafe: the key from the environment"
+	exit 0
+	;;
+check)
+	builtin=no
+	for arg in "$@"; do
+		[ "$arg" = --builtin ] && builtin=yes
+	done
+	if [ "$builtin" = yes ]; then
+		ids="active-voice assertion-justified body-few-visuals body-names-blast-radius
+			body-says-why body-shows-evidence body-states-door comment-why concrete-subject
+			inline-header-detail no-connector-colon no-defensive-nil no-fallback
+			no-false-contrast no-false-range no-generic-conclusion no-hedging
+			no-metaphor-noun no-mocking no-placeholder-phrase no-throat-clearing
+			no-transcript-comment project-specific subject-is-a-statement
+			subject-says-what-changed"
+	else
+		ids=comment-why
+	fi
+	printf '{"version":1,"tenets":['
+	first=yes
+	for id in $ids; do
+		[ "$first" = yes ] || printf ','
+		first=no
+		printf '{"tenet":"%s","verdict":"sharp","examples":14,"violations":7,"oks":7,' "$id"
+		printf '"fail":0.8,"separated":true,"auc":1,"accuracy":1,'
+		printf '"accuracy_at":[{"cutoff":0.7,"accuracy":1},{"cutoff":0.8,"accuracy":1},{"cutoff":0.9,"accuracy":0.93}],'
+		printf '"mean_violation":0.94,"mean_ok":0.12,"gap":0.82,'
+		printf '"located_examples":7,"location_hits":7,"location_rate":1,'
+		printf '"misjudged":[],"advice":"",'
+		printf '"stability":{"runs":3,"max_std_dev":0.026,"crossed":[]}}'
+	done
+	printf '],"stats":{"examples":350,"calls":1050,"cache_hits":0,"input_tokens":1234567,"cost_usd":1.2345,"duration_ms":123456},"min_examples":6}\n'
+	exit 0
+	;;
+esac
+
+printf '{"version":1,"findings":[{"file":"internal/jev/client.go","line":42,'
+printf '"tenet":"comment-why","message":"A comment says why the code exists.","probability":0.91}],'
+printf '"next":"fix the lines above","stats":{"baselined":0,"files":87,"windows":213,"calls":213,'
+printf '"cache_hits":0,"input_tokens":345678,"cost_usd":0.0432,"duration_ms":45678},"skipped":[]}\n'
+exit 1

@@ -1,0 +1,27 @@
+Let tenet auth save a provider key, so a first run needs nothing exported
+
+Every newcomer's first run failed the same way. tenet read TYPESAFE_API_KEY
+from the environment and nowhere else, so a key pasted into a shell was gone
+by the next tab, and a key written into a shell profile sat in a file people
+hand around with their dotfiles and show on screen shares. Three people hit
+this in one week, and the pre-commit hook it broke printed the variable's
+name and left them there.
+
+tenet auth now writes the key to the user config directory, 0600, and
+tenet auth --status says which key a run would use and where it was read
+from, so a stale key is something you can look at instead of guess at:
+
+    $ tenet auth --status
+    typesafe  ~/.config/tenetlint/auth.json  (TYPESAFE_API_KEY also set, ignored)
+
+The environment still wins where CI sets it, which is the order it had
+before. init and every lint name tenet auth in the message they print when
+no key is configured, because that message is the one piece of documentation
+a newcomer is certain to read.
+
+This is a two-way door in every part but one. The saved file is new, so a
+revert deletes a path nothing else reads and key resolution falls back to the
+environment exactly as it did before. The part a revert does not walk back is
+the key already written to disk on a machine that ran the new command: it
+stays there until someone runs tenet auth --remove, and a binary from before
+this change neither reads that file nor knows to mention it.
