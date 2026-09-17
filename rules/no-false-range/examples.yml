@@ -1,0 +1,233 @@
+# Labelled cases for the no-false-range tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # audit
+
+    audit reads everything from your `Dockerfile` to your CI config and tells
+    you which services drifted from the chart in the repository.
+
+    ## Usage
+
+        audit ./services --out report.json
+
+    The report holds one object per service, with the image digest, the chart
+    version and the last deploy time read from the cluster.
+
+    ## Exit codes
+
+    0 when nothing drifted, 1 when something did, 2 when the cluster could not
+    be reached.
+- label: violation
+  lang: markdown
+  lines: [5, 6]
+  code: |
+    ## Plugins
+
+    A plugin is a directory with a `plugin.toml` and one executable.
+
+    The ones that ship cover everything from linting to changelog generation,
+    and a third-party plugin has the same access as a bundled one.
+
+    ## Loading order
+
+    Plugins load in the order they appear in `plugins.toml`. Two plugins that
+    register the same command are an error at load time.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Integrations
+
+    Ship events anywhere, from Slack to Postgres, with one destination per
+    channel and no fan-out inside the tool.
+
+    ## Configuring one
+
+    Each destination takes a `url`, a `format` and an optional `filter`
+    expression evaluated against the event.
+
+    ## Delivery
+
+    A destination that fails is retried for an hour and then disabled, with
+    the failure written to the audit log.
+- label: violation
+  lang: markdown
+  lines: [6, 7]
+  code: |
+    ## Where the rules come from
+
+    `init` reads the instruction files your agents already read and drafts a
+    rule from each sentence a diff is enough to judge.
+
+    The sentences it keeps range from comment style to error handling, and it
+    reports the ones it left out with the reason.
+
+    ## Editing the draft
+
+    Delete the rules you did not mean and run `tenetlint` against a branch you
+    know is clean, which is the cheapest way to find a rule that is too broad.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # Where it runs
+
+    The binary is happy anywhere, from a CI runner to your editor's save hook,
+    and needs nothing installed beyond a key in the environment and a
+    `tenets.yml` it can find.
+
+    ## CI
+
+    The action pins the binary by digest and caches the answers between runs
+    on the hash of the config.
+
+    ## Editors
+
+    The LSP server answers on stdio and holds the cache in the same directory
+    the CLI uses.
+- label: violation
+  lang: markdown
+  lines: [9, 10]
+  code: |
+    ## What the report holds
+
+    One object per service, with the image digest, the chart version and the
+    last deploy time.
+
+    Drift is computed against the chart in the repository at the commit you
+    name, defaulting to the branch tip.
+
+    The fields cover everything from image digests to last deploy times, so a
+    reviewer can answer most questions without opening the cluster.
+
+    ## Formats
+
+    `--format table` prints the same rows to a terminal instead.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Style
+
+    The style guide covers everything from indentation to how a package is
+    named, and the linter enforces the parts of it a linter can.
+
+    ## What the linter checks
+
+    Import grouping, receiver names, and the error message that starts with a
+    capital letter. Everything else is a review comment.
+
+    ## Disagreeing with it
+
+    Open an issue against `docs/style.md`. A `//nolint` with no reason beside
+    it is removed on sight.
+- label: ok
+  lang: markdown
+  code: |
+    # Compatibility
+
+    The client speaks to servers from 1.2 through 1.9. A 1.1 server closes the
+    connection during the handshake rather than negotiating down.
+
+    ## Go versions
+
+    Go 1.22 and later. The module declares 1.22 and CI runs the tests on 1.22
+    and on tip.
+
+    ## Deprecations
+
+    `SetTimeout` still works in 1.9 and is removed in 2.0.
+- label: ok
+  lang: markdown
+  code: |
+    ## Exit codes
+
+    `audit` exits 0 when nothing drifted and 1 when something did. Codes 2 to
+    4 mean the run itself failed: 2 for an unreachable cluster, 3 for a config
+    it could not parse, 4 for a chart directory that is not a chart.
+
+    ## Ports
+
+    The local dashboard binds the first free port from 8000 to 8100 and prints
+    the one it took. `--port` pins it, and a pinned port that is taken is an
+    error rather than a search.
+- label: ok
+  lang: markdown
+  code: |
+    # Maintenance windows
+
+    Compaction runs between 02:00 and 06:00 UTC. A segment written during the
+    window is compacted on the next night rather than the same one.
+
+    Backups run Monday to Friday. A weekend backup is a manual
+    `app backup --now`, which takes the write lock for the length of the copy.
+
+    ## Overriding
+
+    `app compact --now` runs outside the window and refuses to start while a
+    backup holds the lock.
+- label: ok
+  note: "A rank the page has just defined, so the two ends bound a span with values between them."
+  lang: markdown
+  code: |
+    ## Priorities
+
+    Priority is an integer from 0 to 9, where 0 runs first. Ties are broken by
+    enqueue time, so a burst of equal-priority jobs runs in the order it
+    arrived.
+
+    A job enqueued without a priority gets 5.
+
+    ## Starvation
+
+    A job that has waited longer than an hour is promoted one step every ten
+    minutes, so a 9 cannot sit behind a steady stream of 0s forever.
+- label: ok
+  lang: markdown
+  code: |
+    ## Limits
+
+    A frame is a four-byte big-endian length followed by that many bytes of
+    CBOR. Lengths from 1 KiB to 16 MiB are accepted; anything larger is
+    rejected before the body is read.
+
+    ## Handshake
+
+    The client sends its highest supported version and the server answers with
+    the one it chose, or closes the connection.
+
+    A peer that needs compression negotiates it here. There is no way to turn
+    it on afterwards.
+- label: ok
+  note: "The same breadth claim the tenet is about, written as a list of examples instead of as a span. The tenet is about the false range, not about listing what a tool covers."
+  lang: markdown
+  code: |
+    ## Plugins
+
+    A plugin is a directory with a `plugin.toml` and one executable.
+
+    The ones that ship cover linting, changelog generation and release
+    tagging. A third-party plugin has the same access as a bundled one.
+
+    ## Loading order
+
+    Plugins load in the order they appear in `plugins.toml`. Two plugins that
+    register the same command are an error at load time.
+- label: ok
+  note: "A literal conversion from one named format into another, which is a movement rather than a range."
+  lang: markdown
+  code: |
+    # Importing
+
+    `app import` converts a v1 dump to the v2 schema and writes it beside the
+    original, leaving the input untouched.
+
+    The conversion is one pass and holds one row in memory at a time, so a
+    dump larger than the machine's memory still imports.
+
+    ## Verifying
+
+    `app import --verify` reads both files back and compares row counts per
+    table. It does not compare row contents, which `app diff` does.
