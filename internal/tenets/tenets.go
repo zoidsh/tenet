@@ -252,7 +252,7 @@ func (c *Config) validate() error {
 		if err := checkKinds(fmt.Sprintf("tenet %q", t.ID), t.Kind); err != nil {
 			return err
 		}
-		if err := validateExamples(t.ID, t.Examples); err != nil {
+		if err := validateExamples(t.ID, t.Kind, t.Examples); err != nil {
 			return err
 		}
 		t.model = c.Model
@@ -288,9 +288,7 @@ func (c *Config) validateOverrides() error {
 
 func checkKinds(subject string, kinds []string) error {
 	for _, k := range kinds {
-		switch k {
-		case source.KindCode, source.KindProse, source.KindData, source.KindCommit, source.KindPR:
-		default:
+		if !source.IsKind(k) {
 			return fmt.Errorf("%s: kind: must be one of %s, %s, %s, %s or %s, got %q",
 				subject, source.KindCode, source.KindProse, source.KindData, source.KindCommit, source.KindPR, k)
 		}
@@ -298,12 +296,18 @@ func checkKinds(subject string, kinds []string) error {
 	return nil
 }
 
-func validateExamples(id string, examples []Example) error {
+func validateExamples(id string, kinds []string, examples []Example) error {
 	for i, e := range examples {
 		switch e.Label {
 		case LabelViolation, LabelOK:
 		default:
 			return fmt.Errorf("tenet %q: examples[%d]: label must be %s or %s, got %q", id, i, LabelViolation, LabelOK, e.Label)
+		}
+		// A lang naming a kind chooses the framing among the tenet's own, so
+		// one it does not declare would be read as a language nothing knows
+		// and frame the example under the kind the author was moving it off.
+		if source.IsKind(e.Lang) && !slices.Contains(kinds, e.Lang) {
+			return fmt.Errorf("tenet %q: examples[%d]: lang %q names a kind this tenet does not declare, so it chooses no framing", id, i, e.Lang)
 		}
 		if strings.TrimSpace(e.Code) == "" {
 			return fmt.Errorf("tenet %q: examples[%d]: code is required", id, i)
@@ -333,7 +337,7 @@ func (c *Config) resolveExamples(dir string) error {
 		if err := decoder.Decode(&examples); err != nil && !errors.Is(err, io.EOF) {
 			return fmt.Errorf("%s: %w", path, err)
 		}
-		if err := validateExamples(t.ID, examples); err != nil {
+		if err := validateExamples(t.ID, t.Kind, examples); err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
 		t.Examples = append(t.Examples, examples...)

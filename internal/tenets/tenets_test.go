@@ -270,6 +270,16 @@ func TestValidationErrors(t *testing.T) {
 		{"a fail of zero", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    fail: 0\n", `"a": fail`},
 		{"bad glob", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    include: [\"[\"]\n", `"a": include`},
 		{"unknown field", "version: 1\ntenets:\n  - id: a\n    tenet: x\n    weight: 3\n", "weight"},
+		{
+			"a lang naming an undeclared kind",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    kind: [commit, pr]\n    examples:\n      - label: ok\n        lang: prose\n        code: \"x\"\n",
+			`lang "prose" names a kind this tenet does not declare`,
+		},
+		{
+			"a lang naming a kind where none are declared",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: ok\n        lang: pr\n        code: \"x\"\n",
+			`lang "pr" names a kind this tenet does not declare`,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

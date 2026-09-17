@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -213,8 +214,8 @@ func firstLine(e tenets.Example) string { return strings.TrimSpace(e.CodeLines()
 
 // exampleLang is the language the model is told the example is written in.
 func exampleLang(t *tenets.Tenet, e tenets.Example) string {
-	if e.Lang != "" {
-		return e.Lang
+	if lang := namedLang(e); lang != "" {
+		return lang
 	}
 	if len(t.Include) > 0 {
 		return source.LanguageForPath(t.Include[0])
@@ -222,12 +223,27 @@ func exampleLang(t *tenets.Tenet, e tenets.Example) string {
 	return "text"
 }
 
-// exampleKind is the framing the example is judged under. The language
-// fallback is text, which is prose, so a tenet that says nothing about what it
-// judges would have its code read as a document: only a kind the tenet names,
-// or a language something in the config actually chose, moves it off code.
+// namedLang is the language the example names, empty when its lang names a
+// kind instead. A lang naming a kind is choosing the framing among those the
+// tenet declares and says nothing about what the snippet is written in.
+func namedLang(e tenets.Example) string {
+	if source.IsKind(e.Lang) {
+		return ""
+	}
+	return e.Lang
+}
+
+// exampleKind is the framing the example is judged under. A tenet covering
+// two kinds needs half its corpus framed each way, and the lang is the only
+// thing an example can say about itself. The language fallback is text, which
+// is prose, so a tenet that says nothing about what it judges would have its
+// code read as a document: only a kind the tenet names, or a language
+// something in the config actually chose, moves it off code.
 func exampleKind(t *tenets.Tenet, e tenets.Example) string {
-	if len(t.Kind) == 1 {
+	if len(t.Kind) > 0 {
+		if slices.Contains(t.Kind, e.Lang) {
+			return e.Lang
+		}
 		return t.Kind[0]
 	}
 	if e.Lang == "" && len(t.Include) == 0 {
@@ -240,7 +256,7 @@ func exampleKind(t *tenets.Tenet, e tenets.Example) string {
 // the tenet's own include glob, so that a tenet scoped to test files shows a
 // test file name, which is part of what the model reads the code as.
 func exampleFile(t *tenets.Tenet, e tenets.Example) string {
-	if e.Lang == "" && len(t.Include) > 0 {
+	if namedLang(e) == "" && len(t.Include) > 0 {
 		name := strings.ReplaceAll(path.Base(t.Include[0]), "*", "example")
 		if path.Ext(name) != "" {
 			return name

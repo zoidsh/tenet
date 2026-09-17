@@ -339,6 +339,96 @@ tenets:
 	}
 }
 
+// A tenet that covers two kinds leads with one of them, and an example says
+// which of the two it is by naming that kind as its lang. Every path through
+// exampleKind is here: the lang naming a declared kind, the lang naming a
+// language, and no lang at all.
+func TestAnExampleLangChoosesAmongTheTenetsKinds(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`version: 1
+tenets:
+  - id: subject-says-what-changed
+    tenet: The subject says what changed.
+    kind: [commit, pr]
+    examples:
+      - label: ok
+        lang: pr
+        code: |
+          PR_SUBJECT
+      - label: ok
+        lang: commit
+        code: |
+          COMMIT_SUBJECT
+      - label: ok
+        lang: text
+        code: |
+          TEXT_SUBJECT
+      - label: ok
+        code: |
+          BARE_SUBJECT
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asker := &table{answers: map[string]answer{
+		"PR_SUBJECT": {prob: 0.1}, "COMMIT_SUBJECT": {prob: 0.1},
+		"TEXT_SUBJECT": {prob: 0.1}, "BARE_SUBJECT": {prob: 0.1},
+	}}
+	if _, _, err := (&check.Checker{Asker: asker, Concurrency: 1}).Run(context.Background(), cfg.Tenets); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"PR_SUBJECT":     "Pull request title and description. Text excerpt:",
+		"COMMIT_SUBJECT": "Commit message. Text excerpt:",
+		// Neither a declared kind nor a reason to leave the kind the tenet
+		// leads with, so the lang says what the snippet is written in and
+		// nothing about the framing.
+		"TEXT_SUBJECT": "Commit message. Text excerpt:",
+		"BARE_SUBJECT": "Commit message. Text excerpt:",
+	}
+	for _, state := range asker.states {
+		header, rest, _ := strings.Cut(state, "\n")
+		token := strings.TrimPrefix(strings.TrimSpace(rest), "L001 ")
+		if want[token] == "" {
+			t.Fatalf("unexpected example %q", token)
+		}
+		if header != want[token] {
+			t.Errorf("%s is framed %q, want %q", token, header, want[token])
+		}
+		delete(want, token)
+	}
+	if len(want) > 0 {
+		t.Errorf("examples never judged: %v", want)
+	}
+}
+
+// A kind named as a lang chooses the framing, so it must not also be read as
+// the language the snippet is written in or the name of the file it sits in.
+func TestAKindNamedAsALangIsNotALanguage(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`version: 1
+tenets:
+  - id: plain-english
+    tenet: Write plainly.
+    kind: [prose, data]
+    include: ["**/*.go"]
+    examples:
+      - label: ok
+        lang: data
+        code: |
+          PAGE = 500
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asker := &table{answers: map[string]answer{"PAGE": {prob: 0.1}}}
+	if _, _, err := (&check.Checker{Asker: asker}).Run(context.Background(), cfg.Tenets); err != nil {
+		t.Fatal(err)
+	}
+	want := "Data file: go. File: example.go. Excerpt:\nL001 PAGE = 500\n"
+	if asker.states[0] != want {
+		t.Errorf("state is %q, want %q", asker.states[0], want)
+	}
+}
+
 func TestCachedExamplesCostNothing(t *testing.T) {
 	dir := t.TempDir()
 	c, err := cache.Open(dir)

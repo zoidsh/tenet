@@ -15,6 +15,17 @@ const (
 	KindPR     = "pr"
 )
 
+// IsKind reports whether a name is one of the kinds. An example's lang is
+// allowed to name one, to choose among the kinds its tenet declares, so a
+// caller reading a lang has to tell that apart from a language.
+func IsKind(name string) bool {
+	switch name {
+	case KindCode, KindProse, KindData, KindCommit, KindPR:
+		return true
+	}
+	return false
+}
+
 var proseExts = map[string]bool{
 	".md":       true,
 	".mdx":      true,
