@@ -62,6 +62,8 @@ In GitHub Actions, where the action downloads the release binary for the runner 
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
+Each finding is annotated on the line of the diff it was raised on, which `annotate: false` turns off in favour of JSON in the log.
+
 Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenetlint/releases).
 
 ## Quick start
@@ -147,7 +149,7 @@ y := 1 // set y to one
 
 A directive only counts inside a comment, so a string, a test fixture or a sentence about directives does not quietly exempt the file it sits in. In code that means after a line comment marker, or between a block comment's markers, in the language the file's extension names; in a language tenetlint does not know it counts anywhere on the line. The check is textual rather than a parse, so a marker inside a string literal opens a comment as far as tenetlint is concerned and a directive after it counts.
 
-In Markdown, YAML and other prose and data files a directive counts at the start of a line, after list markers, whitespace or the format's own comment marker, or inside an `<!-- -->` comment; a sentence that quotes one mid-line does not count. In a commit message it counts anywhere. The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
+In Markdown, YAML and other prose and data files a directive counts at the start of a line, after list markers, whitespace or the format's own comment marker, or inside an `<!-- -->` comment; a sentence that quotes one mid-line does not count. In a commit message, and in a pull request's title and description, it counts anywhere. The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
 
 ## Configuration
 
@@ -170,13 +172,13 @@ override:                       # per-id patches applied last
   no-defensive-nil:
     fail: 0.9
     include: ["**/*.go"]
-    kind: [code]                # code, prose, data or commit; the globs narrow further
+    kind: [code]                # code, prose, data, commit or pr; the globs narrow further
 tenets: [...]                   # your own tenets, written out in full
 ```
 
 A tenet's `kind` is how it says what it is about. Every file is code, prose or data, read off its name: `.md`, `.rst`, `.txt` and the like, everything under `locales/` and `i18n/` whatever it is serialised as, and a README, CHANGELOG, CONTRIBUTING or LICENSE are prose; `.json`, `.yml`, `.toml`, `.csv` and lock files are data; anything else under `docs/` is prose, so a `docs/api.json` stays data; everything else is code.
 
-A commit message is a kind of its own, `commit`, read off the literal name `COMMIT_EDITMSG` it is linted under. The model is told which it is looking at, so a document is judged as a document rather than as source code, and a tenet that names a kind is asked only about files of that kind, on top of its include and exclude globs. A tenet that names none is asked about everything its globs match.
+A commit message is a kind of its own, `commit`, read off the literal name `COMMIT_EDITMSG` it is linted under, and a pull request's title and description are another, `pr`, under the name `PULL_REQUEST`. The model is told which it is looking at, so a document is judged as a document rather than as source code, and a tenet that names a kind is asked only about files of that kind, on top of its include and exclude globs. A tenet that names none is asked about everything its globs match.
 
 The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone.
 
@@ -285,7 +287,7 @@ $ tenet .
 0 findings, 2 baselined · 5 windows, 0 calls, 10 cached · $0.0000 · 0.0s
 ```
 
-## Commit messages
+## Commit messages and pull requests
 
 `tenet --commit-msg <file>` lints a commit message rather than code. The message is of kind `commit`, so `kind: [commit]` is how a tenet says it is about the message and nothing else, and it is linted as a file named `COMMIT_EDITMSG`, which an include glob can name instead.
 
@@ -297,6 +299,14 @@ The comment lines git strips itself, and everything below a `>8` scissors line, 
   - id: commit-subject
     tenet: The commit subject is in the imperative mood and says what changed for a reader, not which functions were touched.
     kind: [commit]
+```
+
+`tenet --pr-text <file>` lints a pull request's title and description, which the file holds one after the other, as a file named `PULL_REQUEST` of kind `pr`. Nothing is stripped, because a description is prose rather than a file with comments in it, and a finding says `edit the pull request title or description, then push again`. The action writes the title and the description of the pull request it is running on and lints them itself, so this flag is for running the same rule anywhere else. A rule about what a change is called is usually about both texts, and one tenet can cover them:
+
+```yaml
+  - id: says-what-changed
+    tenet: The subject or title says what changed for a reader, not which functions were touched, and the body says why.
+    kind: [commit, pr]
 ```
 
 ## For agents
@@ -331,7 +341,7 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
 }
 ```
 
-`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
+`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
 
 Reading the report is one thing and knowing to run it is another, so `plugin/` is a Claude Code plugin that does both. It carries a `tenet` skill, which says when to run the lint and what to do with each finding, and a `PreToolUse` hook, which lints the staged changes before a `git commit` and hands the findings back instead of letting the commit through. This repository is its own marketplace:
 
