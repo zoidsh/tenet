@@ -4,13 +4,13 @@
   "next": "",
   "stats": {
     "baselined": 0,
-    "files": 2,
-    "windows": 2,
-    "calls": 2,
+    "files": 1,
+    "windows": 1,
+    "calls": 1,
     "cache_hits": 0,
-    "input_tokens": 4530,
-    "cost_usd": 0.00019,
-    "duration_ms": 795
+    "input_tokens": 1749,
+    "cost_usd": 0.000073,
+    "duration_ms": 554
   },
   "skipped": []
 }

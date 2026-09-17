@@ -21,7 +21,7 @@
       "file": "billing.go",
       "line": 36,
       "tenet": "comment-why",
-      "probability": 0.89,
+      "probability": 0.88,
       "fail": 0.8,
       "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
     },
@@ -29,7 +29,7 @@
       "file": "billing_test.go",
       "line": 36,
       "tenet": "no-mocking",
-      "probability": 0.89,
+      "probability": 0.9,
       "fail": 0.8,
       "message": "You must never mock anything in tests."
     }
@@ -43,7 +43,7 @@
     "cache_hits": 0,
     "input_tokens": 7575,
     "cost_usd": 0.000318,
-    "duration_ms": 1469
+    "duration_ms": 893
   },
   "skipped": []
 }

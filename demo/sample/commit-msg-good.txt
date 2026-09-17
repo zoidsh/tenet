@@ -1,0 +1,4 @@
+Add discount codes, rounding half cents to the house
+
+The sales team keyed discounted totals in by hand, and
+that is where most invoice corrections came from.

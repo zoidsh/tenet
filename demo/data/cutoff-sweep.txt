@@ -1,0 +1,75 @@
+== code blocked at 0.2
+near miss billing.go:1: assertion-justified (p=0.10, fails at 0.20)
+near miss billing.go:1: no-placeholder-phrase (p=0.06, fails at 0.20)
+near miss billing.go:1: no-transcript-comment (p=0.09, fails at 0.20)
+near miss billing_test.go:1: assertion-justified (p=0.05, fails at 0.20)
+near miss billing_test.go:1: comment-why (p=0.09, fails at 0.20)
+near miss billing_test.go:1: no-fallback (p=0.16, fails at 0.20)
+near miss billing_test.go:1: no-placeholder-phrase (p=0.05, fails at 0.20)
+near miss billing_test.go:1: no-transcript-comment (p=0.04, fails at 0.20)
+4 findings · 2 windows, 1 calls, 13 cached · $0.0001 · 0.5s
+== code passed at 0.2
+near miss billing.go:1: assertion-justified (p=0.06, fails at 0.20)
+near miss billing.go:1: money-in-cents (p=0.08, fails at 0.20)
+near miss billing.go:1: no-placeholder-phrase (p=0.04, fails at 0.20)
+near miss billing.go:1: no-transcript-comment (p=0.13, fails at 0.20)
+near miss billing_test.go:1: assertion-justified (p=0.05, fails at 0.20)
+near miss billing_test.go:1: comment-why (p=0.08, fails at 0.20)
+near miss billing_test.go:1: money-in-cents (p=0.07, fails at 0.20)
+near miss billing_test.go:1: no-fallback (p=0.11, fails at 0.20)
+near miss billing_test.go:1: no-placeholder-phrase (p=0.04, fails at 0.20)
+near miss billing_test.go:1: no-transcript-comment (p=0.04, fails at 0.20)
+1 findings · 2 windows, 2 calls, 13 cached · $0.0001 · 0.5s
+== commit-blocked at 0.2
+1 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== commit-passed at 0.2
+near miss COMMIT_EDITMSG:1: subject-says-what-changed (p=0.14, fails at 0.20)
+0 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== pr-blocked at 0.2
+4 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== pr-passed at 0.2
+near miss PULL_REQUEST:1: body-few-visuals (p=0.13, fails at 0.20)
+near miss PULL_REQUEST:1: body-says-why (p=0.13, fails at 0.20)
+near miss PULL_REQUEST:1: body-states-door (p=0.17, fails at 0.20)
+near miss PULL_REQUEST:1: subject-says-what-changed (p=0.14, fails at 0.20)
+0 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== code blocked at 0.4
+near miss billing_test.go:1: money-in-cents (p=0.27, fails at 0.40)
+4 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== code passed at 0.4
+near miss billing.go:1: comment-why (p=0.30, fails at 0.40)
+near miss billing.go:1: no-fallback (p=0.28, fails at 0.40)
+near miss billing_test.go:1: no-mocking (p=0.34, fails at 0.40)
+0 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== commit-blocked at 0.4
+1 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== commit-passed at 0.4
+0 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== pr-blocked at 0.4
+4 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== pr-passed at 0.4
+0 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== code blocked at 0.6
+4 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== code passed at 0.6
+0 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== commit-blocked at 0.6
+1 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== commit-passed at 0.6
+0 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== pr-blocked at 0.6
+4 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== pr-passed at 0.6
+0 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== code blocked at 0.8
+4 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== code passed at 0.8
+0 findings · 2 windows, 0 calls, 13 cached · $0.0000 · 0.0s
+== commit-blocked at 0.8
+1 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== commit-passed at 0.8
+0 findings · 1 windows, 0 calls, 1 cached · $0.0000 · 0.0s
+== pr-blocked at 0.8
+4 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s
+== pr-passed at 0.8
+0 findings · 1 windows, 0 calls, 4 cached · $0.0000 · 0.0s

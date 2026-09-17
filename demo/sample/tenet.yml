@@ -1,5 +1,5 @@
 version: 1
-presets: [agent-hygiene]
+presets: [agent-hygiene, pr]
 tenets:
   - id: money-in-cents
     tenet: Money is an integer number of cents, never a float.

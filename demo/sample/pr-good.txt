@@ -1,0 +1,16 @@
+Add discount codes to invoice totals
+
+Sales has been giving discounts over the phone and
+keying the reduced total in by hand, which is where
+most of this month's invoice corrections came from.
+A code on the invoice carries the discount itself.
+
+Rounding goes to the house: half a cent of discount
+is dropped rather than given away, because the
+ledger reconciles in whole cents.
+
+A two-way door. The field is additive and nothing
+outside DiscountedTotalCents reads it, so reverting
+this commit walks the change back.
+
+Look at the rounding in DiscountedTotalCents first.

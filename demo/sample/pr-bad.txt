@@ -1,0 +1,13 @@
+Update billing.go and billing_test.go
+
+Changes in this pull request:
+
+- billing.go: adds Discount, ParseDiscount and
+  DiscountedTotal
+- billing_test.go: adds stubRepository and
+  TestDiscountedTotal
+
+![before](before.png)
+![after](after.png)
+![terminal](terminal.png)
+![coverage](coverage.png)

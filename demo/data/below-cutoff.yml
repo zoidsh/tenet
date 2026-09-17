@@ -1,5 +1,5 @@
 version: 1
-presets: [agent-hygiene]
+presets: [agent-hygiene, pr]
 tenets:
   - id: money-in-cents
     tenet: Money is an integer number of cents, never a float.
@@ -9,6 +9,10 @@ tenets:
     include: ["**/*.go"]
     kind: [code]
 override:
+  subject-says-what-changed: {fail: 0.01}
+  body-says-why: {fail: 0.01}
+  body-states-door: {fail: 0.01}
+  body-few-visuals: {fail: 0.01}
   comment-why: {fail: 0.01}
   no-mocking: {fail: 0.01}
   no-transcript-comment: {fail: 0.01}
