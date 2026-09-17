@@ -25,9 +25,11 @@
 # above that conversion read as though it had checked the type. The true
 # criterion now says that a guard on the size or the count settles quantity
 # and not type. All three `--runs 3` passes of 2026-09-17 read sharp with 0
-# examples crossing the cutoff, at max sd 0.036, 0.032 and 0.017; the header
-# parse is still the weakest violation and held at 0.86 across them, and the
-# acceptable examples stayed where they were, at a mean of 0.14 to 0.15.
+# examples crossing the cutoff, at max sd 0.036, 0.032 and 0.017. The header
+# parse stayed the weakest violation, between 0.80 and 0.90 in all three
+# passes, which is 0.93 accuracy at 0.90, and read 0.86 in the one pass where
+# its probability was read directly. The acceptable examples stayed where
+# they were, at a mean of 0.14 to 0.15.
 #
 # no-defensive-nil stays out, under the standalone tag, so a config that
 # wants it names it under `rules:`. Naming the TypeScript and Python
