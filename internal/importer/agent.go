@@ -57,7 +57,7 @@ func Agent(name string) (AgentTarget, error) {
 
 // alwaysApply is what puts a Cursor rule in front of the model on every
 // request, rather than when Cursor judges its description relevant.
-const cursorFrontMatter = "---\ndescription: Run the tenetlint lint and act on what it finds\nalwaysApply: true\n---\n\n"
+const cursorFrontMatter = "---\ndescription: Run the tenet lint and act on what it finds\nalwaysApply: true\n---\n\n"
 
 func cursorRule([]byte) ([]byte, bool) {
 	return []byte(cursorFrontMatter + AgentSkill), false
