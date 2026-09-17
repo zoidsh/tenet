@@ -11,10 +11,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
+
+	"github.com/zoidsh/tenetlint/internal/source"
 )
 
 // FileName is the config file Find looks for.
@@ -122,6 +125,7 @@ type Tenet struct {
 	Fail     *float64  `yaml:"fail"`
 	Include  []string  `yaml:"include"`
 	Exclude  []string  `yaml:"exclude"`
+	Kind     []string  `yaml:"kind"`
 	Tags     []string  `yaml:"tags"`
 
 	Examples     []Example `yaml:"examples"`
@@ -161,6 +165,7 @@ type Override struct {
 	Fail    *float64 `yaml:"fail"`
 	Include []string `yaml:"include"`
 	Exclude []string `yaml:"exclude"`
+	Kind    []string `yaml:"kind"`
 }
 
 var idPattern = regexp.MustCompile(`^[a-z0-9-]+$`)
@@ -243,6 +248,9 @@ func (c *Config) validate() error {
 				}
 			}
 		}
+		if err := checkKinds(fmt.Sprintf("tenet %q", t.ID), t.Kind); err != nil {
+			return err
+		}
 		if err := validateExamples(t.ID, t.Examples); err != nil {
 			return err
 		}
@@ -269,6 +277,21 @@ func (c *Config) validateOverrides() error {
 					return fmt.Errorf("override %q: %s: %q is not a valid glob", id, set.field, p)
 				}
 			}
+		}
+		if err := checkKinds(fmt.Sprintf("override %q", id), o.Kind); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkKinds(subject string, kinds []string) error {
+	for _, k := range kinds {
+		switch k {
+		case source.KindCode, source.KindProse, source.KindData:
+		default:
+			return fmt.Errorf("%s: kind: must be one of %s, %s or %s, got %q",
+				subject, source.KindCode, source.KindProse, source.KindData, k)
 		}
 	}
 	return nil
@@ -339,9 +362,13 @@ func (t *Tenet) FailValue() float64 {
 // Applies reports whether the tenet judges a file. The path is slash
 // separated and relative to the repository root, which is what the globs in
 // the config are written against, whatever directory the lint was started
-// from.
+// from. A kind narrows the globs further rather than widening them: a tenet
+// about prose is not asked about the code that happens to match its include.
 func (t *Tenet) Applies(relPath string) bool {
 	relPath = filepath.ToSlash(relPath)
+	if len(t.Kind) > 0 && !slices.Contains(t.Kind, source.Kind(relPath)) {
+		return false
+	}
 	for _, p := range t.Exclude {
 		if ok, _ := doublestar.Match(p, relPath); ok {
 			return false

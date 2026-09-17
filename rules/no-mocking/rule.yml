@@ -5,4 +5,5 @@ criteria:
   false: "The test exercises real implementations, in-memory or temporary real resources such as a temp directory or an in-process server, fixtures, or table-driven inputs, with no substituted dependencies. A deterministic value handed in through a seam production callers use too, such as a clock or a seed the constructor always takes, is a real argument and not a substitution."
 source: vitest-dev/vitest AGENTS.md
 include: ["**/*_test.go"]
+kind: [code]
 tags: [code, tests]

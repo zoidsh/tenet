@@ -5,4 +5,5 @@ criteria:
   false: "Failures propagate, are re-raised, or are converted to an explicit error with context; or the value is a declared and usable default of an optional parameter, field or setting the operation does not require; or the function is selecting among values its input and its own data already offer, where no call failed and every branch is a result the interface promises."
 source: amd/gaia CLAUDE.md
 include: ["**/*.go"]
+kind: [code]
 tags: [code, errors]

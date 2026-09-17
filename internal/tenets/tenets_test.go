@@ -76,6 +76,43 @@ func TestApplies(t *testing.T) {
 	}
 }
 
+func TestAppliesNarrowedByKind(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`
+version: 1
+tenets:
+  - id: plain-english
+    tenet: Write plainly.
+    kind: [prose]
+  - id: no-secrets
+    tenet: Keep secrets out.
+    kind: [prose, data]
+    exclude: ["**/testdata/**"]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prose, both := cfg.Tenets[0], cfg.Tenets[1]
+	cases := []struct {
+		tenet *tenets.Tenet
+		path  string
+		want  bool
+	}{
+		{prose, "README.md", true},
+		{prose, "docs/design.txt", true},
+		{prose, "main.go", false},
+		{prose, "tenets.yml", false},
+		{both, "tenets.yml", true},
+		{both, "CHANGELOG", true},
+		{both, "main.go", false},
+		{both, "internal/testdata/notes.md", false},
+	}
+	for _, c := range cases {
+		if got := c.tenet.Applies(c.path); got != c.want {
+			t.Errorf("%s applies to %s = %v, want %v", c.tenet.ID, c.path, got, c.want)
+		}
+	}
+}
+
 func TestHashCoversOnlyWhatIsAsked(t *testing.T) {
 	cfg, err := tenets.Parse([]byte(sample))
 	if err != nil {

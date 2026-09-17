@@ -400,6 +400,40 @@ func TestRunAtDefaultConcurrency(t *testing.T) {
 	}
 }
 
+func TestATenetIsNotAskedOfAnotherKind(t *testing.T) {
+	j, f, windows := fixtureWith(t, `
+version: 1
+model: jev-1.13.0
+tenets:
+  - id: comment-why
+    tenet: A comment says why.
+    kind: [code]
+  - id: plain-english
+    tenet: Write plainly.
+    kind: [prose]
+`, "x := 1\n", nil)
+	f.verdict["comment-why"] = 0.1
+	f.verdict["plain-english"] = 0.9
+
+	out, err := j.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Findings != nil {
+		t.Errorf("a prose tenet found something in a Go file: %#v", out.Findings)
+	}
+	calls := f.named("verdict")
+	if len(calls) != 1 {
+		t.Fatalf("made %d verdict calls", len(calls))
+	}
+	if _, ok := calls[0].Questions["verdict:plain-english"]; ok {
+		t.Errorf("the prose tenet was asked: %v", calls[0].Questions)
+	}
+	if _, ok := calls[0].Questions["verdict:comment-why"]; !ok {
+		t.Errorf("the code tenet was not asked: %v", calls[0].Questions)
+	}
+}
+
 func TestAPIErrorAbortsTheRun(t *testing.T) {
 	j, f, windows := fixture(t, "x := 1\n", nil)
 	f.err = errors.New("boom")

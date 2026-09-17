@@ -169,6 +169,8 @@ func TestResolutionErrors(t *testing.T) {
 		{"an override with a bad cutoff", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    fail: 2\n", []string{`override "no-mocking"`, "fail"}},
 		{"an override with a bad glob", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    include: [\"[\"]\n", []string{`override "no-mocking"`, "include"}},
 		{"an override field nobody knows", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    tenet: x\n", []string{"tenet"}},
+		{"an override with an unknown kind", "version: 1\nrules: [no-mocking]\noverride:\n  no-mocking:\n    kind: [prose, verse]\n", []string{`override "no-mocking"`, "kind", "verse"}},
+		{"a tenet with an unknown kind", "version: 1\ntenets:\n  - id: house\n    tenet: Be tidy.\n    kind: [poetry]\n", []string{`tenet "house"`, "kind", "poetry"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -182,6 +184,29 @@ func TestResolutionErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestOverrideOfKind(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`version: 1
+rules: [comment-why]
+override:
+  comment-why:
+    kind: [prose]
+    include: ["**/*.md"]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.Tenets[0]
+	if len(got.Kind) != 1 || got.Kind[0] != "prose" {
+		t.Fatalf("kind is %v", got.Kind)
+	}
+	if got.Applies("main.go") {
+		t.Error("a prose tenet was asked about code")
+	}
+	if !got.Applies("docs/guide.md") {
+		t.Error("a prose tenet was not asked about a document")
 	}
 }
 

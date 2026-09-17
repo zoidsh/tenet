@@ -114,6 +114,9 @@ func (o *Override) applyTo(t *Tenet) {
 	if o.Exclude != nil {
 		t.Exclude = o.Exclude
 	}
+	if o.Kind != nil {
+		t.Kind = o.Kind
+	}
 }
 
 func sortedKeys[V any](m map[string]V) []string {

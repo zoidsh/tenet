@@ -9,4 +9,5 @@ source: Kaikei-e/Alt CLAUDE.md
 # checks it has to read across lines to see, and they sit in the seventies.
 fail: 0.75
 include: ["**/*.go"]
+kind: [code]
 tags: [code, errors]
