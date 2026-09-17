@@ -21,6 +21,7 @@ import (
 )
 
 type authOptions struct {
+	g        *globalOptions
 	key      string
 	project  bool
 	noVerify bool
@@ -28,8 +29,8 @@ type authOptions struct {
 	remove   bool
 }
 
-func newAuthCmd() *cobra.Command {
-	o := &authOptions{}
+func newAuthCmd(g *globalOptions) *cobra.Command {
+	o := &authOptions{g: g}
 	cmd := &cobra.Command{
 		Use:   "auth [provider]",
 		Short: "Save the API key a lint is judged with",
@@ -82,7 +83,7 @@ func runAuth(cmd *cobra.Command, args []string, o *authOptions) error {
 		}
 	}
 	if o.status {
-		return authStatus(cmd, args)
+		return authStatus(cmd, args, o)
 	}
 	p, err := namedProvider(args)
 	if err != nil {
@@ -135,7 +136,7 @@ func namedProvider(args []string) (provider.Provider, error) {
 
 // authStatus says where each provider's key comes from and where else it was
 // looked for, and never what the key is.
-func authStatus(cmd *cobra.Command, args []string) error {
+func authStatus(cmd *cobra.Command, args []string, o *authOptions) error {
 	list := provider.All()
 	if len(args) == 1 {
 		p, err := provider.Lookup(args[0])
@@ -163,7 +164,7 @@ func authStatus(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintf(out, "%s: none, %s\n", p.Name, err)
 			continue
 		}
-		key, source, err := auth.Resolve(p)
+		key, source, err := resolveKey(o.g, p)
 		if err != nil {
 			return fail(err)
 		}
@@ -171,7 +172,7 @@ func authStatus(cmd *cobra.Command, args []string) error {
 			_, _ = fmt.Fprintf(out, "%s: none\n", p.Name)
 		} else {
 			found = true
-			_, _ = fmt.Fprintf(out, "%s: the key in %s\n", p.Name, sourceLabel(source))
+			_, _ = fmt.Fprintf(out, "%s: the key from %s\n", p.Name, sourceLabel(source, p))
 		}
 		_, _ = fmt.Fprintf(out, "  env      %s: %s\n", p.Env, setOrNot(os.Getenv(p.Env)))
 		_, _ = fmt.Fprintf(out, "  project  %s\n", fileState(project, p.Name))
@@ -183,8 +184,10 @@ func authStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func sourceLabel(source string) string {
+func sourceLabel(source string, p provider.Provider) string {
 	switch source {
+	case auth.SourceFlag:
+		return "--" + p.Name + "-api-key"
 	case auth.SourceEnv:
 		return "the environment"
 	case auth.SourceProject:
@@ -232,14 +235,14 @@ func authRemove(cmd *cobra.Command, p provider.Provider, o *authOptions) error {
 	if _, err := fmt.Fprintf(out, "removed the %s key from %s\n", p.Name, path); err != nil {
 		return err
 	}
-	key, source, err := auth.Resolve(p)
+	key, source, err := resolveKey(o.g, p)
 	if err != nil {
 		return fail(err)
 	}
 	if key == "" {
 		return nil
 	}
-	_, err = fmt.Fprintf(out, "a run still reads a %s key from %s\n", p.Name, sourceLabel(source))
+	_, err = fmt.Fprintf(out, "a run still reads a %s key from %s\n", p.Name, sourceLabel(source, p))
 	return err
 }
 
@@ -254,7 +257,7 @@ func saveKey(cmd *cobra.Command, p provider.Provider, o *authOptions) (string, e
 		return "", err
 	}
 	if !o.noVerify {
-		if err := verifyKey(cmd.Context(), p, key); err != nil {
+		if err := verifyKey(cmd.Context(), p, key, o.g.clientOptions(p)...); err != nil {
 			return "", err
 		}
 	}
@@ -285,7 +288,7 @@ func sayWhatWins(cmd *cobra.Command, p provider.Provider, o *authOptions) error 
 	if o.project {
 		scope = auth.SourceProject
 	}
-	_, source, err := auth.Resolve(p)
+	_, source, err := resolveKey(o.g, p)
 	if err != nil {
 		return err
 	}
@@ -294,6 +297,8 @@ func sayWhatWins(cmd *cobra.Command, p provider.Provider, o *authOptions) error 
 	}
 	out := cmd.OutOrStdout()
 	switch source {
+	case auth.SourceFlag:
+		_, err = fmt.Fprintf(out, "--%s-api-key was given, so this run judges with that one instead\n", p.Name)
 	case auth.SourceEnv:
 		_, err = fmt.Fprintf(out, "%s is set, so a run reads the key from there instead\n", p.Env)
 	case auth.SourceProject:
@@ -309,8 +314,8 @@ func sayWhatWins(cmd *cobra.Command, p provider.Provider, o *authOptions) error 
 // verifyKey asks the smallest question there is, so that a key that will not
 // work is caught while somebody is still looking at the screen rather than on
 // the next commit.
-func verifyKey(ctx context.Context, p provider.Provider, key string) error {
-	_, err := p.Client(key, jev.DefaultModel).Ask(ctx, "tenet auth", map[string]jev.Question{
+func verifyKey(ctx context.Context, p provider.Provider, key string, opts ...jev.Option) error {
+	_, err := p.Client(key, jev.DefaultModel, opts...).Ask(ctx, "tenet auth", map[string]jev.Question{
 		"verify": jev.Noul("This state is a string.", "", ""),
 	})
 	var apiErr *jev.APIError

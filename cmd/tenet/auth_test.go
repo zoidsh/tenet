@@ -260,7 +260,7 @@ func TestAuthStatusNamesTheSourceButNotTheKey(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if !strings.Contains(stdout, "typesafe: the key in the global file") {
+	if !strings.Contains(stdout, "typesafe: the key from the global file") {
 		t.Errorf("stdout is %q", stdout)
 	}
 	if !strings.Contains(stdout, globalFile(config)+": a key") {
@@ -282,7 +282,7 @@ func TestAuthStatusPrefersTheEnvironment(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if !strings.Contains(stdout, "typesafe: the key in the environment") {
+	if !strings.Contains(stdout, "typesafe: the key from the environment") {
 		t.Errorf("stdout is %q", stdout)
 	}
 }

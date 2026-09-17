@@ -369,14 +369,16 @@ tenet init --agent cursor --agent agents
 
 ## Environment variables
 
-- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenetlint/credentials` in the repository, then `~/.config/tenetlint/credentials`, so exporting it in CI overrides whatever is saved on the machine. A provider added later reads a variable of its own, named after it.
-- `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in.
+Every one of these can be settled for a single run by a flag, which outranks the variable. The flags are on `tenet` itself and on every subcommand.
+
+- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenetlint/credentials` in the repository, then `~/.config/tenetlint/credentials`, so exporting it in CI overrides whatever is saved on the machine. `--typesafe-api-key` outranks all three, though a saved key or the variable is better: a flag is in the process list for anyone on the machine to read. A provider added later reads a variable of its own and answers to its own pair of flags, both named after it.
+- `TYPESAFE_BASE_URL`, or `--typesafe-base-url`, sends the requests to another host, such as a proxy or a local stand-in.
 - `TENETLINT_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
 - `TENETLINT_SKIP=1` makes the installed hooks exit without linting.
 - `TENETLINT_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
 - `TENETLINT_VERSION` is the release the installer script fetches, `latest` by default, with or without the leading `v`.
 - `TENETLINT_BINARY` points the npm wrapper at a binary of your own instead of the one its platform package carries.
-- `NO_COLOR` turns the colour off in the text report, whatever the terminal is.
+- `NO_COLOR` turns the colour off in the text report, whatever the terminal is. `--color` settles it outright: `auto`, the default, reads the terminal and `NO_COLOR`, while `always` and `never` say so.
 
 ## Development
 

@@ -9,8 +9,61 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/zoidsh/tenetlint/internal/buildinfo"
+	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/provider"
 	"github.com/zoidsh/tenetlint/internal/report"
 )
+
+// providerFlags are the pair of flags one provider answers to, named after it
+// so that a second provider brings its own pair rather than fighting over one.
+type providerFlags struct {
+	key     string
+	baseURL string
+}
+
+// globalOptions are what every command reads off the root's persistent flags.
+type globalOptions struct {
+	providers map[string]*providerFlags
+	color     string
+}
+
+// addGlobalFlags gives each provider that takes a key today its own pair. A
+// provider that is not available yet has nothing to point at, so it has no
+// flags either.
+func addGlobalFlags(root *cobra.Command) *globalOptions {
+	g := &globalOptions{providers: map[string]*providerFlags{}}
+	f := root.PersistentFlags()
+	for _, p := range provider.All() {
+		if p.Available() != nil {
+			continue
+		}
+		pf := &providerFlags{}
+		g.providers[p.Name] = pf
+		f.StringVar(&pf.key, p.Name+"-api-key", "",
+			"the "+p.Label+" API key to judge with, ahead of "+p.Env+" and any saved key; a saved key or the variable is better, because a flag is in the process list for anyone on the machine to read")
+		f.StringVar(&pf.baseURL, p.Name+"-base-url", "",
+			"send the "+p.Label+" requests to this host, ahead of the environment and the host "+p.Name+" is otherwise asked on")
+	}
+	f.StringVar(&g.color, "color", report.ColorAuto, "colour in the text report: auto, always or never, ahead of NO_COLOR")
+	return g
+}
+
+// key is the key the flags carry for a provider, empty when they carry none.
+func (g *globalOptions) key(p provider.Provider) string {
+	if pf, ok := g.providers[p.Name]; ok {
+		return pf.key
+	}
+	return ""
+}
+
+// clientOptions are what the flags add to a provider's own client, which is a
+// host to ask instead of the usual one.
+func (g *globalOptions) clientOptions(p provider.Provider) []jev.Option {
+	if pf, ok := g.providers[p.Name]; ok && pf.baseURL != "" {
+		return []jev.Option{jev.WithBaseURL(pf.baseURL)}
+	}
+	return nil
+}
 
 func newRootCmd() *cobra.Command {
 	opts := &lintOptions{}
@@ -30,8 +83,10 @@ func newRootCmd() *cobra.Command {
 	// reading either should not have to know which one it asked.
 	root.Version = buildinfo.Version()
 	root.SetVersionTemplate("{{.Version}}\n")
+	g := addGlobalFlags(root)
+	opts.g = g
 	addLintFlags(root, opts)
-	root.AddCommand(newVersionCmd(), newAuthCmd(), newInitCmd(), newHookCmd(), newCheckCmd(), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd())
+	root.AddCommand(newVersionCmd(), newAuthCmd(g), newInitCmd(g), newHookCmd(), newCheckCmd(g), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd(g))
 	return root
 }
 

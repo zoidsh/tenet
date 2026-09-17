@@ -90,11 +90,12 @@ func (p Provider) Available() error {
 	return nil
 }
 
-// Client is what this provider's key buys answers from.
-func (p Provider) Client(key, model string) *jev.Client {
-	opts := []jev.Option{jev.WithModel(model)}
+// Client is what this provider's key buys answers from. The options come last
+// so that a host named on the command line outranks the provider's own.
+func (p Provider) Client(key, model string, opts ...jev.Option) *jev.Client {
+	own := []jev.Option{jev.WithModel(model)}
 	if p.BaseURL != "" {
-		opts = append(opts, jev.WithBaseURL(p.BaseURL))
+		own = append(own, jev.WithBaseURL(p.BaseURL))
 	}
-	return jev.New(key, opts...)
+	return jev.New(key, append(own, opts...)...)
 }

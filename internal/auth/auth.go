@@ -16,8 +16,10 @@ import (
 	"github.com/zoidsh/tenetlint/internal/provider"
 )
 
-// Sources a key can come from, in the order Resolve tries them.
+// Sources a key can come from. Resolve tries the last three in this order,
+// and SourceFlag is for the key a command was handed outright.
 const (
+	SourceFlag    = "flag"
 	SourceEnv     = "env"
 	SourceProject = "project"
 	SourceGlobal  = "global"

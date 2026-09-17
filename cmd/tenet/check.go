@@ -16,6 +16,7 @@ import (
 )
 
 type checkOptions struct {
+	g           *globalOptions
 	config      string
 	builtin     bool
 	format      string
@@ -50,8 +51,8 @@ func configForCheck(o *checkOptions) (*tenets.Config, error) {
 	return cfg, nil
 }
 
-func newCheckCmd() *cobra.Command {
-	o := &checkOptions{}
+func newCheckCmd(g *globalOptions) *cobra.Command {
+	o := &checkOptions{g: g}
 	cmd := &cobra.Command{
 		Use:   "check [tenet-id...]",
 		Short: "Measure how well a tenet's wording separates its labelled examples",
@@ -103,7 +104,7 @@ func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
 		return err
 	}
 
-	p, key, err := keyFor(cfg)
+	p, key, err := keyFor(o.g, cfg)
 	if err != nil {
 		return fail(err)
 	}
@@ -149,7 +150,7 @@ func selectTenets(cfg *tenets.Config, ids []string) ([]*tenets.Tenet, error) {
 
 func checkExamples(cmd *cobra.Command, o *checkOptions, p provider.Provider, key, model string, ts []*tenets.Tenet) ([]check.Result, check.Stats, error) {
 	c := &check.Checker{
-		Asker:       p.Client(key, model),
+		Asker:       p.Client(key, model, o.g.clientOptions(p)...),
 		MinExamples: o.minExamples,
 		Runs:        o.runs,
 	}

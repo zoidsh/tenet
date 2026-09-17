@@ -13,7 +13,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
 	"github.com/zoidsh/tenetlint/internal/importer"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/provider"
@@ -35,6 +34,7 @@ var ruleFiles = []string{
 }
 
 type initOptions struct {
+	g        *globalOptions
 	from     []string
 	presets  []string
 	agents   []string
@@ -47,8 +47,8 @@ type initOptions struct {
 	noPrompt bool
 }
 
-func newInitCmd() *cobra.Command {
-	o := &initOptions{}
+func newInitCmd(g *globalOptions) *cobra.Command {
+	o := &initOptions{g: g}
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Draft a tenets.yml from the rule files your agents already read",
@@ -78,7 +78,7 @@ func keyForInit(cmd *cobra.Command, o *initOptions) (provider.Provider, string, 
 	if err != nil {
 		return p, "", err
 	}
-	key, _, err := auth.Resolve(p)
+	key, _, err := resolveKey(o.g, p)
 	if err != nil || key != "" {
 		return p, key, err
 	}
@@ -99,7 +99,7 @@ func keyForInit(cmd *cobra.Command, o *initOptions) (provider.Provider, string, 
 	if !yes {
 		return p, "", missingKeyError(p)
 	}
-	key, err = saveKey(cmd, p, &authOptions{})
+	key, err = saveKey(cmd, p, &authOptions{g: o.g})
 	return p, key, err
 }
 
@@ -214,7 +214,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 
 func sortCandidates(ctx context.Context, cmd *cobra.Command, o *initOptions, p provider.Provider, key string, candidates []importer.Candidate) ([]importer.Sorted, importer.Stats, error) {
 	sorter := &importer.Sorter{
-		Asker: p.Client(key, jev.DefaultModel),
+		Asker: p.Client(key, jev.DefaultModel, o.g.clientOptions(p)...),
 		Model: jev.DefaultModel,
 	}
 	c, err := openCache(o.noCache)

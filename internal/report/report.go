@@ -122,6 +122,28 @@ func ColorEnabled(w io.Writer) bool {
 	return isTerminal(w)
 }
 
+// The choices --color takes.
+const (
+	ColorAuto   = "auto"
+	ColorAlways = "always"
+	ColorNever  = "never"
+)
+
+// Colored settles the colour for one run: always and never say so outright,
+// and auto asks the terminal and NO_COLOR.
+func Colored(w io.Writer, choice string) (bool, error) {
+	switch choice {
+	case ColorAlways:
+		return true, nil
+	case ColorNever:
+		return false, nil
+	case ColorAuto:
+		return ColorEnabled(w), nil
+	default:
+		return false, fmt.Errorf("--color must be %s, %s or %s, got %q", ColorAuto, ColorAlways, ColorNever, choice)
+	}
+}
+
 const (
 	reset = "\x1b[0m"
 	dim   = "\x1b[2m"

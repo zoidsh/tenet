@@ -62,7 +62,7 @@ func missingKeyError(p provider.Provider) error {
 }
 
 // keyFor is the key this config's provider is asked with.
-func keyFor(cfg *tenets.Config) (provider.Provider, string, error) {
+func keyFor(g *globalOptions, cfg *tenets.Config) (provider.Provider, string, error) {
 	p, err := provider.Lookup(cfg.Provider)
 	if err != nil {
 		return p, "", err
@@ -70,7 +70,7 @@ func keyFor(cfg *tenets.Config) (provider.Provider, string, error) {
 	if err := p.Available(); err != nil {
 		return p, "", err
 	}
-	key, _, err := auth.Resolve(p)
+	key, _, err := resolveKey(g, p)
 	if err != nil {
 		return p, "", err
 	}
@@ -80,7 +80,17 @@ func keyFor(cfg *tenets.Config) (provider.Provider, string, error) {
 	return p, key, nil
 }
 
+// resolveKey is auth.Resolve with the flag in front of it, which is the one
+// source a person names for a single run.
+func resolveKey(g *globalOptions, p provider.Provider) (key, source string, err error) {
+	if key := g.key(p); key != "" {
+		return key, auth.SourceFlag, nil
+	}
+	return auth.Resolve(p)
+}
+
 type lintOptions struct {
+	g             *globalOptions
 	base          string
 	commitMsg     string
 	prText        string
@@ -191,7 +201,7 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	}
 	cfg.SetModel(model)
 
-	p, key, err := keyFor(cfg)
+	p, key, err := keyFor(o.g, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +302,11 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 				displayPath(set.Root, dir, n.File), n.Line, n.Tenet, n.Probability, n.Fail)
 		}
 	}
-	if err := r.Write(out, o.format, report.ColorEnabled(out)); err != nil {
+	color, err := report.Colored(out, o.g.color)
+	if err != nil {
+		return fail(err)
+	}
+	if err := r.Write(out, o.format, color); err != nil {
 		return fail(err)
 	}
 	if code := r.ExitCode(); code != report.ExitOK {
@@ -365,7 +379,7 @@ func relativeTo(dir, path string) string {
 }
 
 func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, p provider.Provider, key, model string) (judge.Outcome, error) {
-	j := &judge.Judge{Asker: p.Client(key, model), Tenets: cfg.Tenets}
+	j := &judge.Judge{Asker: p.Client(key, model, o.g.clientOptions(p)...), Tenets: cfg.Tenets}
 	c, err := openCache(o.noCache)
 	if err != nil {
 		return judge.Outcome{}, err

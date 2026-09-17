@@ -16,8 +16,8 @@ type baselineOptions struct {
 	prune  bool
 }
 
-func newBaselineCmd() *cobra.Command {
-	lint := &lintOptions{}
+func newBaselineCmd(g *globalOptions) *cobra.Command {
+	lint := &lintOptions{g: g}
 	o := &baselineOptions{}
 	cmd := &cobra.Command{
 		Use:   "baseline [paths...]",
