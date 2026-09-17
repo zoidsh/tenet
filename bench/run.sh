@@ -6,8 +6,11 @@ set -euo pipefail
 
 # COMMIT is the commit every measurement is taken at, checked out into a
 # throwaway worktree. A benchmark that followed HEAD would report a different
-# corpus every week and the README would drift without anybody editing it.
-COMMIT=6a888c3
+# corpus every week and the README would drift without anybody editing it. It
+# is chosen by hand for a staged change worth showing: the staged row lints
+# COMMIT's own change, so a commit that touched only data files would measure
+# nothing.
+COMMIT=f0fdf08
 
 # BASE is chosen so that the diff to COMMIT is about two thousand added plus
 # deleted lines of Go, which is the size of pull request the agent-reviewer
@@ -125,17 +128,25 @@ numstat_lines() {
 	git -C "$tmp/repo" diff --numstat "$@" | awk '{ a += $1; d += $2 } END { print a + d + 0 }'
 }
 
-lint cold.json "$tmp/repo" --no-cache .
-lint warm.json "$tmp/repo" .
+# Every run inside the checkout is judged against this branch's config rather
+# than COMMIT's own. The rules live in the binary and the config only names a
+# preset, so the measured commit needs no config of its own, and a commit older
+# than the rename carries the file under its old name. A tenet's include globs are
+# matched against paths relative to the run's own root rather than to the
+# config's directory, so a config from outside the checkout judges it the same.
+config="$repo/tenet.yml"
+
+lint cold.json "$tmp/repo" --no-cache --config "$config" .
+lint warm.json "$tmp/repo" --config "$config" .
 
 git -C "$tmp/repo" reset --soft HEAD~1 >/dev/null
 staged_lines=$(numstat_lines --cached)
-lint staged.json "$tmp/repo" --no-cache
+lint staged.json "$tmp/repo" --no-cache --config "$config"
 
 base_all=$(numstat_lines "$BASE")
 base_go=$(numstat_lines "$BASE" -- '*.go')
 base_bytes=$(git -C "$tmp/repo" diff "$BASE" | wc -c | tr -d ' ')
-lint diff.json "$tmp/repo" --no-cache --base "$BASE"
+lint diff.json "$tmp/repo" --no-cache --config "$config" --base "$BASE"
 
 # The pull request text and the config that judges it are files of this
 # branch, not of COMMIT, and neither reads the tree, so this one runs here.
