@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml)
 
-tenetlint is a command-line linter for the rules you wrote in English. It reads tenets such as "a comment says why, not what" from a `tenets.yml`, sends your staged changes to TypeSafe's jev model for judgement, and reports each violation with a file, a line and a probability, so the conventions in your CLAUDE.md become a gate you can run on every commit.
+tenetlint is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.1 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
+
+TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.5 s and cost $0.0036. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 12x faster than the Sonnet one, dividing each of those times by its own 1.5 s. It is cheaper than both, $0.0036 against $0.0258 and $0.0516, and dearer than GPT-5 nano, whose estimate is $0.0014. The Benchmarks section has the tables all of these come from.
 
 ## Install
 
@@ -209,7 +211,7 @@ no-defensive-nil       rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
 
-A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and the part that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer.
+A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and the part that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer. A tenet is judged in whatever language you write it in, and the Languages table under Benchmarks measures the same rule in English, German and Japanese.
 
 ```yaml
   - id: comment-why
