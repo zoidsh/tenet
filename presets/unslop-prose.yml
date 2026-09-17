@@ -20,3 +20,4 @@ rules:
   - project-specific
   - no-throat-clearing
   - no-false-contrast
+  - no-connector-colon

@@ -1,0 +1,226 @@
+# Labelled cases for the no-connector-colon tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Why the build is slow
+
+    The cause: a cold module cache on every runner. The fix: a cache mount
+    keyed on the hash of `go.sum`.
+
+    Each job starts from the base image and downloads 400 MB of modules
+    before it compiles anything at all.
+
+    ## Measuring
+
+    `make bench-ci` prints the time each stage took, read from the runner's
+    own step timings rather than from the wall clock.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Leases
+
+    There is one thing to remember about leases: they expire while your job
+    is still running.
+
+    A worker extends its lease every 10 seconds. A worker that pauses for
+    longer than 30 loses the job to another worker, which starts it again
+    from the beginning.
+
+    ## Idempotency
+
+    A job that runs twice must leave the same rows behind, because the runner
+    promises only that it runs at least once.
+- label: violation
+  lang: markdown
+  lines: 3
+  code: |
+    # Deployment
+
+    Deploys are gated on one thing: tests.
+
+    `deploy` refuses to run while the branch's latest CI run is red or
+    missing. It reads the run from the API rather than from a status badge,
+    so a cached badge cannot let a bad build through.
+
+    ## Rolling back
+
+    `deploy --to <sha>` redeploys an earlier image. It does not revert the
+    database, which is a separate migration.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    ## The three failure modes
+
+    Disk full: the writer blocks. Network partition: the writer blocks. Clock
+    skew: the writer does not block, and that is the one that will cost you a
+    weekend.
+
+    A blocked writer shows up in `app status` as a `stalled` stage. A writer
+    that accepted a skewed timestamp shows up nowhere until the compaction
+    rejects the segment.
+
+    ## What to do
+
+    Run `app status` before the compaction window rather than after it.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Configuration
+
+    Set the port in one place only: two sources that disagree are resolved
+    without a word and the file is not the one that wins.
+
+    `APP_PORT` overrides `port` in the file, and a flag overrides both. An
+    unknown key is an error at load time.
+
+    ## Secrets
+
+    A value beginning with `file:` is read from the path that follows. The
+    file is read once at startup and is never watched for changes.
+- label: violation
+  lang: markdown
+  lines: 3
+  code: |
+    ## Performance
+
+    One number matters here: p99.
+
+    The scheduler is tuned for the tail, so a change that halves the mean and
+    doubles the p99 counts as a regression by this project's measure.
+
+    ## Benchmarks
+
+    `make bench` runs the suite five times and prints the median of the p99s,
+    which is what CI compares against the stored baseline.
+- label: violation
+  lang: markdown
+  lines: 3
+  code: |
+    # Authentication
+
+    Rotate early: a token that expires mid-run takes the whole run with it.
+
+    An expired token returns 401 with `WWW-Authenticate: Bearer
+    error="expired"`. A token whose `nbf` is in the future returns the same
+    401, which is why a machine with a skewed clock looks like a machine with
+    a bad token.
+
+    ## Rotating
+
+    `app token rotate` issues a new token and keeps the old one valid for an
+    hour.
+- label: ok
+  lang: markdown
+  code: |
+    ## What `make check` runs
+
+    `make check` runs three things:
+
+    - the unit tests, with the race detector
+    - `golangci-lint`, with the repository's own config
+    - `gofmt -l` over the tree, which fails on any output at all
+
+    CI runs the same target, so a green `make check` is a green CI.
+
+    ## What it does not run
+
+    The tests that call the real API. `make test-live` runs those, and they
+    need a key in the environment.
+- label: ok
+  lang: markdown
+  code: |
+    ## Usage
+
+    Point it at a directory and it writes a report beside it:
+
+        audit ./services --out report.json
+
+    The report holds one object per service, with the image digest, the chart
+    version and the last deploy time read from the cluster.
+
+    Pass `--format table` to print the same rows instead of writing a file:
+
+        audit ./services --format table
+- label: ok
+  lang: markdown
+  code: |
+    ---
+    title: Rate limits
+    weight: 30
+    sidebar: reference
+    ---
+
+    # Rate limits
+
+    Each token gets 600 requests a minute, counted in one-second buckets.
+    Going over returns 429 with a `Retry-After` header in whole seconds.
+
+    ## Quotas
+
+    A quota is monthly and is not refilled by a failed request. A 429 does not
+    count against it; a 500 does.
+- label: ok
+  note: "Every colon here sits inside a token, a time of day or a namespaced permission, where it is spelling rather than punctuation."
+  lang: markdown
+  code: |
+    # Schedules
+
+    `cron` enqueues the reconciliation at 02:00 UTC and the digest at 06:30.
+
+    A job needs `write:jobs` to enqueue and `read:jobs` to list. The `owner`
+    role holds both and `viewer` holds neither.
+
+    ## Time zone
+
+    Times are UTC. There is no per-tenant time zone, and a tenant that wants
+    one schedules its own job against its own clock.
+- label: ok
+  lang: markdown
+  code: |
+    ## Glossary
+
+    Lease: the window in which one worker owns a job.
+
+    Dead letter: the queue a job lands in after its last retry.
+
+    Digest: the SHA-256 of a step's declared reads, which decides whether the
+    step is skipped on the next run.
+
+    Stall: a writer blocked on disk or on the network, reported by
+    `app status` and by nothing else.
+- label: ok
+  lang: markdown
+  code: |
+    # Workers
+
+    A worker leases a job for 30 seconds and extends the lease every 10 while
+    it runs. A lease that expires is handed to another worker.
+
+    A job that fails is retried three times and then moved to the dead-letter
+    queue with its last error stored beside it.
+
+    ## Concurrency
+
+    One worker runs one job at a time. Run more processes to run more jobs;
+    there is no thread pool inside a worker.
+- label: ok
+  note: "The colon introduces an inline list of three items, which is a colon doing its own job even though nothing is bulleted under it."
+  lang: markdown
+  code: |
+    ## Backends
+
+    Three backends ship: `sqlite`, `postgres` and `memory`.
+
+    `sqlite` keeps everything in one file and takes a single writer.
+    `postgres` takes many writers and needs a server, a connection string and
+    a migration run before first use. `memory` is for tests and loses
+    everything when the process exits.
+
+    ## Choosing
+
+    Pick `postgres` when more than one process writes and `sqlite` when one
+    does. No configuration makes `sqlite` take two writers.
