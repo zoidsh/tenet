@@ -230,8 +230,8 @@ func TestLintWithoutAKey(t *testing.T) {
 	if code := execute(root); code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}
-	if !strings.Contains(stderr.String(), jev.APIKeyEnv) {
-		t.Errorf("stderr is %q", stderr.String())
+	if !strings.Contains(stderr.String(), jev.APIKeyEnv) || !strings.Contains(stderr.String(), SkipEnv) {
+		t.Errorf("stderr %q should name both the key and the escape hatch", stderr.String())
 	}
 }
 

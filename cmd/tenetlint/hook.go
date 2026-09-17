@@ -14,10 +14,22 @@ import (
 // Marker is how an uninstall tells our hook from one somebody else wrote.
 const marker = "# tenetlint hook"
 
-const hookScript = `#!/bin/sh
-` + marker + `
-exec tenetlint
-`
+// SkipEnv lets someone commit without a key, or without the lint, at all.
+const SkipEnv = "TENETLINT_SKIP"
+
+// hookScript names the binary by its absolute path, because a hook runs with
+// whatever PATH the committing program happens to have, which for a GUI git
+// client is rarely the shell's.
+func hookScript(binary string) string {
+	return "#!/bin/sh\n" +
+		marker + "\n" +
+		"[ -n \"$" + SkipEnv + "\" ] && exit 0\n" +
+		"exec " + shellQuote(binary) + "\n"
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
 
 func newHookCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -48,10 +60,14 @@ func newHookInstallCmd() *cobra.Command {
 			case err != nil && !os.IsNotExist(err):
 				return fail(err)
 			}
+			binary, err := os.Executable()
+			if err != nil {
+				return fail(err)
+			}
 			if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 				return fail(err)
 			}
-			if err := os.WriteFile(path, []byte(hookScript), 0o700); err != nil {
+			if err := os.WriteFile(path, []byte(hookScript(binary)), 0o700); err != nil {
 				return fail(err)
 			}
 			verb := "installed"

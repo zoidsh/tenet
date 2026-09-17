@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -35,8 +36,18 @@ func TestHookInstallAndUninstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(script), marker) || !strings.Contains(string(script), "tenetlint") {
+	if !strings.Contains(string(script), marker) {
 		t.Errorf("hook is %q", script)
+	}
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), binary) {
+		t.Errorf("hook does not run the binary by its absolute path: %q", script)
+	}
+	if !strings.Contains(string(script), SkipEnv) {
+		t.Errorf("hook has no %s escape hatch: %q", SkipEnv, script)
 	}
 	info, err := os.Stat(path)
 	if err != nil {
@@ -48,6 +59,14 @@ func TestHookInstallAndUninstall(t *testing.T) {
 
 	if code, _, _ = runCmd(t, "hook", "install"); code != 0 {
 		t.Errorf("reinstalling over our own hook exited %d", code)
+	}
+
+	// The script exits before it execs anything, so running it here cannot
+	// re-enter the test binary.
+	skip := exec.Command("sh", path)
+	skip.Env = append(os.Environ(), SkipEnv+"=1")
+	if out, err := skip.CombinedOutput(); err != nil {
+		t.Errorf("the hook did not honour %s: %v\n%s", SkipEnv, err, out)
 	}
 
 	code, out, _ = runCmd(t, "hook", "uninstall")
