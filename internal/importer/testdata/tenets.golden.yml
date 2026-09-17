@@ -4,7 +4,16 @@ presets: [agent-hygiene]
 tenets:
   - id: comment-says-why-code-exists
     tenet: A comment says why the code exists, not what it does.
+    kind: [code]
     source: CLAUDE.md:42
   - id: comment-says-why-written-way
     tenet: A comment says why it is written this way.
+    kind: [code]
     source: AGENTS.md:7
+  - id: commit-subject-says-changed-reader
+    tenet: The commit subject says what changed for a reader.
+    kind: [commit]
+    source: AGENTS.md:9
+  - id: never-leave-branch-without-running
+    tenet: Never leave a branch without running the tests.
+    source: AGENTS.md:11

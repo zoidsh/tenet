@@ -39,9 +39,13 @@ func TestSlugDeduplicates(t *testing.T) {
 }
 
 func sorted(text, file string, line int, accepted bool) importer.Sorted {
+	return kinded(text, file, line, importer.KindCodeRule, accepted)
+}
+
+func kinded(text, file string, line int, kind string, accepted bool) importer.Sorted {
 	return importer.Sorted{
 		Candidate: importer.Candidate{File: file, Line: line, Text: text},
-		Kind:      importer.KindCodeRule,
+		Kind:      kind,
 		Accepted:  accepted,
 	}
 }
@@ -51,6 +55,8 @@ func TestDraftGolden(t *testing.T) {
 		sorted("A comment says why the code exists, not what it does.", "CLAUDE.md", 42, true),
 		sorted("Ask before installing anything.", "CLAUDE.md", 50, false),
 		sorted("A comment says why it is written this way.", "AGENTS.md", 7, true),
+		kinded("The commit subject says what changed for a reader.", "AGENTS.md", 9, importer.KindCommitRule, true),
+		kinded("Never leave a branch without running the tests.", "AGENTS.md", 11, importer.KindProcess, true),
 	}
 	importer.Assign(candidates)
 	draft, err := importer.Draft(candidates, []string{importer.DefaultPreset})

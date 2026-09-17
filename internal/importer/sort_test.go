@@ -167,6 +167,9 @@ func TestSortAcceptsAtExactlyTheThreshold(t *testing.T) {
 		{"needs-repo but checkable", importer.KindNeedsRepo, 0.9, true},
 		{"context, however checkable", importer.KindContext, 0.9, false},
 		{"other, however checkable", importer.KindOther, 0.9, false},
+		// A message is never among the changed lines the checkable question
+		// asks about, so a rule about one is kept on its kind alone.
+		{"commit rule the diff cannot settle", importer.KindCommitRule, 0.46, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

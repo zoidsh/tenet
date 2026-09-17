@@ -27,11 +27,12 @@ const Accept = 0.5
 // kind question reads "never do X" as process even where X is plain in the
 // changed lines.
 const (
-	KindCodeRule  = "code-rule"
-	KindProcess   = "process"
-	KindContext   = "context"
-	KindNeedsRepo = "needs-repo"
-	KindOther     = "other"
+	KindCodeRule   = "code-rule"
+	KindCommitRule = "commit-rule"
+	KindProcess    = "process"
+	KindContext    = "context"
+	KindNeedsRepo  = "needs-repo"
+	KindOther      = "other"
 )
 
 const stateHeader = "Sentences from a coding agent's instruction file. Decide, for each, what kind of instruction it is."
@@ -49,11 +50,12 @@ const cacheSalt = "tenetlint-importer-v1"
 
 func kindLabels() map[string]any {
 	return map[string]any{
-		KindCodeRule:  "a rule about how code, comments, tests, or docs must be written, checkable by reading a change to the files",
-		KindProcess:   "an instruction about what the agent should do, run, ask, or avoid during its work",
-		KindContext:   "a description of the project, its layout, commands, or facts, not an instruction",
-		KindNeedsRepo: "a rule about code that can only be checked with knowledge of other files, history, or the running system",
-		KindOther:     "none of these",
+		KindCodeRule:   "a rule about how code, comments, tests, or docs must be written, checkable by reading a change to the files",
+		KindCommitRule: "a rule about the commit message subject or body",
+		KindProcess:    "an instruction about what the agent should do, run, ask, or avoid during its work",
+		KindContext:    "a description of the project, its layout, commands, or facts, not an instruction",
+		KindNeedsRepo:  "a rule about code that can only be checked with knowledge of other files, history, or the running system",
+		KindOther:      "none of these",
 	}
 }
 
@@ -145,7 +147,14 @@ func (s *Sorter) Sort(ctx context.Context, candidates []Candidate) ([]Sorted, St
 	return out, stats, nil
 }
 
+// accepted takes a commit-message rule whatever the checkable answer says:
+// that question is about the changed lines of source files, which a commit
+// message never is, so it scores such a rule down for being the kind of rule
+// tenetlint lints messages with.
 func accepted(kind string, checkable float64) bool {
+	if kind == KindCommitRule {
+		return true
+	}
 	return checkable >= Accept && kind != KindContext && kind != KindOther
 }
 

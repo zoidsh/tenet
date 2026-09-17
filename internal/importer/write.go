@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/zoidsh/tenetlint/internal/source"
 )
 
 // SlugWords is how many significant words of a tenet make its id: enough to
@@ -104,9 +106,25 @@ type draftFile struct {
 }
 
 type draftTenet struct {
-	ID     string `yaml:"id"`
-	Tenet  string `yaml:"tenet"`
-	Source string `yaml:"source"`
+	ID     string   `yaml:"id"`
+	Tenet  string   `yaml:"tenet"`
+	Kind   []string `yaml:"kind,omitempty,flow"`
+	Source string   `yaml:"source"`
+}
+
+// draftKind is what a sorted candidate says about the files its rule is
+// about. Only the two kinds the sort names outright are written down: a rule
+// the model read as process or as needing the repository is about code often
+// enough, and a wrong kind would silence it everywhere else.
+func draftKind(kind string) []string {
+	switch kind {
+	case KindCodeRule:
+		return []string{source.KindCode}
+	case KindCommitRule:
+		return []string{source.KindCommit}
+	default:
+		return nil
+	}
 }
 
 // Draft is the tenets.yml for everything the sort accepted, which Assign has
@@ -117,6 +135,7 @@ func Draft(sorted []Sorted, presets []string) ([]byte, error) {
 		file.Tenets = append(file.Tenets, draftTenet{
 			ID:     c.ID,
 			Tenet:  c.Text,
+			Kind:   draftKind(c.Kind),
 			Source: fmt.Sprintf("%s:%d", c.File, c.Line),
 		})
 	}
