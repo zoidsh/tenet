@@ -6,4 +6,4 @@ criteria:
 source: cursor/plugins pstack/skills/unslop/SKILL.md #16
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
-tags: [prose, docs]
+tags: [prose, docs, standalone]

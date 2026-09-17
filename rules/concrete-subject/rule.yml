@@ -6,4 +6,4 @@ criteria:
 source: hardikpandya/stop-slop SKILL.md
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
-tags: [prose, docs]
+tags: [prose, docs, standalone]
