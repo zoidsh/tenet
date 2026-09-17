@@ -4,6 +4,7 @@ package judge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -59,7 +60,7 @@ type Judge struct {
 	Cache       *cache.Cache
 	Concurrency int
 
-	// Log, when set, receives a line per call made.
+	// Log, when set, receives a line per round of questions asked.
 	Log func(string)
 }
 
@@ -177,6 +178,11 @@ type pending struct {
 
 func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, Stats, error) {
 	var stats Stats
+	findings, err := j.judge(ctx, w, &stats)
+	return findings, stats, err
+}
+
+func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Finding, error) {
 	state := State(w)
 
 	var work []*pending
@@ -192,14 +198,14 @@ func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, Stats,
 		work = append(work, p)
 	}
 	if len(work) == 0 {
-		return nil, stats, nil
+		return nil, nil
 	}
 
-	if err := j.askVerdicts(ctx, w, state, work, &stats); err != nil {
-		return nil, stats, err
+	if err := j.askVerdicts(ctx, w, state, work, stats); err != nil {
+		return j.inHalves(ctx, w, stats, err)
 	}
-	if err := j.askLocations(ctx, w, state, work, &stats); err != nil {
-		return nil, stats, err
+	if err := j.askLocations(ctx, w, state, work, stats); err != nil {
+		return j.inHalves(ctx, w, stats, err)
 	}
 
 	var findings []Finding
@@ -225,7 +231,39 @@ func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, Stats,
 			Message:       p.tenet.Tenet,
 		})
 	}
-	return findings, stats, nil
+	return findings, nil
+}
+
+// inHalves judges the window in two, which is the only way left when a single
+// question and the window together are over budget. Any answer the window
+// already had is dropped: the halves ask about a different state, so nothing
+// carries over.
+func (j *Judge) inHalves(ctx context.Context, w *source.Window, stats *Stats, err error) ([]Finding, error) {
+	if !errors.Is(err, errOversize) {
+		return nil, err
+	}
+	if len(w.Lines) < 2 {
+		return nil, fmt.Errorf("%s:%d: %w", w.Path(), w.First, err)
+	}
+	j.logf("%s:%d %v, judging its %d lines in halves", w.Path(), w.First, err, len(w.Lines))
+
+	var findings []Finding
+	for _, half := range halves(w) {
+		found, err := j.judge(ctx, half, stats)
+		if err != nil {
+			return nil, err
+		}
+		findings = append(findings, found...)
+	}
+	return findings, nil
+}
+
+func halves(w *source.Window) []*source.Window {
+	mid := len(w.Lines) / 2
+	return []*source.Window{
+		{File: w.File, First: w.First, Lines: w.Lines[:mid]},
+		{File: w.File, First: w.First + mid, Lines: w.Lines[mid:]},
+	}
 }
 
 func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
@@ -312,16 +350,68 @@ func topLine(a jev.Answer) string {
 	return label
 }
 
+// ask answers every question, over as many calls as the token budget needs,
+// and merges the answers as if one call had been made.
 func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, questions map[string]jev.Question, stats *Stats) (*jev.Response, error) {
-	resp, err := j.Asker.Ask(ctx, state, questions)
+	groups, err := split(state, questions)
 	if err != nil {
 		return nil, err
 	}
-	stats.Calls++
-	stats.InputTokens += resp.Usage.InputTokens
-	stats.CostUSD += jev.Cost(resp.Usage)
-	if j.Log != nil {
-		j.Log(fmt.Sprintf("%s:%d %s for %d tenets, %d input tokens", w.Path(), w.First, kind, len(questions), resp.Usage.InputTokens))
+	merged := &jev.Response{Answers: make(map[string]jev.Answer, len(questions))}
+	for _, group := range groups {
+		resp, err := j.Asker.Ask(ctx, state, group)
+		if err != nil {
+			return nil, err
+		}
+		stats.Calls++
+		stats.InputTokens += resp.Usage.InputTokens
+		stats.CostUSD += jev.Cost(resp.Usage)
+		merged.Model, merged.RequestID = resp.Model, resp.RequestID
+		merged.Usage.InputTokens += resp.Usage.InputTokens
+		merged.Usage.OutputTokens += resp.Usage.OutputTokens
+		for name, answer := range resp.Answers {
+			merged.Answers[name] = answer
+		}
 	}
-	return resp, nil
+	j.logf("%s:%d %s for %d tenets, ~%d estimated tokens, %d calls, %d input tokens",
+		w.Path(), w.First, kind, len(questions), jev.RequestTokens(state, questions), len(groups), merged.Usage.InputTokens)
+	return merged, nil
+}
+
+// errOversize says that no grouping of the questions can fit the window into
+// one request, which leaves only a smaller window.
+var errOversize = errors.New("does not fit the request budget")
+
+// split partitions the questions into requests that each stay within the
+// budget, in name order so that the same window always splits the same way.
+func split(state string, questions map[string]jev.Question) ([]map[string]jev.Question, error) {
+	base := jev.EstimateTokens(state)
+	names := make([]string, 0, len(questions))
+	for name := range questions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var groups []map[string]jev.Question
+	group := map[string]jev.Question{}
+	tokens := base
+	for _, name := range names {
+		cost := jev.QuestionTokens(name, questions[name])
+		if base+cost > jev.RequestBudget {
+			return nil, fmt.Errorf("%q alone %w: about %d tokens against %d", name, errOversize, base+cost, jev.RequestBudget)
+		}
+		if len(group) > 0 && tokens+cost > jev.RequestBudget {
+			groups = append(groups, group)
+			group, tokens = map[string]jev.Question{}, base
+		}
+		group[name] = questions[name]
+		tokens += cost
+	}
+	return append(groups, group), nil
+}
+
+func (j *Judge) logf(format string, args ...any) {
+	if j.Log != nil {
+		j.Log(fmt.Sprintf(format, args...))
+	}
 }

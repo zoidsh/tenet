@@ -80,6 +80,11 @@ tenets:
 
 func fixture(t *testing.T, body string, reportable map[int]bool) (*judge.Judge, *fake, []*source.Window) {
 	t.Helper()
+	return fixtureWith(t, config, body, reportable)
+}
+
+func fixtureWith(t *testing.T, config, body string, reportable map[int]bool) (*judge.Judge, *fake, []*source.Window) {
+	t.Helper()
 	cfg, err := tenets.Parse([]byte(config))
 	if err != nil {
 		t.Fatal(err)
