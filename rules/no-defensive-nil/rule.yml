@@ -1,12 +1,12 @@
 id: no-defensive-nil
-tenet: "Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden, including a check the code above has already made impossible, whether it tests for absence or for emptiness."
+tenet: "Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden."
 criteria:
   true: "The code checks a value for nil, null, None, undefined or emptiness and silently returns or skips, although the surrounding code already guarantees the value is present: the function itself just produced it with a New... constructor, a factory call, a new expression, an address taken of a local, or a literal; a collection was built with an element already in it on the line above, so it cannot be empty; a guard or a validator above has already returned or raised on it; the value was read or dereferenced above the check, so the function would have failed before ever reaching it; or its declared type does not admit null. The branch is unreachable, and its only effect would be a silent nil, none or empty return."
   false: "The nil check guards a value that can genuinely be absent at this point, such as a map or repository lookup, a pattern match, an optional field, or user input, or the check produces an explicit error rather than a silent return."
 source: Kaikei-e/Alt CLAUDE.md
-# The highest an ok example scores is 0.13, so 0.75 clears every acceptable
-# case by 0.62 and catches the unreachable null check that hovers on 0.80 from
-# one run to the next.
+# The highest an ok example scores is 0.09, so 0.75 clears every acceptable
+# case by 0.66. The violations this rule is least sure of are the unreachable
+# checks it has to read across lines to see, and they sit in the seventies.
 fail: 0.75
 include: ["**/*.go"]
 tags: [code, errors]
