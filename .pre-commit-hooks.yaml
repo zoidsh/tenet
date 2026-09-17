@@ -1,0 +1,15 @@
+- id: tenetlint
+  name: tenetlint
+  description: Lint the staged changes against tenets.yml
+  entry: tenetlint
+  language: golang
+  pass_filenames: false
+  stages: [pre-commit]
+
+- id: tenetlint-commit-msg
+  name: tenetlint commit message
+  description: Lint the commit message against tenets.yml
+  entry: tenetlint --commit-msg
+  language: golang
+  pass_filenames: true
+  stages: [commit-msg]
