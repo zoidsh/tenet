@@ -70,20 +70,71 @@ const (
 	LabelOK        Label = "ok"
 )
 
-// Example is a labelled snippet that check measures a tenet against. Line is
-// the one-based line within Code a finding should land on, left out when the
-// example is not about a particular line.
+// Example is a labelled snippet that check measures a tenet against. Lines is
+// where within Code a finding should land, left out when the example is not
+// about particular lines.
 type Example struct {
-	Label Label  `yaml:"label"`
-	Line  int    `yaml:"line"`
-	Lang  string `yaml:"lang"`
-	Code  string `yaml:"code"`
+	Label Label     `yaml:"label"`
+	Lines LineRange `yaml:"lines"`
+	Lang  string    `yaml:"lang"`
+	Code  string    `yaml:"code"`
 }
 
-// Lines are the example's code lines. The newline a YAML block scalar ends on
-// is not a line of code.
-func (e Example) Lines() []string {
+// CodeLines are the example's code lines. The newline a YAML block scalar ends
+// on is not a line of code.
+func (e Example) CodeLines() []string {
 	return strings.Split(strings.TrimRight(e.Code, "\n"), "\n")
+}
+
+// LineRange is the one-based span of code a violation covers. A violation that
+// runs over several lines has no single right line to be reported on, so any
+// line inside the span counts as the finding landing where it should.
+type LineRange struct {
+	First int
+	Last  int
+}
+
+// Set reports whether the example named any lines at all.
+func (r LineRange) Set() bool { return r.First > 0 }
+
+// Contains reports whether a line falls inside the span. A range nobody set
+// holds no line, not even the zero one a question that was never asked
+// answers with.
+func (r LineRange) Contains(line int) bool {
+	return r.Set() && line >= r.First && line <= r.Last
+}
+
+// UnmarshalYAML reads `lines: 12` as well as `lines: [12, 14]`, because most
+// violations are one line and writing a pair for every one of them is noise.
+func (r *LineRange) UnmarshalYAML(node *yaml.Node) error {
+	var one int
+	if err := node.Decode(&one); err == nil {
+		*r = LineRange{First: one, Last: one}
+		return r.check()
+	}
+	var pair []int
+	if err := node.Decode(&pair); err != nil {
+		return fmt.Errorf("lines: must be a line or a pair of lines: %w", err)
+	}
+	switch len(pair) {
+	case 1:
+		*r = LineRange{First: pair[0], Last: pair[0]}
+	case 2:
+		*r = LineRange{First: pair[0], Last: pair[1]}
+	default:
+		return fmt.Errorf("lines: must hold one or two lines, got %d", len(pair))
+	}
+	return r.check()
+}
+
+func (r LineRange) check() error {
+	if r.First < 1 {
+		return fmt.Errorf("lines: a line is counted from 1, got %d", r.First)
+	}
+	if r.Last < r.First {
+		return fmt.Errorf("lines: %d to %d ends before it starts", r.First, r.Last)
+	}
+	return nil
 }
 
 // Criteria describe to the model what a true and a false verdict mean.
@@ -216,8 +267,8 @@ func validateExamples(id string, examples []Example) error {
 		if strings.TrimSpace(e.Code) == "" {
 			return fmt.Errorf("tenet %q: examples[%d]: code is required", id, i)
 		}
-		if e.Line < 0 || e.Line > len(e.Lines()) {
-			return fmt.Errorf("tenet %q: examples[%d]: line %d is outside the %d lines of code", id, i, e.Line, len(e.Lines()))
+		if e.Lines.Set() && e.Lines.Last > len(e.CodeLines()) {
+			return fmt.Errorf("tenet %q: examples[%d]: line %d is outside the %d lines of code", id, i, e.Lines.Last, len(e.CodeLines()))
 		}
 	}
 	return nil

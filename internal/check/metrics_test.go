@@ -112,8 +112,8 @@ func TestAdviceBoundaries(t *testing.T) {
 
 func TestMeasureCountsAndMisjudged(t *testing.T) {
 	examples := []check.Judged{
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a := 1\nb := 2\n", Line: 2}, Prob: 0.9, Line: 2},
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "c := 3\n", Line: 1}, Prob: 0.45, Line: 1},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a := 1\nb := 2\n", Lines: at(2, 2)}, Prob: 0.9, Line: 2},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "c := 3\n", Lines: at(1, 1)}, Prob: 0.45, Line: 1},
 		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "d := 4\n"}, Prob: 0.8},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "e := 5\n"}, Prob: 0.1},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "f := 6\n"}, Prob: 0.2},
@@ -151,9 +151,9 @@ func TestMeasureCountsAndMisjudged(t *testing.T) {
 
 func TestLocationMissCountsAgainstTheRate(t *testing.T) {
 	examples := []check.Judged{
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\n", Line: 2}, Prob: 0.9, Line: 3},
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\n", Line: 2}, Prob: 0.9, Line: 2},
-		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\n", Line: 1}, Prob: 0.9, Line: 1},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\n", Lines: at(2, 2)}, Prob: 0.9, Line: 3},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\n", Lines: at(2, 2)}, Prob: 0.9, Line: 2},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\n", Lines: at(1, 1)}, Prob: 0.9, Line: 1},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "a\n"}, Prob: 0.1},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "b\n"}, Prob: 0.1},
 		{Example: tenets.Example{Label: tenets.LabelOK, Code: "c\n"}, Prob: 0.1},
@@ -164,6 +164,40 @@ func TestLocationMissCountsAgainstTheRate(t *testing.T) {
 	}
 	if math.Abs(r.LocationRate-2.0/3) > 1e-9 {
 		t.Errorf("location rate is %v", r.LocationRate)
+	}
+}
+
+func at(first, last int) tenets.LineRange {
+	return tenets.LineRange{First: first, Last: last}
+}
+
+func TestASpanCountsAnyLineInsideIt(t *testing.T) {
+	examples := []check.Judged{
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\nd\n", Lines: at(2, 3)}, Prob: 0.9, Line: 3},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\nd\n", Lines: at(2, 3)}, Prob: 0.9, Line: 2},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\nc\nd\n", Lines: at(2, 3)}, Prob: 0.9, Line: 4},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "a\n"}, Prob: 0.1},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "b\n"}, Prob: 0.1},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "c\n"}, Prob: 0.1},
+	}
+	r := check.Measure(tenet(), examples, 6)
+	if r.LocatedExamples != 3 || r.LocationHits != 2 {
+		t.Errorf("location is %d of %d, want the two lines inside the span", r.LocationHits, r.LocatedExamples)
+	}
+}
+
+func TestAnUnaskedLocationIsAMiss(t *testing.T) {
+	examples := []check.Judged{
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\n", Lines: at(1, 2)}, Prob: 0.9},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\n", Lines: at(1, 2)}, Prob: 0.9, Line: 1},
+		{Example: tenets.Example{Label: tenets.LabelViolation, Code: "a\nb\n"}, Prob: 0.9},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "a\n"}, Prob: 0.1},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "b\n"}, Prob: 0.1},
+		{Example: tenets.Example{Label: tenets.LabelOK, Code: "c\n"}, Prob: 0.1},
+	}
+	r := check.Measure(tenet(), examples, 6)
+	if r.LocatedExamples != 2 || r.LocationHits != 1 {
+		t.Errorf("location is %d of %d", r.LocationHits, r.LocatedExamples)
 	}
 }
 

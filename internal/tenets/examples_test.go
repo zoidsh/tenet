@@ -19,7 +19,14 @@ tenets:
     include: ["**/*.go"]
     examples:
       - label: violation
-        line: 2
+        lines: 2
+        code: |
+          func add(a, b int) int {
+              // add a and b
+              return a + b
+          }
+      - label: violation
+        lines: [1, 3]
         code: |
           func add(a, b int) int {
               // add a and b
@@ -38,20 +45,36 @@ func TestParseInlineExamples(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := cfg.Tenets[0].Examples
-	if len(got) != 2 {
+	if len(got) != 3 {
 		t.Fatalf("got %d examples", len(got))
 	}
-	if got[0].Label != tenets.LabelViolation || got[0].Line != 2 || got[0].Lang != "" {
+	// A bare line is the span that holds only itself.
+	if got[0].Label != tenets.LabelViolation || got[0].Lines != (tenets.LineRange{First: 2, Last: 2}) || got[0].Lang != "" {
 		t.Errorf("first example is %#v", got[0])
 	}
-	if lines := got[0].Lines(); len(lines) != 4 || lines[1] != "    // add a and b" {
+	if lines := got[0].CodeLines(); len(lines) != 4 || lines[1] != "    // add a and b" {
 		t.Errorf("lines are %#v", lines)
 	}
-	if got[1].Label != tenets.LabelOK || got[1].Line != 0 || got[1].Lang != "python" {
+	if got[1].Lines != (tenets.LineRange{First: 1, Last: 3}) {
 		t.Errorf("second example is %#v", got[1])
 	}
-	if lines := got[1].Lines(); len(lines) != 2 {
+	if got[2].Label != tenets.LabelOK || got[2].Lines.Set() || got[2].Lang != "python" {
+		t.Errorf("third example is %#v", got[2])
+	}
+	if lines := got[2].CodeLines(); len(lines) != 2 {
 		t.Errorf("a block scalar's closing newline became a line: %#v", lines)
+	}
+}
+
+func TestLineRangeContains(t *testing.T) {
+	span := tenets.LineRange{First: 4, Last: 6}
+	for line, want := range map[int]bool{0: false, 3: false, 4: true, 5: true, 6: true, 7: false} {
+		if got := span.Contains(line); got != want {
+			t.Errorf("4 to 6 contains %d = %v", line, got)
+		}
+	}
+	if (tenets.LineRange{}).Contains(0) {
+		t.Error("an example that named no lines contains the line nothing was named on")
 	}
 }
 
@@ -71,7 +94,7 @@ tenets:
 		t.Fatal(err)
 	}
 	write(t, filepath.Join(dir, "examples", "comment-why.yml"), `- label: violation
-  line: 1
+  lines: 1
   code: |
     // add one
     x = x + 1
@@ -85,7 +108,7 @@ tenets:
 	if len(got) != 2 {
 		t.Fatalf("got %d examples, want the inline one and the one from the file", len(got))
 	}
-	if got[0].Label != tenets.LabelOK || got[1].Label != tenets.LabelViolation || got[1].Line != 1 {
+	if got[0].Label != tenets.LabelOK || got[1].Label != tenets.LabelViolation || !got[1].Lines.Contains(1) {
 		t.Errorf("examples are %#v", got)
 	}
 }
@@ -127,8 +150,38 @@ func TestExampleValidationErrors(t *testing.T) {
 		},
 		{
 			"line past the code",
-			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        line: 4\n        code: \"y = 1\"\n",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: 4\n        code: \"y = 1\"\n",
 			"line 4 is outside the 1 lines",
+		},
+		{
+			"span past the code",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: [1, 3]\n        code: \"y = 1\\nz = 2\"\n",
+			"line 3 is outside the 2 lines",
+		},
+		{
+			"span ending before it starts",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: [3, 1]\n        code: \"y = 1\"\n",
+			"3 to 1 ends before it starts",
+		},
+		{
+			"line counted from zero",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: 0\n        code: \"y = 1\"\n",
+			"counted from 1",
+		},
+		{
+			"too many lines",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: [1, 2, 3]\n        code: \"y = 1\"\n",
+			"one or two lines, got 3",
+		},
+		{
+			"lines that are not lines",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        lines: here\n        code: \"y = 1\"\n",
+			"must be a line or a pair of lines",
+		},
+		{
+			"the old line key",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: violation\n        line: 1\n        code: \"y = 1\"\n",
+			"line",
 		},
 		{
 			"unknown field",

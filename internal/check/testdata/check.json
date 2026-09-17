@@ -16,9 +16,9 @@
       "mean_violation": 0.75,
       "mean_ok": 0.30666666666666664,
       "gap": 0.44333333333333336,
-      "located_examples": 2,
-      "location_hits": 1,
-      "location_rate": 0.5,
+      "located_examples": 3,
+      "location_hits": 2,
+      "location_rate": 0.6666666666666666,
       "misjudged": [
         {
           "label": "violation",

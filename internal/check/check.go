@@ -110,7 +110,7 @@ func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats,
 
 func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example) (Judged, Stats, error) {
 	var stats Stats
-	lines := e.Lines()
+	lines := e.CodeLines()
 	state := judge.StateOf(exampleLang(t, e), exampleFile(t, e), lines)
 	key := cache.Key(state, t.Hash())
 
@@ -126,8 +126,7 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 	if !cached {
 		questions[verdictQuestion] = judge.VerdictQuestion(t)
 	}
-	wantLine := e.Line > 0
-	if wantLine && located == "" {
+	if e.Lines.Set() && located == "" {
 		q, err := judge.LocationQuestion(t, len(lines))
 		if err != nil {
 			return Judged{}, stats, err
@@ -165,7 +164,7 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 	return judged, stats, nil
 }
 
-func firstLine(e tenets.Example) string { return strings.TrimSpace(e.Lines()[0]) }
+func firstLine(e tenets.Example) string { return strings.TrimSpace(e.CodeLines()[0]) }
 
 // exampleLang is the language the model is told the example is written in.
 func exampleLang(t *tenets.Tenet, e tenets.Example) string {

@@ -26,7 +26,7 @@ tenets:
     examples_from: examples/comment-why.yml
     examples:
       - label: violation
-        line: 3
+        lines: [2, 3]
         code: |
           func add(a, b int) int {
               // add a and b

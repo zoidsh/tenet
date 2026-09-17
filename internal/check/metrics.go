@@ -169,16 +169,16 @@ func Measure(t *tenets.Tenet, judged []Judged, minExamples int) Result {
 			r.Misjudged = append(r.Misjudged, Misjudged{
 				Label:      j.Example.Label,
 				Prob:       j.Prob,
-				Code:       j.Example.Lines()[0],
+				Code:       j.Example.CodeLines()[0],
 				Borderline: math.Abs(j.Prob-r.Threshold) <= Borderline,
 			})
 		}
 		if (j.Prob >= r.Confident) == violation {
 			correctConfident++
 		}
-		if j.Example.Line > 0 {
+		if j.Example.Lines.Set() {
 			r.LocatedExamples++
-			if j.Line == j.Example.Line {
+			if j.Example.Lines.Contains(j.Line) {
 				r.LocationHits++
 			}
 		}

@@ -3,7 +3,7 @@ comment-why: usable
   auc               0.89
   accuracy          0.67 at threshold 0.50, 0.67 at confident 0.70
   mean probability  violation 0.75, ok 0.31, gap 0.44
-  location          1 of 2 lines named (0.50)
+  location          2 of 3 lines named (0.67)
   misjudged         2 of 6
     violation p=0.45  // step one [near the threshold]
     ok        p=0.75  // The vendor SDK requires this order.

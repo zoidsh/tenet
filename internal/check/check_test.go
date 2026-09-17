@@ -74,18 +74,19 @@ tenets:
     include: ["**/*.go"]
     examples:
       - label: violation
-        line: 2
+        lines: 2
         code: |
           func add(a, b int) int {
               // add a and b
               return a + b
           }
       - label: violation
-        line: 1
+        lines: [1, 2]
         code: |
           // bump the counter
           counter++
       - label: violation
+        lines: 2
         code: |
           // step one
           start()
@@ -280,7 +281,7 @@ func TestCachedExamplesCostNothing(t *testing.T) {
 	if stats.CacheHits != 14 {
 		t.Errorf("cache hits are %d", stats.CacheHits)
 	}
-	if results[0].Verdict != check.VerdictUsable || results[0].LocationHits != 1 {
+	if results[0].Verdict != check.VerdictUsable || results[0].LocationHits != 2 {
 		t.Errorf("the cached run measured %#v", results[0])
 	}
 }
