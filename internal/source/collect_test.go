@@ -273,8 +273,8 @@ func TestCollectStagedSkips(t *testing.T) {
 		{"vendor/v.go", "in vendor"},
 		{"big.go", "larger than 1MB"},
 		{"bin.go", "binary"},
-		{ConfigName, "tenetlint's own file"},
-		{BaselineName, "tenetlint's own file"},
+		{ConfigName, "tenet's own file"},
+		{BaselineName, "tenet's own file"},
 	} {
 		if reasons[want.file] != want.reason {
 			t.Errorf("%s skipped as %q, want %q", want.file, reasons[want.file], want.reason)
@@ -304,7 +304,7 @@ func TestCollectPathsSkipsOwnFiles(t *testing.T) {
 		reasons[s.File] = s.Reason
 	}
 	for _, file := range []string{ConfigName, BaselineName} {
-		if reasons[file] != "tenetlint's own file" {
+		if reasons[file] != "tenet's own file" {
 			t.Errorf("%s skipped as %q", file, reasons[file])
 		}
 	}

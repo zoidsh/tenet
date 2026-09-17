@@ -119,7 +119,7 @@ func readBaseline(t *testing.T, path string) baseline.File {
 }
 
 // writeBaseline accepts everything the repository has today, which is what a
-// team adopting tenetlint does first.
+// team adopting tenet does first.
 func writeBaseline(t *testing.T) {
 	t.Helper()
 	if code, _, stderr := runCmd(t, "baseline", "--no-cache", "."); code != 0 {

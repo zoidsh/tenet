@@ -243,12 +243,12 @@ func TestPreCommitHookAllowsCleanRun(t *testing.T) {
 func TestPreCommitHookAllowsWhenSkipped(t *testing.T) {
 	tenet := findingTenet(t)
 
-	code, _, stderr := runPreCommit(t, tenet, commitInput, "TENETLINT_SKIP=1")
+	code, _, stderr := runPreCommit(t, tenet, commitInput, "TENET_SKIP=1")
 	if code != 0 || stderr != "" {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
 	if tenet.ran() {
-		t.Error("the lint ran although TENETLINT_SKIP was set")
+		t.Error("the lint ran although TENET_SKIP was set")
 	}
 }
 

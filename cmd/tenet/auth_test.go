@@ -65,7 +65,7 @@ func runAuthCmd(t *testing.T, stdin string, args ...string) (int, string, string
 }
 
 func globalFile(config string) string {
-	return filepath.Join(config, "tenetlint", auth.FileName)
+	return filepath.Join(config, "tenet", auth.FileName)
 }
 
 // While one provider works there is nothing to choose between, so a bare
@@ -93,7 +93,7 @@ func TestAuthWithNoProviderTakesTheOnlyOne(t *testing.T) {
 func TestAuthRefusesTheHostedServiceUntilItExists(t *testing.T) {
 	_, config := authRepo(t)
 
-	code, _, stderr := runAuthCmd(t, "", "tenetlint", "--key", testKey, "--no-verify")
+	code, _, stderr := runAuthCmd(t, "", "tenet", "--key", testKey, "--no-verify")
 	if code != report.ExitError {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
@@ -241,7 +241,7 @@ func TestAuthStatusWithoutAKeyExitsOne(t *testing.T) {
 	}
 	for _, want := range []string{
 		"typesafe: none",
-		"tenetlint: none",
+		"tenet: none",
 		jev.APIKeyEnv + ": not set",
 		filepath.Join(dir, auth.Dir, auth.FileName),
 		globalFile(config),

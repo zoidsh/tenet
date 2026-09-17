@@ -373,7 +373,7 @@ func TestParseRejectsAnUnknownProvider(t *testing.T) {
 }
 
 func TestParseRefusesAProviderThatIsNotThereYet(t *testing.T) {
-	_, err := tenets.Parse([]byte("version: 1\nprovider: tenetlint\n"))
+	_, err := tenets.Parse([]byte("version: 1\nprovider: tenet\n"))
 	if err == nil || !strings.Contains(err.Error(), "not available yet") {
 		t.Fatalf("error is %v", err)
 	}

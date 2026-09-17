@@ -31,7 +31,7 @@ const (
 
 // FormatEnv names the format whatever the terminal says, for a caller that
 // pipes the output somewhere and still wants to read it.
-const FormatEnv = "TENETLINT_FORMAT"
+const FormatEnv = "TENET_FORMAT"
 
 // Next is what a user does about the findings above it. It names the
 // directive that silences one, so that the way out is on the screen.

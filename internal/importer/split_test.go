@@ -45,7 +45,7 @@ func show(candidates []importer.Candidate) string {
 
 func TestSplitDropsShortLongAndLinks(t *testing.T) {
 	long := "word " + strings.Repeat("filler ", importer.MaxWords)
-	source := "Too short here.\n\n" + long + "\n\n[the plan](docs/plan.md)\n\n~/projects/tenetlint\n"
+	source := "Too short here.\n\n" + long + "\n\n[the plan](docs/plan.md)\n\n~/projects/tenet\n"
 	if got := importer.Split("f.md", []byte(source)); len(got) != 0 {
 		t.Errorf("kept %#v", got)
 	}

@@ -46,7 +46,7 @@ const (
 // same two questions of every sentence, so the only thing besides the sentence
 // that changes what an answer means is the model. The version is part of it so
 // that rewording the questions retires the old answers.
-const cacheSalt = "tenetlint-importer-v1"
+const cacheSalt = "tenet-importer-v1"
 
 func kindLabels() map[string]any {
 	return map[string]any{
@@ -150,7 +150,7 @@ func (s *Sorter) Sort(ctx context.Context, candidates []Candidate) ([]Sorted, St
 // accepted takes a commit-message rule whatever the checkable answer says:
 // that question is about the changed lines of source files, which a commit
 // message never is, so it scores such a rule down for being the kind of rule
-// tenetlint lints messages with.
+// tenet lints messages with.
 func accepted(kind string, checkable float64) bool {
 	if kind == KindCommitRule {
 		return true

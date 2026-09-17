@@ -111,7 +111,7 @@ func Kind(path string) string {
 func (f *File) Kind() string { return Kind(f.Path) }
 
 // KindForLanguage is the kind of file a language is written in, which is how
-// a snippet that never came from disk is framed. A language tenetlint does
+// a snippet that never came from disk is framed. A language that tenet does
 // not know is code, the kind a rule is most often about.
 func KindForLanguage(lang string) string {
 	if ext := ExtensionFor(lang); ext != "" {

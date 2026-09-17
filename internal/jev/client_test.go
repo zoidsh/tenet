@@ -115,7 +115,7 @@ func TestAskSendsHeadersAndBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client, _ := testClient(t, srv, WithUserAgent("tenetlint/9.9.9"))
+	client, _ := testClient(t, srv, WithUserAgent("tenet/9.9.9"))
 	if _, err := client.Ask(context.Background(), "state text", map[string]Question{
 		"a": Noul("Is it so?", "yes", "no"),
 	}); err != nil {
@@ -131,7 +131,7 @@ func TestAskSendsHeadersAndBody(t *testing.T) {
 	if got.contentType != "application/json" {
 		t.Errorf("content-type = %q", got.contentType)
 	}
-	if got.userAgent != "tenetlint/9.9.9" {
+	if got.userAgent != "tenet/9.9.9" {
 		t.Errorf("user-agent = %q", got.userAgent)
 	}
 	if got.body.State != "state text" {
@@ -147,7 +147,7 @@ func TestAskSendsHeadersAndBody(t *testing.T) {
 
 func TestDefaultUserAgentCarriesVersion(t *testing.T) {
 	client := New("k")
-	if !strings.HasPrefix(client.opts.UserAgent, "tenetlint/") {
+	if !strings.HasPrefix(client.opts.UserAgent, "tenet/") {
 		t.Errorf("user agent = %q", client.opts.UserAgent)
 	}
 }

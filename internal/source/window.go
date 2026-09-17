@@ -49,7 +49,7 @@ func LanguageForPath(path string) string {
 }
 
 // ExtensionFor is the extension a file of the named language is written with,
-// empty for a language tenetlint does not know. It is spelled out rather than
+// empty for a language that tenet does not know. It is spelled out rather than
 // read backwards out of the extension table, which holds several extensions
 // per language and no opinion on which one to write.
 func ExtensionFor(lang string) string {

@@ -59,7 +59,7 @@ func Open(dir string) (*Cache, error) {
 		if err != nil {
 			return nil, err
 		}
-		dir = filepath.Join(base, "tenetlint", Version)
+		dir = filepath.Join(base, "tenet", Version)
 	}
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, err

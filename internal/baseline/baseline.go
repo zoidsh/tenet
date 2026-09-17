@@ -1,5 +1,5 @@
 // Package baseline records the findings a repository has decided to live
-// with, so that a team can adopt tenetlint without fixing its whole history
+// with, so that a team can adopt tenet without fixing its whole history
 // first and later runs block only what is new.
 package baseline
 

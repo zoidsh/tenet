@@ -45,11 +45,11 @@ var providers = []Provider{
 		Summary: "TypeSafe's jev model, from an account at https://typesafe.ai",
 	},
 	{
-		Name:        "tenetlint",
-		Label:       "tenetlint",
-		Env:         "TENETLINT_API_KEY",
-		Summary:     "the hosted tenetlint service",
-		Unavailable: "the hosted tenetlint service is not available yet",
+		Name:        "tenet",
+		Label:       "tenet",
+		Env:         "TENET_API_KEY",
+		Summary:     "the hosted tenet service",
+		Unavailable: "the hosted tenet service is not available yet",
 	},
 }
 

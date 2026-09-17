@@ -1,4 +1,4 @@
-// Package source decides what tenetlint looks at: which files, which of their
+// Package source decides what tenet looks at: which files, which of their
 // lines may carry a finding, and how they are cut into windows.
 package source
 
@@ -28,15 +28,15 @@ var skipDirs = map[string]bool{
 // Files whose contents must never leave the machine, whatever the tenets say.
 var secretPatterns = []string{".env", ".env.*", "*.pem", "*.key", "id_rsa*", "*.p12", "*.pfx"}
 
-// ConfigName and BaselineName are tenetlint's own files. They live here
+// ConfigName and BaselineName are tenet's own files. They live here
 // rather than in the packages that own them because those packages import
 // this one, and the skip below has to name them.
 const (
 	ConfigName   = "tenets.yml"
-	BaselineName = ".tenetlint-baseline.json"
+	BaselineName = ".tenet-baseline.json"
 )
 
-// Tenetlint's own files are never judged: both quote the tenets back, so a
+// tenet's own files are never judged: both quote the tenets back, so a
 // rule about narrating comments reads its own sentence in them as a
 // violation.
 var skipFiles = map[string]bool{ConfigName: true, BaselineName: true}
@@ -299,7 +299,7 @@ func skipByName(path string) string {
 		}
 	}
 	if skipFiles[name] {
-		return "tenetlint's own file"
+		return "tenet's own file"
 	}
 	for _, pattern := range secretPatterns {
 		if ok, _ := filepath.Match(pattern, name); ok {

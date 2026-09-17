@@ -65,7 +65,7 @@ func TestResolveTakesTheEnvironmentFirstAndTheGlobalFileLast(t *testing.T) {
 	dir, config := repo(t)
 	p := typesafe(t)
 	write(t, filepath.Join(dir, auth.Dir, auth.FileName), "typesafe="+projectKey+"\n")
-	write(t, filepath.Join(config, "tenetlint", auth.FileName), "typesafe="+globalKey+"\n")
+	write(t, filepath.Join(config, "tenet", auth.FileName), "typesafe="+globalKey+"\n")
 	t.Setenv(p.Env, envKey)
 
 	for _, want := range []struct {
@@ -79,7 +79,7 @@ func TestResolveTakesTheEnvironmentFirstAndTheGlobalFileLast(t *testing.T) {
 			}
 		}},
 		{globalKey, auth.SourceGlobal, func() {
-			if err := os.Remove(filepath.Join(config, "tenetlint", auth.FileName)); err != nil {
+			if err := os.Remove(filepath.Join(config, "tenet", auth.FileName)); err != nil {
 				t.Fatal(err)
 			}
 		}},
@@ -107,7 +107,7 @@ func TestResolveTakesTheEnvironmentFirstAndTheGlobalFileLast(t *testing.T) {
 // can both be signed in to at once.
 func TestResolveIsPerProvider(t *testing.T) {
 	_, config := repo(t)
-	write(t, filepath.Join(config, "tenetlint", auth.FileName), "tenetlint="+globalKey+"\n")
+	write(t, filepath.Join(config, "tenet", auth.FileName), "tenet="+globalKey+"\n")
 
 	key, _, err := auth.Resolve(typesafe(t))
 	if err != nil {
@@ -129,7 +129,7 @@ func TestGlobalPathIsUnderDotConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(home, ".config", "tenetlint", auth.FileName); got != want {
+	if want := filepath.Join(home, ".config", "tenet", auth.FileName); got != want {
 		t.Errorf("the global file is %q, want %q", got, want)
 	}
 }
@@ -143,7 +143,7 @@ func TestGlobalPathFollowsTheConfigHomeWhenItIsSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(config, "tenetlint", auth.FileName); got != want {
+	if want := filepath.Join(config, "tenet", auth.FileName); got != want {
 		t.Errorf("the global file is %q, want %q", got, want)
 	}
 }
@@ -155,7 +155,7 @@ func TestSaveWritesAPrivateFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(config, "tenetlint", auth.FileName); saved.Path != want {
+	if want := filepath.Join(config, "tenet", auth.FileName); saved.Path != want {
 		t.Errorf("saved to %q, want %q", saved.Path, want)
 	}
 	if got := read(t, saved.Path); got != "typesafe="+globalKey+"\n" {
@@ -233,7 +233,7 @@ func TestSaveProjectLeavesAnExistingIgnoreAlone(t *testing.T) {
 // rewriting the file must not drop that key.
 func TestSaveKeepsALineItDoesNotUnderstand(t *testing.T) {
 	_, config := repo(t)
-	path := filepath.Join(config, "tenetlint", auth.FileName)
+	path := filepath.Join(config, "tenet", auth.FileName)
 	write(t, path, "future=some-other-key\n")
 
 	if _, err := auth.Save(typesafe(t), globalKey, true); err != nil {
@@ -248,7 +248,7 @@ func TestSaveKeepsALineItDoesNotUnderstand(t *testing.T) {
 // rather than reading as though no key had ever been saved.
 func TestResolveRefusesALineItCannotRead(t *testing.T) {
 	_, config := repo(t)
-	path := filepath.Join(config, "tenetlint", auth.FileName)
+	path := filepath.Join(config, "tenet", auth.FileName)
 	write(t, path, "# a comment\n\ntypesafe "+globalKey+"\n")
 
 	_, _, err := auth.Resolve(typesafe(t))
@@ -262,7 +262,7 @@ func TestResolveRefusesALineItCannotRead(t *testing.T) {
 
 func TestSaveRefusesAProviderThatIsNotThereYet(t *testing.T) {
 	repo(t)
-	hosted, err := provider.Lookup("tenetlint")
+	hosted, err := provider.Lookup("tenet")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,14 +300,14 @@ func TestSaveValidatesBeforeWriting(t *testing.T) {
 	if _, err := auth.Save(typesafe(t), "short", true); err == nil {
 		t.Fatal("a short key was saved")
 	}
-	if _, err := os.Stat(filepath.Join(config, "tenetlint", auth.FileName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(config, "tenet", auth.FileName)); !os.IsNotExist(err) {
 		t.Errorf("the file was written anyway: %v", err)
 	}
 }
 
 func TestRemoveTakesTheKeyAndLeavesTheOthers(t *testing.T) {
 	_, config := repo(t)
-	path := filepath.Join(config, "tenetlint", auth.FileName)
+	path := filepath.Join(config, "tenet", auth.FileName)
 	write(t, path, "future=some-other-key\ntypesafe="+globalKey+"\n")
 	p := typesafe(t)
 

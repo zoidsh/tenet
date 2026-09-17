@@ -1,4 +1,4 @@
-// Package tenets loads the rules tenetlint judges code against.
+// Package tenets loads the rules tenet judges code against.
 package tenets
 
 import (

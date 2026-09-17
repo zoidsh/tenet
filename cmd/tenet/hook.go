@@ -16,10 +16,10 @@ import (
 // Marker is how an uninstall tells our hook from one somebody else wrote. It
 // keeps the old name of the command, because changing it would orphan every
 // hook already on a machine.
-const marker = "# tenetlint hook"
+const marker = "# tenet hook"
 
 // SkipEnv lets someone commit without a key, or without the lint, at all.
-const SkipEnv = "TENETLINT_SKIP"
+const SkipEnv = "TENET_SKIP"
 
 // hooks are the git hooks tenet installs. args are shell words, not
 // arguments to quote: "$1" is the message file git passes a commit-msg hook,

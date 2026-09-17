@@ -32,11 +32,11 @@ const (
 )
 
 // Where a saved key lives: Dir/FileName inside a repository, and
-// tenetlint/FileName under the config home.
+// tenet/FileName under the config home.
 const (
-	Dir      = ".tenetlint"
+	Dir      = ".tenet"
 	FileName = "credentials"
-	appDir   = "tenetlint"
+	appDir   = "tenet"
 
 	configHomeEnv = "XDG_CONFIG_HOME"
 )

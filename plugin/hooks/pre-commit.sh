@@ -1,7 +1,7 @@
 #!/bin/sh
 set -u
 
-[ -n "${TENETLINT_SKIP:-}" ] && exit 0
+[ -n "${TENET_SKIP:-}" ] && exit 0
 
 # The hook's "if" filter is best effort: Claude Code runs the hook anyway when
 # it cannot tell what a Bash command expands to. So read the tool call and look
@@ -10,7 +10,7 @@ if ! grep -q '"command"[[:space:]]*:[[:space:]]*"[^"]*git commit'; then
 	exit 0
 fi
 
-# A repository that does not use tenetlint, or a machine that has not installed
+# A repository that does not use tenet, or a machine that has not installed
 # it, must still be able to commit, so a missing binary is not a refusal.
 if ! command -v tenet >/dev/null 2>&1; then
 	echo "tenet is not on PATH; the staged changes were not linted" >&2

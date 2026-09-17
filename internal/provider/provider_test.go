@@ -33,7 +33,7 @@ func TestLookupUnknownNamesTheOnesItKnows(t *testing.T) {
 }
 
 func TestHostedProviderIsNotAvailableYet(t *testing.T) {
-	p, err := provider.Lookup("tenetlint")
+	p, err := provider.Lookup("tenet")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -142,7 +142,7 @@ func New(apiKey string, opts ...Option) *Client {
 	o := options{
 		BaseURL:        DefaultBaseURL,
 		Model:          DefaultModel,
-		UserAgent:      "tenetlint/" + buildinfo.Version(),
+		UserAgent:      "tenet/" + buildinfo.Version(),
 		HTTPClient:     http.DefaultClient,
 		MaxRetries:     DefaultMaxRetries,
 		AttemptTimeout: DefaultAttemptTimeout,

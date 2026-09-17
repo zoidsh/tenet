@@ -41,7 +41,7 @@ var (
 )
 
 // Split turns one rule file into the candidates the sort will be asked about.
-// What tenetlint itself wrote into a rule file is left out: those sentences
+// What tenet itself wrote into a rule file is left out: those sentences
 // say how to run the lint, and drafting them as tenets would have the lint
 // judge code against its own instructions.
 func Split(file string, data []byte) []Candidate {

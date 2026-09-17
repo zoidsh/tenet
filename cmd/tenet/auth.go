@@ -36,7 +36,7 @@ func newAuthCmd(g *globalOptions) *cobra.Command {
 		Short: "Save the API key a lint is judged with",
 		Long: `Save the API key a lint is judged with, so that it is not something to export before every run.
 
-A key is looked for in the provider's environment variable first, then in ` + auth.Dir + `/` + auth.FileName + ` in this repository, then in ~/.config/tenetlint/` + auth.FileName + `. A key saved globally works in every repository, --project keeps one in this repository alone, and CI needs no saved key at all: the environment variable outranks both.
+A key is looked for in the provider's environment variable first, then in ` + auth.Dir + `/` + auth.FileName + ` in this repository, then in ~/.config/tenet/` + auth.FileName + `. A key saved globally works in every repository, --project keeps one in this repository alone, and CI needs no saved key at all: the environment variable outranks both.
 
 Naming no provider saves the key for the only one there is to save it for, typesafe.
 
