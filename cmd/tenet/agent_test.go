@@ -97,6 +97,73 @@ func TestInitAgentReplacesTheSectionItWrote(t *testing.T) {
 	}
 }
 
+func TestInitAgentReplacesACursorRule(t *testing.T) {
+	dir := agentRepo(t)
+
+	if code, _, stderr := runInitCmd(t, "--agent", "cursor"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	code, stdout, stderr := runInitCmd(t, "--agent", "cursor")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.HasPrefix(stdout, "replaced ") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if got := read(t, filepath.Join(dir, ".cursor", "rules", "tenet.mdc")); !strings.Contains(got, importer.AgentSkill) {
+		t.Errorf("the rule is:\n%s", got)
+	}
+}
+
+func TestInitAgentDryRunWritesNothing(t *testing.T) {
+	dir := agentRepo(t)
+	writeFile(t, dir, "AGENTS.md", "# Rules\n\n"+importer.AgentHeading+"\n\nStale.\n")
+
+	code, stdout, stderr := runInitCmd(t, "--dry-run", "--agent", "cursor", "--agent", "agents")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "would write the tenet instructions in .cursor/rules/tenet.mdc") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if !strings.Contains(stdout, "would replace the tenet instructions in AGENTS.md") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".cursor")); !os.IsNotExist(err) {
+		t.Errorf("the cursor rule was written anyway: %v", err)
+	}
+	if got := read(t, filepath.Join(dir, "AGENTS.md")); !strings.Contains(got, "Stale.") {
+		t.Errorf("AGENTS.md was rewritten:\n%s", got)
+	}
+}
+
+func TestInitAgentRefusesTheDraftingFlags(t *testing.T) {
+	for _, flag := range []string{"--from", "--preset", "--config"} {
+		t.Run(flag, func(t *testing.T) {
+			dir := agentRepo(t)
+
+			code, _, stderr := runInitCmd(t, "--agent", "claude", flag, "something")
+			if code != report.ExitError {
+				t.Fatalf("exit %d: %s", code, stderr)
+			}
+			if !strings.Contains(stderr, flag) {
+				t.Errorf("stderr does not name %s: %q", flag, stderr)
+			}
+			if _, err := os.Stat(filepath.Join(dir, "CLAUDE.md")); !os.IsNotExist(err) {
+				t.Errorf("CLAUDE.md was written anyway: %v", err)
+			}
+		})
+	}
+	t.Run("--force", func(t *testing.T) {
+		agentRepo(t)
+
+		code, _, stderr := runInitCmd(t, "--agent", "claude", "--force")
+		if code != report.ExitError || !strings.Contains(stderr, "--force") {
+			t.Fatalf("exit %d: %s", code, stderr)
+		}
+	})
+}
+
 func TestInitAgentRepeats(t *testing.T) {
 	dir := agentRepo(t)
 

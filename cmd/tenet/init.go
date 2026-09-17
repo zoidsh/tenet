@@ -213,10 +213,26 @@ func (o *initOptions) writePresets(cmd *cobra.Command, presets []string, target,
 	return err
 }
 
+// draftFlags are about drafting a tenets.yml, which a run that writes agent
+// instructions does not do.
+var draftFlags = []string{"from", "preset", "config", "force"}
+
+func checkAgentFlags(cmd *cobra.Command) error {
+	for _, name := range draftFlags {
+		if cmd.Flags().Changed(name) {
+			return fmt.Errorf("--agent writes no %s, so it cannot be combined with --%s", tenets.FileName, name)
+		}
+	}
+	return nil
+}
+
 // writeAgents puts the tenet instructions where each named agent reads them.
 // Every name is resolved before anything is written, so that a typo in the
 // second one does not leave the first one written.
 func (o *initOptions) writeAgents(cmd *cobra.Command, root, dir string) error {
+	if err := checkAgentFlags(cmd); err != nil {
+		return fail(err)
+	}
 	targets := make([]importer.AgentTarget, 0, len(o.agents))
 	for _, name := range o.agents {
 		target, err := importer.Agent(name)
@@ -228,7 +244,7 @@ func (o *initOptions) writeAgents(cmd *cobra.Command, root, dir string) error {
 	out := cmd.OutOrStdout()
 	for _, target := range targets {
 		path := filepath.Join(root, filepath.FromSlash(target.Path))
-		replaced, err := writeAgentFile(path, target)
+		replaced, err := o.writeAgentFile(path, target)
 		if err != nil {
 			return fail(err)
 		}
@@ -236,23 +252,37 @@ func (o *initOptions) writeAgents(cmd *cobra.Command, root, dir string) error {
 		if err != nil {
 			return fail(err)
 		}
-		verb := "wrote"
-		if replaced {
-			verb = "replaced"
-		}
-		if _, err := fmt.Fprintf(out, "%s the tenet instructions in %s\n", verb, shown); err != nil {
+		if _, err := fmt.Fprintf(out, "%s the tenet instructions in %s\n", agentVerb(o.dryRun, replaced), shown); err != nil {
 			return fail(err)
 		}
 	}
 	return nil
 }
 
-func writeAgentFile(path string, target importer.AgentTarget) (bool, error) {
+func agentVerb(dryRun, replaced bool) string {
+	switch {
+	case dryRun && replaced:
+		return "would replace"
+	case dryRun:
+		return "would write"
+	case replaced:
+		return "replaced"
+	default:
+		return "wrote"
+	}
+}
+
+// writeAgentFile reads the file even on a dry run, because what it would say
+// about a file it is not writing is whether that file already has a section.
+func (o *initOptions) writeAgentFile(path string, target importer.AgentTarget) (bool, error) {
 	existing, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return false, err
 	}
 	data, replaced := target.Content(existing)
+	if o.dryRun {
+		return replaced, nil
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return false, err
 	}

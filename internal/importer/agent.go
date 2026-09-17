@@ -36,11 +36,6 @@ var agentTargets = []AgentTarget{
 	{Name: "claude", Path: "CLAUDE.md", Content: upsertSection},
 }
 
-// AgentTargets are the agents init can write the instructions for.
-func AgentTargets() []AgentTarget {
-	return agentTargets
-}
-
 // Agent is the target a --agent value names.
 func Agent(name string) (AgentTarget, error) {
 	for _, target := range agentTargets {
@@ -59,8 +54,8 @@ func Agent(name string) (AgentTarget, error) {
 // request, rather than when Cursor judges its description relevant.
 const cursorFrontMatter = "---\ndescription: Run the tenet lint and act on what it finds\nalwaysApply: true\n---\n\n"
 
-func cursorRule([]byte) ([]byte, bool) {
-	return []byte(cursorFrontMatter + AgentSkill), false
+func cursorRule(existing []byte) ([]byte, bool) {
+	return []byte(cursorFrontMatter + AgentSkill), len(existing) > 0
 }
 
 func upsertSection(existing []byte) ([]byte, bool) {

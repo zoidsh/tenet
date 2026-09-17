@@ -340,7 +340,7 @@ Reading the report is one thing and knowing to run it is another, so `plugin/` i
 /plugin install tenetlint@tenetlint
 ```
 
-Agents that read a repository rather than a plugin get the same instructions from `tenet init --agent`. `--agent cursor` writes them to `.cursor/rules/tenet.mdc`, `--agent agents` and `--agent claude` keep them as a `## tenet` section of `AGENTS.md` or `CLAUDE.md`, replacing the section an earlier run wrote rather than adding a second one, and the flag repeats. A run that names an agent writes those files and nothing else, leaving your `tenets.yml` as it is.
+Agents that read a repository rather than a plugin get the same instructions from `tenet init --agent`. `--agent cursor` writes them to `.cursor/rules/tenet.mdc`, `--agent agents` and `--agent claude` keep them as a `## tenet` section of `AGENTS.md` or `CLAUDE.md`, replacing the section an earlier run wrote rather than adding a second one, and the flag repeats. A run that names an agent writes those files and nothing else, so it refuses `--from`, `--preset`, `--config` and `--force` rather than half-doing two jobs, and `--dry-run` names the files it would write.
 
 ```
 tenet init --agent cursor --agent agents
