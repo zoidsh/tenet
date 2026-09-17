@@ -1,0 +1,8 @@
+id: no-fallback
+tenet: Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
+criteria:
+  true: The code catches or checks for a failure and then continues with a substitute value, an empty result, a cached or default value, a logged warning, or a swallowed exception, so the caller cannot tell the operation failed.
+  false: Failures propagate, are re-raised, or are converted to an explicit error with context; or the default is a documented, intentional part of the interface such as an optional parameter or a config value with a meaningful default.
+severity: warn
+include: ["**/*.go"]
+tags: [code, errors]

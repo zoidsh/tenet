@@ -10,7 +10,7 @@ tenets:
     # testdata holds files written to violate a tenet, which is what the live
     # test checks for.
     exclude: ["**/testdata/**"]
-    examples_from: examples/comment-why.yml
+    examples_from: rules/comment-why/examples.yml
 
   - id: no-fallback
     tenet: Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
@@ -19,7 +19,7 @@ tenets:
       false: Failures propagate, are re-raised, or are converted to an explicit error with context; or the default is a documented, intentional part of the interface such as an optional parameter or a config value with a meaningful default.
     severity: warn
     include: ["**/*.go"]
-    examples_from: examples/no-fallback.yml
+    examples_from: rules/no-fallback/examples.yml
 
   - id: no-mocking
     tenet: You must never mock anything in tests.
@@ -28,7 +28,7 @@ tenets:
       false: The test exercises real implementations, in-memory or temporary real resources such as a temp directory or an in-process server, fixtures, or table-driven inputs, with no substituted dependencies.
     severity: warn
     include: ["**/*_test.go"]
-    examples_from: examples/no-mocking.yml
+    examples_from: rules/no-mocking/examples.yml
 
   - id: no-defensive-nil
     tenet: Defensive `if x == nil { return nil }` in producer / projector / resolver paths is forbidden.
@@ -37,4 +37,4 @@ tenets:
       false: The nil check guards a value that can genuinely be absent at this point, such as a lookup result, an optional field, or user input, or the check produces an explicit error rather than a silent return.
     severity: warn
     include: ["**/*.go"]
-    examples_from: examples/no-defensive-nil.yml
+    examples_from: rules/no-defensive-nil/examples.yml

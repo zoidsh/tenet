@@ -1,0 +1,1 @@
+Catches a nil check that guards a value the surrounding code has already guaranteed, and answers it with a silent return rather than an error. A static linter can prove a few of these from the types alone; the rest need the few lines above the check, where the value was assigned, validated or handed back by a constructor, which is what this rule reads.

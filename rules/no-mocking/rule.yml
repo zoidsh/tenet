@@ -1,0 +1,8 @@
+id: no-mocking
+tenet: You must never mock anything in tests.
+criteria:
+  true: The test replaces a real dependency with a mock, stub, spy, fake, or patched function, using a mocking library or hand-written substitute, and asserts on or relies on that substitute.
+  false: The test exercises real implementations, in-memory or temporary real resources such as a temp directory or an in-process server, fixtures, or table-driven inputs, with no substituted dependencies.
+severity: warn
+include: ["**/*_test.go"]
+tags: [code, tests]
