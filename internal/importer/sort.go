@@ -181,10 +181,13 @@ func (s *Sorter) ask(ctx context.Context, out []Sorted, chunk []int, stats *Stat
 
 	for n, i := range chunk {
 		id := candidateID(n + 1)
-		kind, ok := resp.Answers["kind:"+id]
-		checkable, okCheckable := resp.Answers["checkable:"+id]
-		if !ok || !okCheckable {
-			continue
+		kind, err := answerTo(resp, "kind:"+id)
+		if err != nil {
+			return err
+		}
+		checkable, err := answerTo(resp, "checkable:"+id)
+		if err != nil {
+			return err
 		}
 		label, prob := kind.Top()
 		out[i].Kind, out[i].KindProb, out[i].CheckableProb = label, prob, checkable.Prob()
@@ -192,6 +195,16 @@ func (s *Sorter) ask(ctx context.Context, out []Sorted, chunk []int, stats *Stat
 		s.Cache.PutSort(s.key(out[i].Candidate), label, prob, checkable.Prob())
 	}
 	return nil
+}
+
+// answerTo insists on an answer to every question asked: a sentence the model
+// skipped would otherwise be silently left out of the draft.
+func answerTo(resp *jev.Response, name string) (jev.Answer, error) {
+	a, ok := resp.Answers[name]
+	if !ok {
+		return jev.Answer{}, fmt.Errorf("jev did not answer %s", name)
+	}
+	return a, nil
 }
 
 func line(c Candidate) string {

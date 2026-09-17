@@ -221,9 +221,6 @@ func pieceAt(text string, lineAt []int, whole string, start int) piece {
 	for start < len(whole) && whole[start] == ' ' {
 		start++
 	}
-	if start >= len(lineAt) {
-		start = len(lineAt) - 1
-	}
 	return piece{line: lineAt[start], text: text}
 }
 

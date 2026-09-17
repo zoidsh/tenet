@@ -89,8 +89,12 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	if err != nil {
 		return fail(err)
 	}
+	shown, err := shortPath(dir, target)
+	if err != nil {
+		return fail(err)
+	}
 	if len(paths) == 0 {
-		return o.starter(cmd, target, shortPath(dir, target))
+		return o.starter(cmd, target, shown)
 	}
 
 	var candidates []importer.Candidate
@@ -99,7 +103,11 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		if err != nil {
 			return fail(err)
 		}
-		candidates = append(candidates, importer.Split(sourceName(root, dir, path), data)...)
+		name, err := sourceName(root, dir, path)
+		if err != nil {
+			return fail(err)
+		}
+		candidates = append(candidates, importer.Split(name, data)...)
 	}
 
 	key := jev.KeyFromEnv()
@@ -121,7 +129,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		if err := os.WriteFile(target, draft, 0o600); err != nil {
 			return fail(err)
 		}
-		r.Written = shortPath(dir, target)
+		r.Written = shown
 	}
 	return writeImport(out, r, o.format)
 }
@@ -239,23 +247,27 @@ func initRoot(ctx context.Context, dir string) (string, error) {
 }
 
 // sourceName is what a tenet's source line names the file by: its path inside
-// the repository, so that the reference holds wherever it is read from.
-func sourceName(root, dir, path string) string {
+// the repository, so that the reference holds wherever it is read from. A file
+// from outside the repository keeps the path the terminal can open.
+func sourceName(root, dir, path string) (string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return filepath.ToSlash(path)
+		return "", err
 	}
 	rel, err := filepath.Rel(root, abs)
-	if err != nil || strings.HasPrefix(rel, "..") {
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(rel, "..") {
 		return shortPath(dir, abs)
 	}
-	return filepath.ToSlash(rel)
+	return filepath.ToSlash(rel), nil
 }
 
-func shortPath(dir, path string) string {
+func shortPath(dir, path string) (string, error) {
 	rel, err := filepath.Rel(dir, path)
 	if err != nil {
-		return filepath.ToSlash(path)
+		return "", err
 	}
-	return filepath.ToSlash(rel)
+	return filepath.ToSlash(rel), nil
 }

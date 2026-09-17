@@ -43,7 +43,7 @@ func (r Report) Text(w io.Writer) error {
 			_, _ = fmt.Fprint(table, "  line\tkind\tkind p\tcheckable p\ttenet\tsentence\n")
 		}
 		_, _ = fmt.Fprintf(table, "  %d\t%s\t%.2f\t%.2f\t%s\t%s\n",
-			c.Line, kindOrUnknown(c.Kind), c.KindProb, c.CheckableProb, tenetOrDash(c.ID), cut(c.Text))
+			c.Line, c.Kind, c.KindProb, c.CheckableProb, tenetOrDash(c.ID), cut(c.Text))
 	}
 	if err := table.Flush(); err != nil {
 		return err
@@ -54,13 +54,6 @@ func (r Report) Text(w io.Writer) error {
 	b.WriteString(r.Summary() + "\n")
 	_, err := io.WriteString(w, b.String())
 	return err
-}
-
-func kindOrUnknown(kind string) string {
-	if kind == "" {
-		return "unanswered"
-	}
-	return kind
 }
 
 func tenetOrDash(id string) string {

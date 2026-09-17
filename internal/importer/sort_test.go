@@ -31,12 +31,18 @@ type fake struct {
 	// only meaningful within the call it was asked in.
 	byText map[string]answers
 	calls  []call
+
+	// drop is a question the fake leaves unanswered.
+	drop string
 }
 
 func (f *fake) Ask(_ context.Context, state string, questions map[string]jev.Question) (*jev.Response, error) {
 	f.calls = append(f.calls, call{state: state, questions: questions})
 	out := map[string]jev.Answer{}
 	for name, q := range questions {
+		if name == f.drop {
+			continue
+		}
 		a, ok := f.byText[sentenceOf(q.Instructions)]
 		if !ok {
 			return nil, fmt.Errorf("no answer prepared for %q", q.Instructions)
@@ -190,6 +196,18 @@ func TestSortChunksAtEighty(t *testing.T) {
 	}
 	if len(got) != len(texts) || stats.Tenets != len(texts) {
 		t.Errorf("got %d sorted, %d tenets", len(got), stats.Tenets)
+	}
+}
+
+func TestSortFailsOnAnUnansweredQuestion(t *testing.T) {
+	const text = "A comment says why, not what."
+	asker := &fake{
+		byText: map[string]answers{text: {kind: map[string]float64{importer.KindCodeRule: 0.9}, checkable: 0.8}},
+		drop:   "checkable:C001",
+	}
+	_, _, err := (&importer.Sorter{Asker: asker}).Sort(context.Background(), candidates(text))
+	if err == nil || !strings.Contains(err.Error(), "checkable:C001") {
+		t.Errorf("error is %v", err)
 	}
 }
 
