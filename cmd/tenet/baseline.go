@@ -12,6 +12,7 @@ import (
 
 type baselineOptions struct {
 	output string
+	prune  bool
 }
 
 func newBaselineCmd() *cobra.Command {
@@ -26,7 +27,9 @@ func newBaselineCmd() *cobra.Command {
 		},
 	}
 	addRunFlags(cmd, lint)
-	cmd.Flags().StringVar(&o.output, "output", "", "write the baseline here instead of "+baseline.Name+" in the repository root")
+	f := cmd.Flags()
+	f.StringVar(&o.output, "output", "", "write the baseline here instead of "+baseline.Name+" in the repository root")
+	f.BoolVar(&o.prune, "prune", false, "keep only the entries this run still finds, instead of writing the run out whole")
 	return cmd
 }
 
@@ -37,10 +40,23 @@ func runBaseline(cmd *cobra.Command, paths []string, lint *lintOptions, o *basel
 	}
 	path := o.baselinePath(run)
 	entries := baseline.Entries(run.outcome.Findings)
+	var dropped int
+	if o.prune {
+		accepted, err := baseline.Load(path)
+		if err != nil {
+			return fail(err)
+		}
+		entries, dropped = accepted.Prune(entries)
+	}
 	if err := baseline.Save(path, entries, time.Now()); err != nil {
 		return fail(err)
 	}
-	_, err = fmt.Fprintf(cmd.OutOrStdout(), "wrote %s to %s\n", countFindings(len(entries)), relativeTo(run.dir, path))
+	out, name := cmd.OutOrStdout(), relativeTo(run.dir, path)
+	if o.prune {
+		_, err = fmt.Fprintf(out, "dropped %s, %s left in %s\n", countFindings(dropped), countFindings(len(entries)), name)
+		return err
+	}
+	_, err = fmt.Fprintf(out, "wrote %s to %s\n", countFindings(len(entries)), name)
 	return err
 }
 

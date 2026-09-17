@@ -293,3 +293,65 @@ func TestLintWithAMissingNamedBaseline(t *testing.T) {
 		t.Errorf("stderr is %q", stderr)
 	}
 }
+
+func TestBaselinePruneDropsWhatIsFixed(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+	writeFile(t, dir, "inc.go", strings.Replace(marked, "\t"+violation+"\n", "", 1))
+
+	code, stdout, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "dropped 1 finding") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 0 {
+		t.Errorf("findings are %#v", got.Findings)
+	}
+}
+
+func TestBaselinePruneKeepsWhatIsStillFound(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+
+	code, stdout, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "dropped 0 findings") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 1 {
+		t.Errorf("findings are %#v", got.Findings)
+	}
+}
+
+// A run that finds something new is no reason to accept it: prune only ever
+// takes entries away.
+func TestBaselinePruneAcceptsNothingNew(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+	writeFile(t, dir, "dec.go", strings.ReplaceAll(marked, "inc", "dec"))
+
+	code, _, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	got := readBaseline(t, filepath.Join(dir, baseline.Name))
+	if len(got.Findings) != 1 || got.Findings[0].File != "inc.go" {
+		t.Errorf("findings are %#v", got.Findings)
+	}
+}
+
+func TestBaselinePruneWithoutABaseline(t *testing.T) {
+	baselineRepo(t)
+
+	code, _, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr, baseline.Name) {
+		t.Errorf("stderr is %q", stderr)
+	}
+}
