@@ -99,9 +99,20 @@ Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`,
 ```
 CLAUDE.md
   line  kind       kind p  checkable p  tenet                          sentence
-  7     process    0.98    0.17         -                              Setup: `mise install`. Every `go`, `golangci-lint` and `gor…
-  15    process    0.80    0.75         never-print-key-commit         Never print the key or commit it.
-  19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
+  3     context    1.00    0.10         -                              A Go CLI that lints code against English rules, judged by T…
+  7     process    0.99    0.21         -                              Setup: `mise install`. Every `go`, `golangci-lint` and `gor…
+  8     process    0.98    0.05         -                              Test: `go test -race ./...`
+  10    process    0.99    0.06         -                              Release build check: `goreleaser build --snapshot --clean`
+  11    process    1.00    0.07         -                              Before reporting a branch done: `tenet --base main`, which …
+  12    process    1.00    0.07         -                              Before a release: `tenet .`, a full sweep, because diff-sco…
+  16    process    0.50    0.43         -                              Tests that call the real jev API are skipped unless `TYPESA…
+  16    process    0.80    0.32         -                              They cost money and need the network, so they are never par…
+  16    process    0.74    0.77         never-print-key-commit         Never print the key or commit it.
+  20    code-rule  1.00    0.65         comment-says-only-code-cannot  A comment says only what the code cannot: why a constraint …
+  20    code-rule  1.00    0.82         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
+  24    process    1.00    0.10         -                              This repo lifts nothing from the global rules: code changes…
+
+12 candidates, 3 tenets, nothing written (--dry-run) · 1 calls, 0 cached · $0.0002 · 0.7s
 ```
 
 `tenet` on its own lints your staged changes. `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged. `tenet hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenet hook uninstall` takes them away again.
@@ -113,13 +124,13 @@ A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. A window is 
 There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
 
 ```
-internal/cache/cache.go:42: comment-why (p=0.91)
-internal/judge/judge.go:118: no-fallback (p=0.86)
+internal/cache/cache.go:11: comment-why (p=0.94)
+internal/judge/judge.go:15: no-fallback (p=0.96)
 
-comment-why  A comment says why the code exists or why it is written this way, not what the code does.
-no-fallback  Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths.
+comment-why  A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states.
+no-fallback  Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
 
-2 findings · 7 windows, 9 calls, 4 cached · $0.0031 · 2.4s
+2 findings · 2 windows, 2 calls, 5 cached · $0.0001 · 0.8s
 fix the lines above or mark one with a tenet:ignore <id> directive, then commit again
 ```
 
@@ -140,12 +151,20 @@ In Markdown, YAML and other prose and data files a directive counts at the start
 
 ## Configuration
 
-A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
+A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets, and a rule in none is named under `rules:`.
+
+```
+agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
+  comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified
+
+unslop-prose  The prose an LLM writes into a README when nobody rewrites the draft.
+  project-specific, no-generic-conclusion, no-metaphor-noun
+```
 
 ```yaml
 version: 1
 presets: [agent-hygiene]        # built-in presets, expanded in order
-rules: [comment-why]            # individual built-in rules, added after presets
+rules: [no-fallback]            # individual built-in rules, added after presets
 disable: [no-mocking]           # removed after expansion, by id
 override:                       # per-id patches applied last
   no-fallback:
@@ -166,9 +185,13 @@ An id that arrives twice, an unknown preset, rule, disable or override id, and a
 ```
 tenets.yml
 
-id                origin         kind  fail  include
-comment-why       agent-hygiene  code  0.80  **/*.go
-no-fallback       agent-hygiene  code  0.80  **/*.go
+id                     origin         kind  fail  include
+comment-why            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-mocking             agent-hygiene  code  0.80  **/*_test.go, **/*.test.ts, **/*.test.tsx, **/*.spec.ts, **/*.spec.tsx, **/test_*.py, **/*_test.py
+no-transcript-comment  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-placeholder-phrase  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+assertion-justified    agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-fallback            rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 ```
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
@@ -228,6 +251,8 @@ comment-why: sharp
   accuracy          1.00 at fail 0.80 · 1.00 at 0.70, 1.00 at 0.80, 0.71 at 0.90
   mean probability  violation 0.89, ok 0.19, gap 0.71
   location          7 of 7 lines named (1.00)
+
+1 tenet over 14 examples · 0 calls, 14 cached · $0.0000 · 0.0s
 ```
 
 The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all. The accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys.
@@ -252,10 +277,10 @@ An entry is matched by the file, the tenet and a hash of the offending line with
 
 ```
 $ tenet baseline .
-wrote 34 findings to .tenetlint-baseline.json
+wrote 2 findings to .tenetlint-baseline.json
 
 $ tenet .
-0 findings, 34 baselined · 41 windows, 0 calls, 41 cached · $0.0000 · 0.6s
+0 findings, 2 baselined · 5 windows, 0 calls, 10 cached · $0.0000 · 0.0s
 ```
 
 ## Commit messages
