@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/zoidsh/tenetlint/internal/judge"
@@ -33,7 +34,74 @@ type Entry struct {
 type File struct {
 	Version   int     `json:"version"`
 	Generated string  `json:"generated"`
+	Scope     Scope   `json:"scope"`
 	Findings  []Entry `json:"findings"`
+}
+
+// The modes a run selects its code in, which are what Scope records.
+const (
+	ModePaths  = "paths"
+	ModeStaged = "staged"
+	ModeBase   = "base"
+)
+
+// Scope is what a run looked at. It is recorded because prune keeps only the
+// entries a run still produces, and a run that never looked at a file
+// produces nothing for it: without the scope, pruning from a narrower run
+// would quietly accept every finding it could not see.
+type Scope struct {
+	Mode string `json:"mode"`
+
+	// Paths are repository relative, so that the scope means the same thing
+	// from any directory the run was started in.
+	Paths []string `json:"paths,omitempty"`
+	Base  string   `json:"base,omitempty"`
+}
+
+// Covers reports whether a run in this scope looked at everything a run in
+// the other scope did. Modes are never compared with each other: what a diff
+// against a ref holds is not something a list of paths can be measured
+// against.
+func (s Scope) Covers(other Scope) bool {
+	if s.Mode != other.Mode {
+		return false
+	}
+	switch s.Mode {
+	case ModeStaged:
+		return true
+	case ModeBase:
+		return s.Base == other.Base
+	case ModePaths:
+		for _, path := range other.Paths {
+			if !s.holds(path) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func (s Scope) holds(path string) bool {
+	for _, mine := range s.Paths {
+		if mine == "." || mine == path || strings.HasPrefix(path, mine+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// String says what a scope is in the words its flags were written in.
+func (s Scope) String() string {
+	switch s.Mode {
+	case ModeStaged:
+		return "the staged changes"
+	case ModeBase:
+		return "the working tree against " + s.Base
+	case ModePaths:
+		return strings.Join(s.Paths, ", ")
+	}
+	return "nothing recorded"
 }
 
 // Entries are the findings as a baseline records them, in file, tenet and
@@ -74,14 +142,16 @@ func Load(path string) (*File, error) {
 	return &f, nil
 }
 
-// Save writes the entries, replacing whatever was there.
-func Save(path string, entries []Entry, now time.Time) error {
+// Save writes the entries and the scope they were found in, replacing
+// whatever was there.
+func Save(path string, scope Scope, entries []Entry, now time.Time) error {
 	if entries == nil {
 		entries = []Entry{}
 	}
 	data, err := json.MarshalIndent(File{
 		Version:   Version,
 		Generated: now.UTC().Format(time.RFC3339),
+		Scope:     scope,
 		Findings:  entries,
 	}, "", "  ")
 	if err != nil {
@@ -111,7 +181,8 @@ func (f *File) Split(findings []judge.Finding) (kept, baselined []judge.Finding)
 }
 
 // Prune keeps the entries the current run still produces and reports how many
-// it dropped.
+// it dropped. The caller has to have checked that the run covers the scope
+// the baseline was written in.
 func (f *File) Prune(current []Entry) (kept []Entry, dropped int) {
 	produced := make(map[Entry]bool, len(current))
 	for _, e := range current {

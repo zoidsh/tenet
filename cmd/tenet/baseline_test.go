@@ -373,3 +373,78 @@ func TestABaselinedFindingSurvivesAModelBump(t *testing.T) {
 		t.Errorf("summary is %q", stdout)
 	}
 }
+
+func TestBaselineRecordsItsScope(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+
+	got := readBaseline(t, filepath.Join(dir, baseline.Name)).Scope
+	if got.Mode != baseline.ModePaths || len(got.Paths) != 1 || got.Paths[0] != "." {
+		t.Errorf("scope is %#v", got)
+	}
+}
+
+func TestBaselineRecordsABaseScope(t *testing.T) {
+	dir := baselineRepo(t)
+	git(t, dir, "commit", "-qm", "first")
+
+	code, _, stderr := runCmd(t, "baseline", "--no-cache", "--base", "main")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	got := readBaseline(t, filepath.Join(dir, baseline.Name)).Scope
+	if got.Mode != baseline.ModeBase || got.Base != "main" {
+		t.Errorf("scope is %#v", got)
+	}
+}
+
+// Pruning from a narrower run would drop every entry it never looked at, so
+// it refuses instead.
+func TestBaselinePruneRefusesANarrowerScope(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+
+	code, _, stderr := runCmd(t, "baseline", "--prune", "--no-cache", "inc.go")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: %s", code, stderr)
+	}
+	for _, want := range []string{".", "inc.go", baseline.Name} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr %q does not name %s", stderr, want)
+		}
+	}
+	if len(readBaseline(t, filepath.Join(dir, baseline.Name)).Findings) != 1 {
+		t.Error("the refused prune wrote the file anyway")
+	}
+}
+
+func TestBaselinePruneAcceptsAWiderScope(t *testing.T) {
+	baselineRepo(t)
+	if code, _, stderr := runCmd(t, "baseline", "--no-cache", "inc.go"); code != 0 {
+		t.Fatalf("baseline exit %d: %s", code, stderr)
+	}
+
+	code, stdout, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "dropped 0 findings") {
+		t.Errorf("stdout is %q", stdout)
+	}
+}
+
+// A diff against a ref and a list of paths hold different code, so neither
+// covers the other.
+func TestBaselinePruneRefusesAnotherMode(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+	git(t, dir, "commit", "-qm", "first")
+
+	code, _, stderr := runCmd(t, "baseline", "--prune", "--no-cache", "--base", "main")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: %s", code, stderr)
+	}
+	if !strings.Contains(stderr, "main") {
+		t.Errorf("stderr is %q", stderr)
+	}
+}
