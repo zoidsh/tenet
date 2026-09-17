@@ -44,12 +44,24 @@ func VerdictQuestion(t *tenets.Tenet) jev.Question {
 	return jev.Noul(VerdictInstructions(t), trueDesc, falseDesc)
 }
 
-// LocationQuestion asks which of the first lines lines of the state violates
-// the tenet.
-func LocationQuestion(t *tenets.Tenet, lines int) (jev.Question, error) {
+// LocationQuestion asks which of the named lines of the state violates the
+// tenet. Only those lines are offered, so that a line the run could not
+// report on anyway is never the answer, which would hide the violation the
+// window holds elsewhere.
+func LocationQuestion(t *tenets.Tenet, lines []int) (jev.Question, error) {
 	labels := map[string]any{NoneLabel: "no line violates the rule"}
-	for i := 1; i <= lines; i++ {
-		labels[lineID(i)] = nil
+	for _, n := range lines {
+		labels[lineID(n)] = nil
 	}
 	return jev.Choice(LocationInstructions(t), labels)
+}
+
+// AllLines numbers every line of a state, for a caller judging text that no
+// directive and no diff narrows.
+func AllLines(n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = i + 1
+	}
+	return out
 }

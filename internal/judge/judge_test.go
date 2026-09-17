@@ -341,6 +341,50 @@ func TestSuppressedAndUnreportableLinesAreDropped(t *testing.T) {
 	}
 }
 
+// A directive on one line must not shadow a second violation of the same
+// tenet in the same window, which it would if the location landed on the line
+// the directive exempts.
+func TestAnExemptLineIsNotOffered(t *testing.T) {
+	j, f, windows := fixture(t, "x := 1 // tenet\x3aignore comment-why\ny := 2\n", nil)
+	f.verdict["comment-why"] = 0.9
+	f.verdict["no-fallback"] = 0.1
+	f.where["comment-why"] = map[string]float64{"L002": 0.6, "none": 0.4}
+
+	out, err := j.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := f.named("where")[0].Questions["where:comment-why"]
+	labels, ok := q.Criteria.(map[string]any)
+	if !ok {
+		t.Fatalf("labels are %#v", q.Criteria)
+	}
+	if _, offered := labels["L001"]; offered {
+		t.Errorf("the exempt line was offered: %#v", labels)
+	}
+	if len(labels) != 2 {
+		t.Errorf("labels are %#v", labels)
+	}
+	findings := out.Findings
+	if len(findings) != 1 || findings[0].Line != 2 || findings[0].Tenet != "comment-why" {
+		t.Fatalf("findings are %#v", findings)
+	}
+}
+
+// With every line of the window exempt there is nothing left to report on, so
+// the tenet costs no call at all.
+func TestATenetExemptOnEveryLineIsNotAsked(t *testing.T) {
+	j, f, windows := fixture(t, "x := 1 // tenet\x3aignore comment-why\n", nil)
+	f.verdict["no-fallback"] = 0.1
+
+	if _, err := j.Run(context.Background(), windows); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := f.calls[0].Questions["verdict:comment-why"]; ok {
+		t.Error("a tenet with no line left to report on was still asked about")
+	}
+}
+
 func TestFileSuppressionSkipsTheTenetEntirely(t *testing.T) {
 	j, f, windows := fixture(t, "// tenet\x3aignore-file comment-why\nx := 1\n", nil)
 	f.verdict["no-fallback"] = 0.1

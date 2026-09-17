@@ -170,7 +170,7 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 		questions[verdictQuestion] = judge.VerdictQuestion(t)
 	}
 	if e.Lines.Set() && located == "" {
-		q, err := judge.LocationQuestion(t, len(lines))
+		q, err := judge.LocationQuestion(t, judge.AllLines(len(lines)))
 		if err != nil {
 			return Judged{}, stats, err
 		}

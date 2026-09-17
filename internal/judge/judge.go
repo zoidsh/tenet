@@ -193,7 +193,7 @@ func (j *Judge) Cached(windows []*source.Window) int {
 		state := State(w)
 		asked, all := 0, true
 		for _, t := range j.Tenets {
-			if !t.Applies(w.Path()) || w.File.Sup.File(t.ID) {
+			if !t.Applies(w.Path()) || w.File.Sup.File(t.ID) || len(openLines(w, t.ID)) == 0 {
 				continue
 			}
 			asked++
@@ -229,9 +229,24 @@ func Less(x, y Finding) bool {
 type pending struct {
 	tenet *tenets.Tenet
 	key   string
+	open  []int
 	prob  float64
 	line  string
 	asked bool
+}
+
+// openLines are the window's own line ids a finding for this tenet could
+// still be raised on: what the diff touched, less what a directive exempts. A
+// tenet with none of them left is not asked about at all.
+func openLines(w *source.Window, tenet string) []int {
+	var out []int
+	for i := range w.Lines {
+		line := w.Line(i + 1)
+		if w.File.Reportable(line) && !w.File.Sup.Line(line, tenet) {
+			out = append(out, i+1)
+		}
+	}
+	return out
 }
 
 func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, []NearMiss, Stats, error) {
@@ -248,7 +263,11 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 		if !t.Applies(w.Path()) || w.File.Sup.File(t.ID) {
 			continue
 		}
-		p := &pending{tenet: t, key: cache.Key(state, t.Hash())}
+		open := openLines(w, t.ID)
+		if len(open) == 0 {
+			continue
+		}
+		p := &pending{tenet: t, key: cache.Key(state, t.Hash()), open: open}
 		if e, ok := j.Cache.Get(p.key); ok {
 			p.prob, p.line, p.asked = e.Prob, e.Line, true
 			stats.CacheHits++
@@ -370,7 +389,7 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 		if p.prob < p.tenet.FailValue() || p.line != "" {
 			continue
 		}
-		q, err := LocationQuestion(p.tenet, len(w.Lines))
+		q, err := LocationQuestion(p.tenet, p.open)
 		if err != nil {
 			return err
 		}
