@@ -98,7 +98,7 @@
     Open an issue with the config and the output of `audit --version`.
 - label: violation
   lang: markdown
-  lines: [3, 12]
+  lines: [3, 4]
   code: |
     # Contributing
 
