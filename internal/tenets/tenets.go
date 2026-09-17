@@ -288,10 +288,10 @@ func (c *Config) validateOverrides() error {
 func checkKinds(subject string, kinds []string) error {
 	for _, k := range kinds {
 		switch k {
-		case source.KindCode, source.KindProse, source.KindData:
+		case source.KindCode, source.KindProse, source.KindData, source.KindCommit:
 		default:
-			return fmt.Errorf("%s: kind: must be one of %s, %s or %s, got %q",
-				subject, source.KindCode, source.KindProse, source.KindData, k)
+			return fmt.Errorf("%s: kind: must be one of %s, %s, %s or %s, got %q",
+				subject, source.KindCode, source.KindProse, source.KindData, source.KindCommit, k)
 		}
 	}
 	return nil

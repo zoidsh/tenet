@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zoidsh/tenetlint/internal/source"
 	"github.com/zoidsh/tenetlint/internal/tenets"
 )
 
@@ -105,6 +106,43 @@ tenets:
 		{both, "CHANGELOG", true},
 		{both, "main.go", false},
 		{both, "internal/testdata/notes.md", false},
+	}
+	for _, c := range cases {
+		if got := c.tenet.Applies(c.path); got != c.want {
+			t.Errorf("%s applies to %s = %v, want %v", c.tenet.ID, c.path, got, c.want)
+		}
+	}
+}
+
+func TestAppliesToACommitMessage(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`
+version: 1
+tenets:
+  - id: subject-imperative
+    tenet: Write the subject in the imperative.
+    kind: [commit]
+  - id: by-name
+    tenet: Write the subject in the imperative.
+    include: ["COMMIT_EDITMSG"]
+  - id: about-code
+    tenet: A comment says why.
+    kind: [code]
+    include: ["COMMIT_EDITMSG"]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKind, byName, code := cfg.Tenets[0], cfg.Tenets[1], cfg.Tenets[2]
+	cases := []struct {
+		tenet *tenets.Tenet
+		path  string
+		want  bool
+	}{
+		{byKind, source.CommitMsgPath, true},
+		{byKind, "main.go", false},
+		{byKind, "README.md", false},
+		{byName, source.CommitMsgPath, true},
+		{code, source.CommitMsgPath, false},
 	}
 	for _, c := range cases {
 		if got := c.tenet.Applies(c.path); got != c.want {
