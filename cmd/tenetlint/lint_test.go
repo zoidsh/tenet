@@ -213,7 +213,7 @@ func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
 	writeFile(t, dir, "tenets.yml", testConfig)
-	writeFile(t, dir, "inc.go", "package main // tenet:ignore no-such-rule\n")
+	writeFile(t, dir, "inc.go", "package main // tenet\x3aignore no-such-rule\n")
 	git(t, dir, "add", "-A")
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")

@@ -255,7 +255,7 @@ func TestCacheHitsSkipCalls(t *testing.T) {
 }
 
 func TestSuppressedAndUnreportableLinesAreDropped(t *testing.T) {
-	j, f, windows := fixture(t, "x := 1 // tenet:ignore comment-why\ny := 2\n", nil)
+	j, f, windows := fixture(t, "x := 1 // tenet\x3aignore comment-why\ny := 2\n", nil)
 	f.verdict["comment-why"] = 0.9
 	f.verdict["no-fallback"] = 0.9
 	f.where["comment-why"] = map[string]float64{"L001": 0.9}
@@ -283,7 +283,7 @@ func TestSuppressedAndUnreportableLinesAreDropped(t *testing.T) {
 }
 
 func TestFileSuppressionSkipsTheTenetEntirely(t *testing.T) {
-	j, f, windows := fixture(t, "// tenet:ignore-file comment-why\nx := 1\n", nil)
+	j, f, windows := fixture(t, "// tenet\x3aignore-file comment-why\nx := 1\n", nil)
 	f.verdict["no-fallback"] = 0.1
 
 	if _, _, err := j.Run(context.Background(), windows); err != nil {

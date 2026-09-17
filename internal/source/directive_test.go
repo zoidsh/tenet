@@ -16,10 +16,10 @@ var knownTenets = map[string]bool{
 
 func TestStripDirectives(t *testing.T) {
 	lines := []string{
-		"package main // tenet:ignore-file no-mocking",
-		"x := 1 // tenet:ignore",
-		"y := 2 // tenet:ignore comment-why,no-fallback",
-		"// tenet:ignore-next-line comment-why",
+		"package main // tenet\x3aignore-file no-mocking",
+		"x := 1 // tenet\x3aignore",
+		"y := 2 // tenet\x3aignore comment-why,no-fallback",
+		"// tenet\x3aignore-next-line comment-why",
 		"z := 3",
 		"plain := 4 // an ordinary comment",
 		"notatenet:ignore stays",
@@ -69,7 +69,7 @@ func TestStripDirectives(t *testing.T) {
 }
 
 func TestStripDirectivesIDListSpacing(t *testing.T) {
-	lines := []string{"x := 1 // tenet:ignore comment-why, no-fallback"}
+	lines := []string{"x := 1 // tenet\x3aignore comment-why, no-fallback"}
 	stripped, sup, err := stripDirectives("a.go", lines, knownTenets)
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +83,7 @@ func TestStripDirectivesIDListSpacing(t *testing.T) {
 }
 
 func TestStripDirectivesRejectsProseAsAnID(t *testing.T) {
-	lines := []string{"x := 1 // tenet:ignore because this is fine"}
+	lines := []string{"x := 1 // tenet\x3aignore because this is fine"}
 	_, _, err := stripDirectives("pkg/a.go", lines, knownTenets)
 	if err == nil {
 		t.Fatal("want an error: prose after a directive reads as a tenet id")
@@ -96,28 +96,28 @@ func TestStripDirectivesRejectsProseAsAnID(t *testing.T) {
 }
 
 func TestStripDirectivesRejectsUnknownTenet(t *testing.T) {
-	_, _, err := stripDirectives("a.go", []string{"// tenet:ignore-file no-such-rule"}, knownTenets)
+	_, _, err := stripDirectives("a.go", []string{"// tenet\x3aignore-file no-such-rule"}, knownTenets)
 	if err == nil || !strings.Contains(err.Error(), "no-such-rule") {
 		t.Fatalf("error is %v", err)
 	}
 }
 
 func TestStripDirectivesRejectsUnknownDirective(t *testing.T) {
-	_, _, err := stripDirectives("a.go", []string{"// tenet:ignore-foo"}, knownTenets)
-	if err == nil || !strings.Contains(err.Error(), "unknown directive tenet:ignore-foo") {
+	_, _, err := stripDirectives("a.go", []string{"// tenet\x3aignore-foo"}, knownTenets)
+	if err == nil || !strings.Contains(err.Error(), "unknown directive tenet\x3aignore-foo") {
 		t.Fatalf("error is %v", err)
 	}
 }
 
 func TestStripDirectivesOnTheLastLineWithoutANewline(t *testing.T) {
-	file, err := NewFile("a.go", []byte("x := 1\ny := 2 // tenet:ignore comment-why"), nil, knownTenets)
+	file, err := NewFile("a.go", []byte("x := 1\ny := 2 // tenet\x3aignore comment-why"), nil, knownTenets)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(file.Lines) != 2 {
 		t.Fatalf("got %d lines: %q", len(file.Lines), file.Lines)
 	}
-	if strings.Contains(file.Lines[1], "tenet:ignore") {
+	if strings.Contains(file.Lines[1], "tenet\x3aignore") {
 		t.Errorf("the directive survived on the last line: %q", file.Lines[1])
 	}
 	if !file.Sup.Line(2, "comment-why") {
@@ -126,7 +126,7 @@ func TestStripDirectivesOnTheLastLineWithoutANewline(t *testing.T) {
 }
 
 func TestStripDirectivesKeepsLineNumbers(t *testing.T) {
-	lines := []string{"a", "// tenet:ignore-next-line", "b"}
+	lines := []string{"a", "// tenet\x3aignore-next-line", "b"}
 	stripped, _, err := stripDirectives("a.go", lines, knownTenets)
 	if err != nil {
 		t.Fatal(err)

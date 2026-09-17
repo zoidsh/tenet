@@ -41,7 +41,7 @@ type Options struct {
 	Base  string
 	Paths []string
 
-	// Tenets are the ids a tenet:ignore directive may name.
+	// Tenets are the ids an ignore directive may name.
 	Tenets []string
 }
 

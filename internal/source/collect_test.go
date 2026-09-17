@@ -276,7 +276,7 @@ func TestCollectOutsideRepository(t *testing.T) {
 
 func TestCollectStripsDirectivesFromContent(t *testing.T) {
 	dir := newRepo(t)
-	write(t, dir, "a.go", "x := 1 // tenet:ignore comment-why\n")
+	write(t, dir, "a.go", "x := 1 // tenet\x3aignore comment-why\n")
 	run(t, dir, "git", "add", "-A")
 
 	set, err := Collect(context.Background(), Options{Dir: dir, Tenets: []string{"comment-why"}})
@@ -284,7 +284,7 @@ func TestCollectStripsDirectivesFromContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := fileByPath(t, set, "a.go")
-	if strings.Contains(a.Lines[0], "tenet:ignore") {
+	if strings.Contains(a.Lines[0], "tenet\x3aignore") {
 		t.Errorf("the directive reached the model: %q", a.Lines[0])
 	}
 	if !a.Sup.Line(1, "comment-why") {
@@ -294,7 +294,7 @@ func TestCollectStripsDirectivesFromContent(t *testing.T) {
 
 func TestCollectRejectsAnUnknownTenetInADirective(t *testing.T) {
 	dir := newRepo(t)
-	write(t, dir, "a.go", "x := 1 // tenet:ignore comment-why\n")
+	write(t, dir, "a.go", "x := 1 // tenet\x3aignore comment-why\n")
 	run(t, dir, "git", "add", "-A")
 
 	_, err := Collect(context.Background(), Options{Dir: dir, Tenets: []string{"no-fallback"}})

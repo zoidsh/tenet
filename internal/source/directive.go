@@ -11,6 +11,10 @@ import (
 // cannot exempt the line. The id list is greedy on purpose, so that prose
 // after a directive is caught as an unknown tenet rather than silently
 // suppressing one.
+//
+// A token is all this can look for without parsing every language, so a
+// directive inside a string literal counts too; test fixtures that hold one
+// escape the colon to keep it from applying to their own file.
 var directivePattern = regexp.MustCompile(`\btenet:(ignore[a-z-]*)\b((?:[ \t]+[a-z0-9-]+(?:[ \t]*,[ \t]*[a-z0-9-]+)*)?)`)
 
 // AllTenets is the key under which a directive that names no tenet is
