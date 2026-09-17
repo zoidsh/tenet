@@ -137,28 +137,57 @@ func readJSON(t *testing.T, path string, into any) {
 
 const findingsJSON = `{"findings":[{"file":"cache.go","line":42,"tenet":"comment-why","probability":0.91,"fail":0.8,"message":"A comment says why."}],"next":"fix the lines above"}`
 
-// fakePath is a directory holding a tenet that prints what the test wants and
-// exits with the code the test wants, and nothing else, so that the hook's
-// view of the world is only what the test put there.
-func fakePath(t *testing.T, script string) string {
-	t.Helper()
-	dir := t.TempDir()
-	if script == "" {
-		return dir
-	}
-	path := filepath.Join(dir, "tenet")
-	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return dir
+// The tool calls Claude Code hands the hook on stdin, one that commits and one
+// that does not.
+const (
+	commitInput = `{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git commit -m \"Say why\"","description":"Commit the change"}}`
+	otherInput  = `{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"go test ./...","description":"Run the tests with git commit in the description"}}`
+)
+
+type fakeTenet struct {
+	path   string
+	called string
 }
 
-func runPreCommit(t *testing.T, path string, env ...string) (int, string, string) {
+// fake is a directory holding a tenet that records that it ran, prints what
+// the test wants and exits with the code the test wants, and nothing else, so
+// that the hook's view of the world is only what the test put there. An empty
+// body leaves the directory bare, which is a machine without tenet installed.
+func fake(t *testing.T, body string) fakeTenet {
+	t.Helper()
+	dir := t.TempDir()
+	got := fakeTenet{path: dir, called: filepath.Join(dir, "called")}
+	// The hook reads the tool call with grep, so grep is the one thing besides
+	// tenet that the bare PATH has to carry.
+	grep, err := exec.LookPath("grep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(grep, filepath.Join(dir, "grep")); err != nil {
+		t.Fatal(err)
+	}
+	if body == "" {
+		return got
+	}
+	script := "#!/bin/sh\n: > " + got.called + "\n" + body
+	if err := os.WriteFile(filepath.Join(dir, "tenet"), []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func (f fakeTenet) ran() bool {
+	_, err := os.Stat(f.called)
+	return err == nil
+}
+
+func runPreCommit(t *testing.T, tenet fakeTenet, stdin string, env ...string) (int, string, string) {
 	t.Helper()
 	var stdout, stderr strings.Builder
 	cmd := exec.Command("sh", filepath.Join(repoDir, "plugin", "hooks", "pre-commit.sh"))
 	cmd.Dir = t.TempDir()
-	cmd.Env = append([]string{"PATH=" + path}, env...)
+	cmd.Env = append([]string{"PATH=" + tenet.path}, env...)
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	var exit *exec.ExitError
@@ -168,10 +197,15 @@ func runPreCommit(t *testing.T, path string, env ...string) (int, string, string
 	return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
 }
 
-func TestPreCommitHookDeniesOnFindings(t *testing.T) {
-	path := fakePath(t, "#!/bin/sh\necho '"+findingsJSON+"'\nexit 1\n")
+func findingTenet(t *testing.T) fakeTenet {
+	t.Helper()
+	return fake(t, "echo '"+findingsJSON+"'\nexit 1\n")
+}
 
-	code, _, stderr := runPreCommit(t, path)
+func TestPreCommitHookDeniesOnFindings(t *testing.T) {
+	tenet := findingTenet(t)
+
+	code, _, stderr := runPreCommit(t, tenet, commitInput)
 	if code != 2 {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
@@ -182,26 +216,47 @@ func TestPreCommitHookDeniesOnFindings(t *testing.T) {
 	}
 }
 
-func TestPreCommitHookAllowsCleanRun(t *testing.T) {
-	path := fakePath(t, "#!/bin/sh\necho '{\"findings\":[],\"next\":\"\"}'\nexit 0\n")
+func TestPreCommitHookIgnoresACallThatDoesNotCommit(t *testing.T) {
+	tenet := findingTenet(t)
 
-	code, _, stderr := runPreCommit(t, path)
+	code, _, stderr := runPreCommit(t, tenet, otherInput)
 	if code != 0 || stderr != "" {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if tenet.ran() {
+		t.Error("the lint ran on a tool call that does not commit")
+	}
+}
+
+func TestPreCommitHookAllowsCleanRun(t *testing.T) {
+	tenet := fake(t, "echo '{\"findings\":[],\"next\":\"\"}'\nexit 0\n")
+
+	code, _, stderr := runPreCommit(t, tenet, commitInput)
+	if code != 0 || stderr != "" {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if !tenet.ran() {
+		t.Error("the lint did not run on a commit")
 	}
 }
 
 func TestPreCommitHookAllowsWhenSkipped(t *testing.T) {
-	path := fakePath(t, "#!/bin/sh\necho '"+findingsJSON+"'\nexit 1\n")
+	tenet := findingTenet(t)
 
-	code, _, stderr := runPreCommit(t, path, "TENETLINT_SKIP=1")
+	code, _, stderr := runPreCommit(t, tenet, commitInput, "TENETLINT_SKIP=1")
 	if code != 0 || stderr != "" {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if tenet.ran() {
+		t.Error("the lint ran although TENETLINT_SKIP was set")
 	}
 }
 
 func TestPreCommitHookAllowsWhenBinaryIsMissing(t *testing.T) {
-	code, _, stderr := runPreCommit(t, fakePath(t, ""))
+	// The subject is a shell script whose contract is what it does with the
+	// tenet it finds on PATH, and the real binary would put a paid call in a
+	// default test run. tenet:ignore-next-line no-mocking
+	code, _, stderr := runPreCommit(t, fake(t, ""), commitInput)
 	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
