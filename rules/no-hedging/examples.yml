@@ -166,7 +166,7 @@
   code: |
     ## Writing the config
 
-    `init` writes a `tenets.yml` in the directory you run it from. You may
+    `init` writes a `tenet.yml` in the directory you run it from. You may
     pass `--force` to replace one that is already there, and you may pass
     `--dry-run` to print the table and write nothing.
 

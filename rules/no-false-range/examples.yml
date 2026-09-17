@@ -76,7 +76,7 @@
 
     The binary is happy anywhere, from a CI runner to your editor's save hook,
     and needs nothing installed beyond a key in the environment and a
-    `tenets.yml` it can find.
+    `tenet.yml` it can find.
 
     ## CI
 
