@@ -9,10 +9,14 @@ import (
 
 // Word counts a candidate has to fall between. A shorter line is a heading in
 // disguise or a fragment; a longer one is a paragraph the model would have to
-// judge as a whole.
+// judge as a whole. A list item is held to one word fewer than a sentence of
+// prose: a whole rule fits in three words there, as `- Lint: golangci-lint
+// run` does, where three words of prose is a fragment of the sentence around
+// it.
 const (
-	MinWords = 4
-	MaxWords = 60
+	MinSentenceWords = 4
+	MinItemWords     = 3
+	MaxWords         = 60
 )
 
 // Candidate is one sentence or list item of a rule file, the unit the sort
@@ -139,7 +143,7 @@ func (s *splitter) chain() string {
 
 func (s *splitter) closeItem() {
 	if s.item != nil {
-		s.emit(s.item.line, s.item.text)
+		s.emit(s.item.line, s.item.text, MinItemWords)
 		s.item = nil
 	}
 }
@@ -148,15 +152,15 @@ func (s *splitter) flush() {
 	s.closeItem()
 	if len(s.para) > 0 {
 		for _, sentence := range sentences(s.para) {
-			s.emit(sentence.line, sentence.text)
+			s.emit(sentence.line, sentence.text, MinSentenceWords)
 		}
 		s.para = nil
 	}
 }
 
-func (s *splitter) emit(line int, text string) {
+func (s *splitter) emit(line int, text string, floor int) {
 	text = clean(text)
-	if !keep(text) {
+	if !keep(text, floor) {
 		return
 	}
 	s.out = append(s.out, Candidate{File: s.file, Line: line, Heading: s.chain(), Text: text})
@@ -203,12 +207,12 @@ func stripEmphasis(text string) string {
 	return text
 }
 
-func keep(text string) bool {
+func keep(text string, floor int) bool {
 	if isLinkOrPath(text) {
 		return false
 	}
 	n := len(strings.Fields(text))
-	return n >= MinWords && n <= MaxWords
+	return n >= floor && n <= MaxWords
 }
 
 // isLinkOrPath drops a line that only points somewhere: it names no rule, and

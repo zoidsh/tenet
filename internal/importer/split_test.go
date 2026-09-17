@@ -51,6 +51,20 @@ func TestSplitDropsShortLongAndLinks(t *testing.T) {
 	}
 }
 
+func TestSplitKeepsAThreeWordItem(t *testing.T) {
+	const item = "Lint: `golangci-lint run`"
+	got := importer.Split("f.md", []byte("- "+item+"\n"))
+	if len(got) != 1 || got[0].Text != item {
+		t.Errorf("got %#v, want the item kept", got)
+	}
+}
+
+func TestSplitDropsATwoWordItem(t *testing.T) {
+	if got := importer.Split("f.md", []byte("- Lint: run\n")); len(got) != 0 {
+		t.Errorf("kept %#v", got)
+	}
+}
+
 func TestSplitStripsBoldAnywhere(t *testing.T) {
 	cases := []struct {
 		source string
