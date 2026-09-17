@@ -45,8 +45,8 @@ done
 
 # The three foreign platform packages would fail npm's os/cpu check on this
 # host, so only the host's own tarball is installed beside the entry package;
-# --no-optional keeps npm from reaching for the other three in a registry.
-npm install --prefix "$tmp" --no-optional --no-audit --no-fund \
+# --omit=optional keeps npm from reaching for the other three in a registry.
+npm install --prefix "$tmp" --omit=optional --no-audit --no-fund \
 	"$tmp/$NAME-$version.tgz" \
 	"$tmp/$NAME-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
 
