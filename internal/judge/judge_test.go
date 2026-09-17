@@ -7,6 +7,7 @@ package judge_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -290,6 +291,52 @@ func TestFileSuppressionSkipsTheTenetEntirely(t *testing.T) {
 	}
 	if _, ok := f.calls[0].Questions["verdict:comment-why"]; ok {
 		t.Error("a file-suppressed tenet was still asked about")
+	}
+}
+
+func TestRunAtDefaultConcurrency(t *testing.T) {
+	// Every line differs, so that no window is a cache hit for another and the
+	// count of calls is the same whatever order the workers run in.
+	var b strings.Builder
+	for i := range 12 * source.MaxWindowLines {
+		fmt.Fprintf(&b, "x := %d\n", i)
+	}
+	body := b.String()
+	j, f, windows := fixture(t, body, nil)
+	j.Concurrency = 0
+	c, err := cache.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.Cache = c
+	var logged int
+	var mu sync.Mutex
+	j.Log = func(string) {
+		mu.Lock()
+		defer mu.Unlock()
+		logged++
+	}
+	f.verdict["comment-why"] = 0.9
+	f.verdict["no-fallback"] = 0.1
+	f.where["comment-why"] = map[string]float64{"L001": 0.9}
+
+	if len(windows) < judge.DefaultConcurrency+1 {
+		t.Fatalf("got %d windows, want more than the %d workers", len(windows), judge.DefaultConcurrency)
+	}
+	findings, stats, err := j.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != len(windows) {
+		t.Errorf("got %d findings from %d windows", len(findings), len(windows))
+	}
+	if stats.Calls != 2*len(windows) || logged != stats.Calls {
+		t.Errorf("stats are %#v, logged %d", stats, logged)
+	}
+	for i := 1; i < len(findings); i++ {
+		if findings[i-1].Line >= findings[i].Line {
+			t.Fatalf("findings came back out of order: %d then %d", findings[i-1].Line, findings[i].Line)
+		}
 	}
 }
 
