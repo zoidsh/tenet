@@ -14,21 +14,27 @@
 	--pane: #101014;
 	--ink: #f4f4ef;
 	--ink-2: #c3c2b7;
+	/* Both greys clear 4.5:1 on --pane, which 18px text needs at the size this
+	   clip is watched: --muted 5.5, --faint 4.5. */
 	--muted: #8b8a82;
-	--faint: #5d5c56;
+	--faint: #7d7c75;
 	--hairline: rgba(244, 244, 239, 0.10);
-	--grid: #2c2c2a;
+	--wash: rgba(244, 244, 239, 0.045);
+	--grid: #3a3a37;
+	/* Red and green are the verdict's, and nothing else in the frame wears
+	   them: a diff's added and removed lines are told apart by their sign and
+	   their weight on the neutral scale. */
 	--fail: #d03b3b;
-	--fail-wash: rgba(208, 59, 59, 0.14);
+	--fail-text: #ef6b6b;
+	--fail-wash: rgba(208, 59, 59, 0.16);
 	--pass: #3fb950;
 	--quiet-bar: #4a6f8f;
-	--add-wash: rgba(63, 185, 80, 0.07);
-	--del-wash: rgba(208, 59, 59, 0.07);
 
 	--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	--sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 
-	--line: 16px;
+	--line: 24px;
+	--ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 * { box-sizing: border-box; }
@@ -49,8 +55,10 @@ body {
 }
 
 /* The stage is exactly the frame a 720p recording captures; it only ever
-   scales down, so a smaller window previews the same composition. */
+   scales down, so a smaller window previews the same composition. Every size
+   in here is set for a viewer watching that frame about 500px wide. */
 #stage {
+	position: relative;
 	width: 1280px;
 	height: 720px;
 	flex: 0 0 auto;
@@ -59,32 +67,69 @@ body {
 	border: 1px solid var(--hairline);
 	border-radius: 10px;
 	display: grid;
-	grid-template-rows: 44px 1fr 44px;
+	grid-template-rows: 52px 84px 1fr 110px 40px;
 	overflow: hidden;
 }
 
 header {
 	display: flex;
-	align-items: center;
+	align-items: baseline;
 	justify-content: space-between;
-	padding: 0 20px;
+	gap: 16px;
+	padding: 14px 22px 0;
 	border-bottom: 1px solid var(--hairline);
-	font-family: var(--mono);
-	font-size: 12.5px;
-	letter-spacing: 0.02em;
 }
 
-header .title { color: var(--ink); font-weight: 500; }
-header .where { color: var(--faint); }
+header .brand {
+	font-size: 20px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--ink);
+	margin-right: 12px;
+}
+
+header .tagline { font-size: 18px; color: var(--muted); }
+header .repo { font-family: var(--mono); font-size: 18px; color: var(--muted); }
+header .left { display: flex; align-items: baseline; }
+
+.headline {
+	padding: 0 22px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 4px;
+	border-bottom: 1px solid var(--hairline);
+}
+
+#headline {
+	font-size: 36px;
+	font-weight: 600;
+	line-height: 44px;
+	letter-spacing: -0.015em;
+	margin: 0;
+	color: var(--ink);
+}
+
+#headline .tail { transition: opacity 300ms var(--ease); }
+#headline .tail.bad { color: var(--fail); }
+#headline .tail.good { color: var(--pass); }
+
+#subline {
+	font-family: var(--mono);
+	font-size: 18px;
+	line-height: 22px;
+	color: var(--muted);
+	margin: 0;
+}
 
 main {
 	display: grid;
-	grid-template-columns: 700px 1fr;
+	grid-template-columns: 640px 1fr;
 	min-height: 0;
 }
 
 .pane {
-	padding: 18px 22px;
+	padding: 6px 22px;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
@@ -93,91 +138,120 @@ main {
 
 .pane.left { border-right: 1px solid var(--hairline); background: var(--pane); }
 
-.commit .subject {
-	font-family: var(--sans);
-	font-size: 17px;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-	margin: 0 0 4px;
-}
-
-.commit .meta {
+#filemeta {
 	font-family: var(--mono);
-	font-size: 12px;
+	font-size: 18px;
+	line-height: 22px;
 	color: var(--muted);
+	margin: 0;
 	font-variant-numeric: tabular-nums;
 }
 
-.diff {
+.body {
 	position: relative;
 	flex: 1 1 auto;
 	min-height: 0;
 	font-family: var(--mono);
-	font-size: 11px;
+	font-size: 18px;
 	line-height: var(--line);
 	tab-size: 2;
 }
 
-.diff-layer {
+.layer {
 	position: absolute;
 	inset: 0;
-	transition: opacity var(--fade, 700ms) ease;
+	transition: opacity var(--fade, 500ms) var(--ease);
 }
 
-.diff-layer[data-state="hidden"] { opacity: 0; }
+.layer[data-state="hidden"] { opacity: 0; }
 
+/* A line too long for the pane wraps rather than being cut: every character
+   shown is the file's own. */
 .row {
 	display: grid;
-	grid-template-columns: 34px 10px 1fr;
+	grid-template-columns: 24px 14px 1fr;
 	align-items: baseline;
-	height: var(--line);
+	min-height: var(--line);
 	border-left: 2px solid transparent;
 	padding-left: 6px;
-	white-space: pre;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	opacity: 0;
+	transition: opacity 200ms var(--ease);
 }
 
-.row .num {
-	color: var(--faint);
-	text-align: right;
-	padding-right: 10px;
-	font-variant-numeric: tabular-nums;
+.row.text-only {
+	grid-template-columns: 24px 1fr;
+	min-height: 22px;
+	line-height: 22px;
 }
+.row.in { opacity: 1; }
 
-.row .sign { color: var(--faint); }
-.row .text { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+.row .sign { color: var(--muted); }
+.row .text { color: var(--ink-2); }
 
-.row.file { border-left-color: transparent; }
 .row.file .text { color: var(--ink); font-weight: 700; }
 .row.gap .text { color: var(--faint); }
-.row.add { background: var(--add-wash); }
-.row.add .sign, .row.add .text { color: #a8d8ae; }
-.row.del { background: var(--del-wash); }
-.row.del .sign, .row.del .text { color: #e5a3a3; }
+.row.add { background: var(--wash); }
+.row.del .sign, .row.del .text { color: var(--faint); }
 
 .row.hit {
 	background: var(--fail-wash);
 	border-left-color: var(--fail);
-	transition: background 260ms ease, border-color 260ms ease;
+	transition: opacity 200ms var(--ease), background 300ms var(--ease), border-color 300ms var(--ease);
 }
 
-.row.hit .text { color: #f1c9c9; }
+.row.hit .text { color: #f6d0d0; }
 
-.pane.right { display: flex; flex-direction: column; gap: 14px; }
-
-.right h2 {
+.marker {
+	width: 22px;
+	height: 22px;
+	border-radius: 11px;
+	background: var(--fail);
+	color: #ffffff;
 	font-family: var(--mono);
-	font-size: 12.5px;
-	font-weight: 500;
-	letter-spacing: 0.02em;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 22px;
+	text-align: center;
+	opacity: 0;
+	transition: opacity 300ms var(--ease);
+}
+
+.marker[data-shown="1"] { opacity: 1; }
+
+.clock { display: flex; flex-direction: column; }
+
+.clock .top {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+#counter {
+	font-family: var(--mono);
+	font-size: 48px;
+	font-weight: 700;
+	line-height: 52px;
 	color: var(--ink);
-	margin: 0 0 4px;
+	font-variant-numeric: tabular-nums;
 }
 
-.right .sub {
+#cost {
 	font-family: var(--mono);
-	font-size: 11px;
+	font-size: 24px;
+	line-height: 30px;
+	color: var(--ink-2);
+	font-variant-numeric: tabular-nums;
+}
+
+.clock .caption {
+	font-size: 16px;
+	line-height: 20px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
 	color: var(--muted);
-	margin: 0;
 }
 
 .tenets {
@@ -186,33 +260,42 @@ main {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 14px;
-}
-
-.tenet {
-	display: grid;
-	grid-template-columns: 1fr;
-	gap: 5px;
+	gap: 12px;
 }
 
 .tenet .label {
 	display: flex;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: 10px;
-	font-family: var(--mono);
-	font-size: 12px;
+	align-items: center;
+	gap: 8px;
+	height: 24px;
 }
 
-.tenet .id { color: var(--ink-2); }
-.tenet .at { color: var(--faint); font-variant-numeric: tabular-nums; }
+.tenet .id {
+	font-family: var(--mono);
+	font-size: 20px;
+	line-height: 24px;
+	color: var(--ink-2);
+	flex: 0 0 auto;
+}
+
+.tenet .gloss {
+	font-size: 18px;
+	line-height: 24px;
+	color: var(--muted);
+	margin-left: 4px;
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
 .tenet.over .id { color: var(--ink); font-weight: 500; }
-.tenet.over .at { color: var(--fail); }
 
 .track {
 	position: relative;
-	height: 10px;
-	background: rgba(244, 244, 239, 0.05);
+	height: 16px;
+	margin-top: 4px;
+	background: rgba(244, 244, 239, 0.06);
 	border-radius: 2px;
 }
 
@@ -221,7 +304,7 @@ main {
 	width: 0;
 	background: var(--quiet-bar);
 	border-radius: 0 4px 4px 0;
-	transition: width var(--bar-dur, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1), background-color 200ms ease;
+	transition: width var(--bar-dur, 450ms) var(--ease), background-color 200ms var(--ease);
 }
 
 .tenet.over .fill { background: var(--fail); }
@@ -230,26 +313,36 @@ main {
 	position: absolute;
 	top: -1px;
 	left: 0;
-	transform: translateX(6px);
+	transform: translateX(8px);
 	font-family: var(--mono);
-	font-size: 11px;
-	line-height: 12px;
+	font-size: 18px;
+	line-height: 18px;
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
-	transition: left var(--bar-dur, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1), opacity 200ms ease;
+	transition: left var(--bar-dur, 450ms) var(--ease);
 }
 
 .tenet.over .value { color: var(--ink); }
-.tenet.blank .value { color: var(--faint); }
 
 /* Past three quarters of the track the tip label would run off the pane, so it
    sits inside the bar end, in white against the fill. */
 .value.inside {
-	transform: translateX(-100%) translateX(-6px);
+	transform: translateX(-100%) translateX(-8px);
 	color: #ffffff;
 }
 
-/* One cutoff for every bar, so the rows are read against a single scale. */
+.tenet .at {
+	font-family: var(--mono);
+	font-size: 18px;
+	line-height: 18px;
+	height: 18px;
+	margin-top: 2px;
+	color: var(--fail-text);
+	font-variant-numeric: tabular-nums;
+}
+
+/* One cutoff for every bar, so the rows are read against a single scale. The
+   subline names it, so the mark carries no label of its own. */
 #cutoff {
 	position: absolute;
 	top: 0;
@@ -259,248 +352,422 @@ main {
 	pointer-events: none;
 }
 
-#cutoff::after {
-	content: "fail 0.80";
-	position: absolute;
-	top: -15px;
-	left: 0;
-	transform: translateX(-50%);
-	font-family: var(--mono);
-	font-size: 10px;
-	letter-spacing: 0.04em;
+#status {
+	font-size: 28px;
+	font-weight: 600;
+	line-height: 30px;
+	height: 30px;
 	color: var(--muted);
-	white-space: nowrap;
+	transition: color 200ms var(--ease);
 }
 
-.status {
-	font-family: var(--mono);
-	font-size: 14px;
-	font-weight: 500;
-	color: var(--muted);
-	min-height: 20px;
-	transition: color 200ms ease;
-}
-
-.status.bad { color: var(--fail); }
-.status.good { color: var(--pass); }
+#status.bad { color: var(--fail); }
+#status.good { color: var(--pass); }
+#status.note { font-size: 24px; font-weight: 400; color: var(--ink-2); }
 
 footer {
+	border-top: 1px solid var(--hairline);
+	padding: 0 22px;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	padding: 0 22px;
-	border-top: 1px solid var(--hairline);
+}
+
+#strip {
 	font-family: var(--mono);
-	font-size: 11.5px;
+	font-size: 18px;
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 }
 
-#caption {
-	color: var(--ink-2);
-	opacity: 0;
-	transition: opacity 420ms ease;
+.session {
+	border-top: 1px solid var(--hairline);
+	background: var(--pane);
+	padding: 12px 22px;
+	overflow: hidden;
 }
 
-#caption[data-shown="1"] { opacity: 1; }
+#session {
+	font-family: var(--mono);
+	font-size: 18px;
+	line-height: 24px;
+	transition: transform 300ms var(--ease);
+}
 
-#numbers { color: var(--ink-2); }
+#session .line { height: 24px; white-space: pre; color: var(--ink-2); }
+#session .line.tool { color: var(--muted); }
+#session .line.tool.bad { color: var(--fail-text); }
+#session .line.tool.good { color: var(--pass); }
+#session .line.agent { color: var(--ink); }
 
-#replay { color: var(--faint); }
+#card {
+	position: absolute;
+	inset: 0;
+	background: var(--surface);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 14px;
+	text-align: center;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity var(--card-fade, 500ms) var(--ease);
+}
+
+#card[data-shown="1"] { opacity: 1; }
+
+#card .name {
+	font-size: 64px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	line-height: 68px;
+}
+
+#card .what { font-size: 28px; color: var(--ink-2); line-height: 34px; }
+#card .how { font-size: 22px; color: var(--muted); line-height: 28px; }
+#card .repo { font-family: var(--mono); font-size: 24px; color: var(--ink-2); line-height: 30px; margin-top: 10px; }
+
+/* Black before the first frame and after the last, so the cut points are
+   clean, and a hairline along the bottom edge that says how much of the clip
+   is left to record. */
+#blackout {
+	position: absolute;
+	inset: 0;
+	background: #000000;
+	pointer-events: none;
+}
+
+#blackout[data-shown="0"] { opacity: 0; }
+
+#progress {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	height: 3px;
+	width: 0;
+	background: var(--grid);
+	pointer-events: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
-	.diff-layer, .fill, .value, #caption { transition-duration: 1ms; }
+	.layer, .fill, .value, .row, .marker, #card, #session { transition-duration: 1ms; }
 }
 </style>
 </head>
-<body data-palette="#4a6f8f,#d03b3b,#3fb950">
+<body>
 <div id="stage">
 	<header>
-		<span class="title">tenet · every commit</span>
-		<span class="where">northwind/invoicing · main</span>
+		<span class="left"><span class="brand">tenet</span><span class="tagline">the review gate for code that agents write</span></span>
+		<span class="repo">github.com/zoidsh/tenet</span>
 	</header>
+
+	<div class="headline">
+		<p id="headline"></p>
+		<p id="subline"></p>
+	</div>
 
 	<main>
 		<section class="pane left">
-			<div class="commit">
-				<p class="subject">Add discount codes</p>
-				<p class="meta" id="diffstat"></p>
-			</div>
-			<div class="diff">
-				<div class="diff-layer" id="diff-blocked"></div>
-				<div class="diff-layer" id="diff-passed" data-state="hidden"></div>
+			<p id="filemeta"></p>
+			<div class="body">
+				<div class="layer" id="layer-blocked"></div>
+				<div class="layer" id="layer-passed" data-state="hidden"></div>
 			</div>
 		</section>
 
 		<section class="pane right">
-			<div>
-				<h2>tenet · pass / fail</h2>
-				<p class="sub">one jev call per window · rules in plain language · cutoff 0.80</p>
+			<div class="clock">
+				<div class="top">
+					<span id="counter">0.00 s</span>
+					<span id="cost"></span>
+				</div>
+				<span class="caption">seconds, this commit</span>
 			</div>
 			<div class="tenets" id="tenets">
 				<div id="cutoff"></div>
 			</div>
-			<div class="status" id="status"></div>
+			<div id="status"></div>
 		</section>
 	</main>
 
-	<footer>
-		<span id="caption">the agent fixes its own findings</span>
-		<span id="numbers"></span>
-		<span id="replay">space or click to replay</span>
-	</footer>
+	<div class="session"><div id="session"></div></div>
+
+	<footer><span id="strip"></span></footer>
+
+	<div id="card">
+		<div class="name">tenet</div>
+		<div class="what">the review gate for code that agents write</div>
+		<div class="how">rules in plain language · code, commit messages and pull requests · about a second · a fraction of a cent</div>
+		<div class="repo">github.com/zoidsh/tenet</div>
+	</div>
+
+	<div id="progress"></div>
+	<div id="blackout" data-shown="1"></div>
 </div>
 
 <script>
-// Every id, path, line number and number below is copied out of demo/data:
-// blocked.json and passed.json are one measured run of the sample project in
-// demo/sample, captured on 2026-09-18, and the probabilities under the cutoff
-// come from the below-cutoff-*.json files of the same run. jev answers with
-// the tenets it raises, so a tenet it stayed quiet about has no probability at
-// any cutoff: those rows carry null and are drawn at zero.
-const RUN = {
-	blocked: {
-		rows: [
-			{ id: "comment-why", p: 0.89, at: "billing.go:36" },
-			{ id: "no-mocking", p: 0.89, at: "billing_test.go:36" },
-			{ id: "no-transcript-comment", p: null, at: null },
-			{ id: "no-placeholder-phrase", p: null, at: null },
-			{ id: "assertion-justified", p: null, at: null },
-			{ id: "no-fallback", p: 0.94, at: "billing.go:28" },
-			{ id: "money-in-cents", p: 0.95, at: "billing.go:34" }
-		],
-		findings: 4,
-		stats: { duration_ms: 1469, input_tokens: 7575, cost_usd: 0.000318, calls: 4, windows: 2, cache_hits: 0 }
-	},
-	passed: {
-		rows: [
-			{ id: "comment-why", p: 0.36, at: "billing.go:18" },
-			{ id: "no-mocking", p: null, at: null },
-			{ id: "no-transcript-comment", p: 0.14, at: "billing.go:33" },
-			{ id: "no-placeholder-phrase", p: null, at: null },
-			{ id: "assertion-justified", p: null, at: null },
-			{ id: "no-fallback", p: null, at: null },
-			{ id: "money-in-cents", p: null, at: null }
-		],
-		findings: 0,
-		stats: { duration_ms: 699, input_tokens: 4530, cost_usd: 0.000190, calls: 2, windows: 2, cache_hits: 0 }
-	},
-	// git's own diffstat for the two patches in demo/sample.
-	diffstat: {
-		blocked: "staged · 2 files changed, 52 insertions(+)",
-		passed: "staged · 2 files changed, 22 insertions(+), 28 deletions(-)"
-	}
+// Every id, path, line number and number below is copied out of demo/data: six
+// runs of the sample project in demo/sample against its own tenet.yml,
+// measured on 2026-09-18 with an empty cache. A run prints a probability only
+// for a finding or for a near miss within 0.2 of its cutoff, so the numbers
+// under 0.80 were read off the same cached answers by moving the cutoff, which
+// is cutoff-sweep.txt. Where a tenet was asked about two windows, p is the
+// higher of its two answers, which is the one its verdict rests on. Each gloss
+// is the rule's own sentence in a handful of words, from rules/<id>/rule.yml
+// and, for money-in-cents, demo/sample/tenet.yml.
+const GLOSS = {
+	"comment-why": "a comment says why, not what",
+	"no-mocking": "tests use the real dependency",
+	"no-fallback": "no silent fallback, raise the error",
+	"money-in-cents": "money is integer cents, never a float",
+	"subject-says-what-changed": "the title says what changed",
+	"body-says-why": "the description gives the why",
+	"body-states-door": "says how far it walks back",
+	"body-few-visuals": "one or two visuals, no more"
 };
 
-// The lines are verbatim from demo/sample/agent-change.patch and
-// agent-fix.patch, trimmed to the hunks the findings land in. n is the line
-// number in the file the lint reported, which is why only the staged-addition
-// view carries one.
-const DIFF_BLOCKED = [
-	{ k: "file", t: "billing.go" },
-	{ k: "add", n: 23, t: "// ParseDiscount reads a code of the form SAVE10." },
-	{ k: "add", n: 24, t: "func ParseDiscount(code string) Discount {" },
-	{ k: "add", n: 25, t: "\tpercent, err := strconv.ParseFloat(strings.TrimPrefix(code, \"SAVE\"), 64)" },
-	{ k: "add", n: 26, t: "\tif err != nil {" },
-	{ k: "add", n: 27, t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
-	{ k: "add", n: 28, t: "\t\tpercent = 0", hit: "no-fallback" },
-	{ k: "add", n: 29, t: "\t}" },
-	{ k: "add", n: 30, t: "\treturn Discount{Code: code, Percent: percent}" },
-	{ k: "add", n: 31, t: "}" },
-	{ k: "gap", t: "…" },
-	{ k: "add", n: 33, t: "// DiscountedTotal returns the amount due after the discount as a float64." },
-	{ k: "add", n: 34, t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
-	{ k: "add", n: 35, t: "\t// divide the cents by 100 to get dollars" },
-	{ k: "add", n: 36, t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
-	{ k: "add", n: 37, t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
-	{ k: "add", n: 38, t: "\treturn dollars - dollars*discount.Percent/100" },
-	{ k: "add", n: 39, t: "}" },
-	{ k: "blank", t: "" },
-	{ k: "file", t: "billing_test.go" },
-	{ k: "add", n: 5, t: "type stubRepository struct {" },
-	{ k: "add", n: 6, t: "\tinvoice Invoice" },
-	{ k: "add", n: 7, t: "}" },
-	{ k: "add", n: 8, t: "" },
-	{ k: "add", n: 9, t: "func (s stubRepository) Invoice(string) (Invoice, error) {" },
-	{ k: "add", n: 10, t: "\treturn s.invoice, nil" },
-	{ k: "add", n: 11, t: "}" },
-	{ k: "gap", t: "…" },
-	{ k: "add", n: 35, t: "func TestDiscountedTotal(t *testing.T) {" },
-	{ k: "add", n: 36, t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" },
-	{ k: "add", n: 37, t: "\t\tID:    \"INV-1042\"," }
+// The code act's four rows are the four that fire, which is what the frame has
+// room for. The three of agent-hygiene left out stayed well under the cutoff
+// in both runs: no-transcript-comment at 0.09 and 0.13, no-placeholder-phrase
+// and assertion-justified under 0.10 in each.
+const CODE_BLOCKED = [
+	{ id: "no-fallback", p: 0.94, at: "billing.go:28" },
+	{ id: "money-in-cents", p: 0.95, at: "billing.go:34" },
+	{ id: "comment-why", p: 0.88, at: "billing.go:36" },
+	{ id: "no-mocking", p: 0.90, at: "billing_test.go:36" }
 ];
 
-const DIFF_PASSED = [
+const CODE_PASSED = [
+	{ id: "no-fallback", p: 0.28, at: null },
+	{ id: "money-in-cents", p: 0.08, at: null },
+	{ id: "comment-why", p: 0.30, at: null },
+	{ id: "no-mocking", p: 0.34, at: null }
+];
+
+// Verbatim from demo/sample/agent-change.patch and agent-fix.patch, cut to the
+// lines the findings name and their context, with a gap row wherever lines are
+// left out.
+const CODE_DIFF_BLOCKED = [
+	{ k: "file", t: "billing.go" },
+	{ k: "add", t: "\tif err != nil {" },
+	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback" },
+	{ k: "add", t: "\t}" },
+	{ k: "gap", t: "…" },
+	{ k: "add", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
+	{ k: "add", t: "\t// divide the cents by 100 to get dollars" },
+	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
+	{ k: "add", t: "\treturn dollars - dollars*discount.Percent/100" },
+	{ k: "gap", t: "…" },
+	{ k: "file", t: "billing_test.go" },
+	{ k: "add", t: "func TestDiscountedTotal(t *testing.T) {" },
+	{ k: "add", t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" },
+	{ k: "add", t: "\t\tID:    \"INV-1042\"," }
+];
+
+const CODE_DIFF_PASSED = [
 	{ k: "file", t: "billing.go" },
 	{ k: "del", t: "\tPercent float64" },
 	{ k: "add", t: "\tPercent int" },
 	{ k: "gap", t: "…" },
-	{ k: "del", t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
 	{ k: "del", t: "\t\tpercent = 0" },
-	{ k: "add", t: "\t\treturn Discount{}, fmt.Errorf(\"discount code %q carries no percentage: %w\", code, err)" },
 	{ k: "gap", t: "…" },
-	{ k: "del", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {" },
-	{ k: "del", t: "\t// divide the cents by 100 to get dollars" },
-	{ k: "del", t: "\tdollars := float64(totalCents) / 100" },
-	{ k: "del", t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
-	{ k: "del", t: "\treturn dollars - dollars*discount.Percent/100" },
-	{ k: "add", t: "// DiscountedTotalCents rounds the discount up, so half a cent of rounding" },
-	{ k: "add", t: "// falls to Northwind rather than to the customer." },
 	{ k: "add", t: "func DiscountedTotalCents(totalCents int, discount Discount) int {" },
 	{ k: "add", t: "\treturn totalCents - (totalCents*discount.Percent+99)/100" },
-	{ k: "blank", t: "" },
 	{ k: "file", t: "billing_test.go" },
 	{ k: "del", t: "type stubRepository struct {" },
-	{ k: "del", t: "\tinvoice Invoice" },
-	{ k: "del", t: "}" },
-	{ k: "del", t: "" },
-	{ k: "del", t: "func (s stubRepository) Invoice(string) (Invoice, error) {" },
-	{ k: "del", t: "\treturn s.invoice, nil" },
-	{ k: "del", t: "}" },
 	{ k: "gap", t: "…" },
 	{ k: "del", t: "\trepo := stubRepository{invoice: Invoice{" },
 	{ k: "add", t: "\trepo := NewMemoryRepository(Invoice{" }
 ];
 
-// The timeline, in milliseconds from the first frame. TOTAL is logged on load.
+// demo/sample/commit-msg-bad.txt and commit-msg-good.txt, line for line. The
+// finding lands on COMMIT_EDITMSG:1.
+const COMMIT_BAD = [
+	{ k: "plain", t: "Update billing.go and billing_test.go", hit: "subject-says-what-changed" }
+];
+
+const COMMIT_GOOD = [
+	{ k: "plain", t: "Add discount codes, rounding half cents to the house" },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "The sales team keyed discounted totals in by hand, and" },
+	{ k: "plain", t: "that is where most invoice corrections came from." }
+];
+
+// demo/sample/pr-bad.txt and pr-good.txt, line for line. The findings land on
+// PULL_REQUEST lines 1, 5, 10 and 13.
+const PR_BAD = [
+	{ k: "plain", t: "Update billing.go and billing_test.go", hit: "subject-says-what-changed" },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "Changes in this pull request:" },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "- billing.go: adds Discount, ParseDiscount and", hit: "body-says-why" },
+	{ k: "plain", t: "  DiscountedTotal" },
+	{ k: "plain", t: "- billing_test.go: adds stubRepository and" },
+	{ k: "plain", t: "  TestDiscountedTotal" },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "![before](before.png)", hit: "body-few-visuals" },
+	{ k: "plain", t: "![after](after.png)" },
+	{ k: "plain", t: "![terminal](terminal.png)" },
+	{ k: "plain", t: "![coverage](coverage.png)", hit: "body-states-door" }
+];
+
+const PR_GOOD = [
+	{ k: "plain", t: "Add discount codes to invoice totals" },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "Sales has been giving discounts over the phone and" },
+	{ k: "plain", t: "keying the reduced total in by hand, which is where" },
+	{ k: "plain", t: "most of this month's invoice corrections came from." },
+	{ k: "plain", t: "A code on the invoice carries the discount itself." },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "Rounding goes to the house: half a cent of discount" },
+	{ k: "plain", t: "is dropped rather than given away, because the" },
+	{ k: "plain", t: "ledger reconciles in whole cents." },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "A two-way door. The field is additive and nothing" },
+	{ k: "plain", t: "outside DiscountedTotalCents reads it, so reverting" },
+	{ k: "plain", t: "this commit walks the change back." },
+	{ k: "plain", t: "" },
+	{ k: "plain", t: "Look at the rounding in DiscountedTotalCents first." }
+];
+
+const PR_ROWS_BLOCKED = [
+	{ id: "subject-says-what-changed", p: 0.94, at: "PULL_REQUEST:1" },
+	{ id: "body-says-why", p: 0.94, at: "PULL_REQUEST:5" },
+	{ id: "body-few-visuals", p: 0.97, at: "PULL_REQUEST:10" },
+	{ id: "body-states-door", p: 0.88, at: "PULL_REQUEST:13" }
+];
+
+const PR_ROWS_PASSED = [
+	{ id: "subject-says-what-changed", p: 0.14, at: null },
+	{ id: "body-says-why", p: 0.13, at: null },
+	{ id: "body-few-visuals", p: 0.13, at: null },
+	{ id: "body-states-door", p: 0.17, at: null }
+];
+
+// One scene per act. Each carries the two states it plays: what the left pane
+// holds, the rows on the right, and the run whose numbers the clock, the cost
+// and the bottom strip show.
+const ACTS = [
+	{
+		key: "code",
+		lead: "Add discount codes.",
+		fixedLead: "Fixed by the agent.",
+		caption: "the agent fixes its own findings",
+		source: "the AGENTS.md rules",
+		meta: "northwind/invoicing · 2 files changed, +52",
+		fixedMeta: "northwind/invoicing · 2 files changed, +22 −28",
+		left: CODE_DIFF_BLOCKED,
+		fixedLeft: CODE_DIFF_PASSED,
+		rows: CODE_BLOCKED,
+		fixedRows: CODE_PASSED,
+		blocked: { findings: 4, duration_ms: 893, input_tokens: 7575, cost_usd: 0.000318, calls: 4, windows: 2 },
+		passed: { findings: 0, duration_ms: 795, input_tokens: 4530, cost_usd: 0.000190, calls: 2, windows: 2 },
+		session: [
+			{ when: "open", kind: "prompt", t: "$ git commit -m \"Add discount codes\"" },
+			{ when: "verdict", kind: "tool bad", t: "tenet: 4 findings · commit blocked" },
+			{ when: "caption", kind: "agent", t: "● fixing billing.go:28, :34, :36 and billing_test.go:36" },
+			{ when: "again", kind: "prompt", t: "$ git commit -m \"Add discount codes\"" },
+			{ when: "pass", kind: "tool good", t: "tenet: 0 findings · committed" }
+		]
+	},
+	{
+		key: "commit",
+		lead: "Commit message.",
+		fixedLead: "Reworded.",
+		caption: "the agent rewords the subject",
+		source: "the pr preset",
+		meta: "COMMIT_EDITMSG · the message this commit carries",
+		fixedMeta: "COMMIT_EDITMSG · the message this commit carries",
+		left: COMMIT_BAD,
+		fixedLeft: COMMIT_GOOD,
+		rows: [{ id: "subject-says-what-changed", p: 0.96, at: "COMMIT_EDITMSG:1" }],
+		fixedRows: [{ id: "subject-says-what-changed", p: 0.14, at: null }],
+		blocked: { findings: 1, duration_ms: 781, input_tokens: 891, cost_usd: 0.000037, calls: 2, windows: 1 },
+		passed: { findings: 0, duration_ms: 545, input_tokens: 573, cost_usd: 0.000024, calls: 1, windows: 1 },
+		session: [
+			{ when: "open", kind: "prompt", t: "$ git commit" },
+			{ when: "verdict", kind: "tool bad", t: "tenet: 1 finding · reword the message" },
+			{ when: "caption", kind: "agent", t: "● rewording the subject" },
+			{ when: "again", kind: "prompt", t: "$ git commit" },
+			{ when: "pass", kind: "tool good", t: "tenet: 0 findings · committed" }
+		]
+	},
+	{
+		key: "pr",
+		lead: "Pull request.",
+		fixedLead: "Rewritten.",
+		caption: "the agent rewrites the description",
+		source: "the pr preset",
+		meta: "PULL_REQUEST · the title and description",
+		fixedMeta: "PULL_REQUEST · the title and description",
+		left: PR_BAD,
+		fixedLeft: PR_GOOD,
+		rows: PR_ROWS_BLOCKED,
+		fixedRows: PR_ROWS_PASSED,
+		blocked: { findings: 4, duration_ms: 726, input_tokens: 2840, cost_usd: 0.000119, calls: 2, windows: 1 },
+		passed: { findings: 0, duration_ms: 554, input_tokens: 1749, cost_usd: 0.000073, calls: 1, windows: 1 },
+		session: [
+			{ when: "open", kind: "prompt", t: "$ gh pr create" },
+			{ when: "verdict", kind: "tool bad", t: "tenet: 4 findings on the pull request" },
+			{ when: "caption", kind: "agent", t: "● rewriting the description" },
+			{ when: "again", kind: "prompt", t: "$ gh pr create" },
+			{ when: "pass", kind: "tool good", t: "tenet: 0 findings · pull request opened" }
+		]
+	}
+];
+
+// The timeline, in milliseconds. PRE and POST are the black holds that give
+// the recording clean cut points; the three acts start at AT, and everything
+// inside an act is measured from its own start by OFF. TOTAL is logged on
+// load and is what the progress line at the bottom edge runs over.
 const T = {
-	STATUS_ASKING: 300,
-	BAR_START: 1200,
-	BAR_STAGGER: 120,
-	BAR_DUR: 600,
+	PRE: 400,
+	POST: 400,
+	AT: [0, 11000, 17000],
+	END: 23000,
+	CARD_HOLD: 3000,
+	CARD_FADE: 500,
+	BAR_STAGGER: 90,
+	BAR_DUR: 450,
 	VERDICT_GAP: 120,
-	READ_FINDINGS: 9000,
-	CAPTION_TO_DIFF: 700,
-	DIFF_FADE: 700,
-	DIFF_TO_BARS: 300,
-	REBAR_STAGGER: 100,
-	REBAR_DUR: 600,
-	END_HOLD: 7000
+	COUNT_TICKS: 30,
+	TYPE_MS: 20,
+	TYPE_LEAD: 800,
+	OFF: {
+		code: { textIn: 200, stagger: 45, ask: 1600, bars: 2000, caption: 6500, swap: 7000, rebars: 8100 },
+		text: { textIn: 150, stagger: 60, ask: 800, bars: 1000, caption: 3300, swap: 3600, rebars: 4300 }
+	}
 };
 
 const CUTOFF = 0.8;
-const ROWS = RUN.blocked.rows.length;
-const BARS_DONE = T.BAR_START + (ROWS - 1) * T.BAR_STAGGER + T.BAR_DUR;
-const VERDICT_AT = BARS_DONE + T.VERDICT_GAP;
-const CAPTION_AT = VERDICT_AT + T.READ_FINDINGS;
-const DIFF_AT = CAPTION_AT + T.CAPTION_TO_DIFF;
-const REBAR_AT = DIFF_AT + T.DIFF_FADE + T.DIFF_TO_BARS;
-const REBARS_DONE = REBAR_AT + (ROWS - 1) * T.REBAR_STAGGER + T.REBAR_DUR;
-const PASS_AT = REBARS_DONE + T.VERDICT_GAP;
-const TOTAL = PASS_AT + T.END_HOLD;
+const TOTAL = T.PRE + T.END + T.CARD_HOLD + T.POST;
+
+function offsets(act) {
+	return act.key === "code" ? T.OFF.code : T.OFF.text;
+}
+
+function barsEnd(act, start) {
+	return start + (act.rows.length - 1) * T.BAR_STAGGER + T.BAR_DUR;
+}
 
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const stage = document.getElementById("stage");
+const headlineEl = document.getElementById("headline");
+const sublineEl = document.getElementById("subline");
+const fileMetaEl = document.getElementById("filemeta");
+const counterEl = document.getElementById("counter");
+const costEl = document.getElementById("cost");
+const stripEl = document.getElementById("strip");
 const statusEl = document.getElementById("status");
-const captionEl = document.getElementById("caption");
-const numbersEl = document.getElementById("numbers");
-const diffstatEl = document.getElementById("diffstat");
 const tenetsEl = document.getElementById("tenets");
 const cutoffEl = document.getElementById("cutoff");
-const blockedLayer = document.getElementById("diff-blocked");
-const passedLayer = document.getElementById("diff-passed");
+const cardEl = document.getElementById("card");
+const blackoutEl = document.getElementById("blackout");
+const progressEl = document.getElementById("progress");
+const sessionEl = document.getElementById("session");
+const blockedLayer = document.getElementById("layer-blocked");
+const passedLayer = document.getElementById("layer-passed");
 
 function fit() {
 	const scale = Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
@@ -513,45 +780,77 @@ function signOf(kind) {
 	return " ";
 }
 
-function renderDiff(layer, lines) {
+// order is the marker number a firing tenet carries, 1 upwards in the order
+// the bars fire, so the number on a row and the number in the left pane's
+// gutter are the same one.
+function markerOrder(rows) {
+	const order = new Map();
+	let n = 0;
+	for (const row of rows) {
+		if (row.p >= CUTOFF) {
+			n += 1;
+			order.set(row.id, n);
+		}
+	}
+	return order;
+}
+
+function renderLines(layer, lines, order, staggered) {
 	layer.textContent = "";
+	const rows = [];
+	const textOnly = lines.length > 0 && lines[0].k === "plain";
 	for (const line of lines) {
 		const row = document.createElement("div");
-		row.className = "row " + line.k;
+		row.className = "row " + line.k + (textOnly ? " text-only" : "") + (staggered ? "" : " in");
 		if (line.hit) row.dataset.hit = line.hit;
 
-		const num = document.createElement("span");
-		num.className = "num";
-		num.textContent = line.n === undefined ? "" : String(line.n);
+		const marker = document.createElement("div");
+		marker.className = "marker";
+		marker.dataset.shown = "0";
+		if (line.hit && order.has(line.hit)) marker.textContent = String(order.get(line.hit));
+		row.append(marker);
 
-		const sign = document.createElement("span");
-		sign.className = "sign";
-		sign.textContent = signOf(line.k);
+		if (!textOnly) {
+			const sign = document.createElement("span");
+			sign.className = "sign";
+			sign.textContent = signOf(line.k);
+			row.append(sign);
+		}
 
 		const text = document.createElement("span");
 		text.className = "text";
 		text.textContent = line.t;
+		row.append(text);
 
-		row.append(num, sign, text);
 		layer.append(row);
+		rows.push(row);
 	}
+	return rows;
 }
 
 const bars = new Map();
 
-function renderTenets() {
-	for (const row of RUN.blocked.rows) {
+function renderTenets(rows, order) {
+	tenetsEl.textContent = "";
+	tenetsEl.append(cutoffEl);
+	bars.clear();
+	for (const row of rows) {
 		const el = document.createElement("div");
 		el.className = "tenet";
 
 		const label = document.createElement("div");
 		label.className = "label";
+		const marker = document.createElement("div");
+		marker.className = "marker";
+		marker.dataset.shown = "0";
+		if (order.has(row.id)) marker.textContent = String(order.get(row.id));
 		const id = document.createElement("span");
 		id.className = "id";
 		id.textContent = row.id;
-		const at = document.createElement("span");
-		at.className = "at";
-		label.append(id, at);
+		const gloss = document.createElement("span");
+		gloss.className = "gloss";
+		gloss.textContent = GLOSS[row.id];
+		label.append(marker, id, gloss);
 
 		const track = document.createElement("div");
 		track.className = "track";
@@ -561,125 +860,272 @@ function renderTenets() {
 		value.className = "value";
 		track.append(fill, value);
 
-		el.append(label, track);
+		const at = document.createElement("div");
+		at.className = "at";
+
+		el.append(label, track, at);
 		tenetsEl.append(el);
-		bars.set(row.id, { el: el, fill: fill, value: value, at: at });
+		bars.set(row.id, { el: el, fill: fill, value: value, at: at, marker: marker });
 	}
 }
 
 function money(usd) {
-	return "$" + usd.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+	return "$" + usd.toFixed(5);
 }
 
-function statsLine(stats) {
-	const seconds = (stats.duration_ms / 1000).toFixed(1) + " s round trip";
-	const tokens = stats.input_tokens.toLocaleString("en-US") + " tokens";
-	const calls = stats.calls + " calls over " + stats.windows + " windows, " + stats.cache_hits + " cached";
-	return [seconds, tokens, calls, money(stats.cost_usd) + " per commit"].join(" · ");
+function setHeadline(lead, tail, tone) {
+	headlineEl.textContent = "";
+	const first = document.createElement("span");
+	first.textContent = lead;
+	headlineEl.append(first);
+	if (tail) {
+		const span = document.createElement("span");
+		span.className = "tail " + tone;
+		span.textContent = " " + tail;
+		headlineEl.append(span);
+	}
+}
+
+function setSubline(act, findings) {
+	const calls = act.blocked.windows === 1 ? "one jev call" : "one jev call per window";
+	const head = findings === null
+		? "judged against " + act.source
+		: findings + (findings === 1 ? " finding from " : " findings from ") + act.source;
+	sublineEl.textContent = head + " · " + calls + " · cutoff 0.80";
+}
+
+function setStrip(stats) {
+	stripEl.textContent = stats.input_tokens.toLocaleString("en-US") + " tokens · " +
+		stats.calls + (stats.calls === 1 ? " call · " : " calls · ") +
+		stats.windows + (stats.windows === 1 ? " window" : " windows");
+}
+
+function seconds(ms) {
+	return (ms / 1000).toFixed(1) + " s";
 }
 
 function setBar(row, duration) {
 	const bar = bars.get(row.id);
-	const p = row.p === null ? 0 : row.p;
-	const over = row.p !== null && row.p >= CUTOFF;
+	const p = row.p;
+	const over = p >= CUTOFF;
+	const pct = (p * 100).toFixed(1).replace(/\.0$/, "") + "%";
 
 	bar.fill.style.setProperty("--bar-dur", (reduced ? 1 : duration) + "ms");
 	bar.value.style.setProperty("--bar-dur", (reduced ? 1 : duration) + "ms");
-	const pct = (p * 100).toFixed(1).replace(/\.0$/, "") + "%";
 	bar.fill.style.width = pct;
 	bar.value.style.left = pct;
-	bar.value.textContent = row.p === null ? "no answer" : row.p.toFixed(2);
+	bar.value.textContent = p.toFixed(2);
 	bar.value.classList.toggle("inside", p >= 0.7);
-	bar.el.classList.toggle("blank", row.p === null);
 	bar.el.classList.toggle("over", over);
 	bar.at.textContent = over ? row.at : "";
-
-	if (over) {
-		const line = blockedLayer.querySelector('[data-hit="' + row.id + '"]');
-		if (line) line.classList.add("hit");
-	}
+	bar.marker.dataset.shown = over ? "1" : "0";
 }
 
-function clearBars() {
-	for (const row of RUN.blocked.rows) {
-		const bar = bars.get(row.id);
-		bar.fill.style.setProperty("--bar-dur", "0ms");
-		bar.value.style.setProperty("--bar-dur", "0ms");
-		bar.fill.style.width = "0";
-		bar.value.style.left = "0";
-		bar.value.textContent = "";
-		bar.value.classList.remove("inside");
-		bar.at.textContent = "";
-		bar.el.classList.remove("over", "blank");
+function light(id) {
+	const line = blockedLayer.querySelector('[data-hit="' + id + '"]');
+	if (!line) return;
+	line.classList.add("hit");
+	const marker = line.querySelector(".marker");
+	if (marker) marker.dataset.shown = "1";
+}
+
+const SESSION_LINES = 3;
+let sessionCount = 0;
+
+// The strip holds a whole session and shows its last three lines, so the older
+// ones scroll up as the agent works. A prompt line is typed a character at a
+// time; everything else arrives whole, the way a tool's output does.
+function say(line) {
+	const el = document.createElement("div");
+	el.className = "line " + line.kind;
+	el.textContent = line.kind === "prompt" ? "" : line.t;
+	sessionEl.append(el);
+	sessionCount += 1;
+	const over = Math.max(0, sessionCount - SESSION_LINES);
+	sessionEl.style.transform = "translateY(" + -over * 24 + "px)";
+	return el;
+}
+
+function typeInto(el, text, start) {
+	for (let i = 1; i <= text.length; i++) {
+		const shown = text.slice(0, i);
+		at(start + i * T.TYPE_MS, function () {
+			el.textContent = shown;
+		});
 	}
-	for (const line of blockedLayer.querySelectorAll(".hit")) line.classList.remove("hit");
 }
 
 let timers = [];
+let started = 0;
 
+// ms is measured from the first frame, whenever at() is called: a beat
+// scheduled from inside another beat, such as the typing or the left pane
+// opening line by line, lands where the timeline says rather than that beat's
+// own moment plus the offset.
 function at(ms, fn) {
-	timers.push(setTimeout(fn, ms));
+	const delay = Math.max(0, T.PRE + ms - (Date.now() - started));
+	timers.push(setTimeout(fn, delay));
+}
+
+// The counter is stepped rather than driven by a frame loop, so the clip reads
+// the same on a slow recorder and the timeline stays checkable.
+function countTo(start, span, ms) {
+	for (let i = 0; i <= T.COUNT_TICKS; i++) {
+		const value = (ms / 1000) * (i / T.COUNT_TICKS);
+		at(start + Math.round((span * i) / T.COUNT_TICKS), function () {
+			counterEl.textContent = value.toFixed(2) + " s";
+		});
+	}
+}
+
+function scheduleAct(act, start) {
+	const off = offsets(act);
+	const order = markerOrder(act.rows);
+	const barsAt = start + off.bars;
+	const verdictAt = barsEnd(act, barsAt) + T.VERDICT_GAP;
+	const rebarsAt = start + off.rebars;
+	const passAt = barsEnd(act, rebarsAt) + T.VERDICT_GAP;
+
+	const sessionAt = {
+		open: start + off.textIn,
+		verdict: verdictAt,
+		caption: start + off.caption,
+		again: rebarsAt - T.TYPE_LEAD,
+		pass: passAt
+	};
+	for (const line of act.session) {
+		const when = sessionAt[line.when];
+		at(when, function () {
+			const el = say(line);
+			if (line.kind === "prompt") typeInto(el, line.t, when);
+		});
+	}
+
+	// The act opens: its own two states go into the panes, the left one line
+	// at a time.
+	at(start, function () {
+		setHeadline(act.lead, "", "");
+		setSubline(act, null);
+		fileMetaEl.textContent = act.meta;
+		counterEl.textContent = "0.00 s";
+		costEl.textContent = "";
+		setStrip(act.blocked);
+		statusEl.textContent = "";
+		statusEl.className = "";
+		blockedLayer.dataset.state = "shown";
+		passedLayer.dataset.state = "hidden";
+		const rows = renderLines(blockedLayer, act.left, order, true);
+		renderLines(passedLayer, act.fixedLeft, new Map(), false);
+		renderTenets(act.rows, order);
+		rows.forEach(function (row, i) {
+			at(start + off.textIn + i * off.stagger, function () {
+				row.classList.add("in");
+			});
+		});
+	});
+
+	at(barsAt - 400, function () {
+		statusEl.textContent = "asking jev…";
+		statusEl.className = "";
+	});
+	countTo(barsAt, verdictAt - barsAt, act.blocked.duration_ms);
+
+	act.rows.forEach(function (row, i) {
+		const from = barsAt + i * T.BAR_STAGGER;
+		at(from, function () {
+			setBar(row, T.BAR_DUR);
+		});
+		if (row.p >= CUTOFF) {
+			at(from + T.BAR_DUR, function () {
+				light(row.id);
+			});
+		}
+	});
+
+	at(verdictAt, function () {
+		setHeadline(act.lead, "Blocked in " + seconds(act.blocked.duration_ms) + ".", "bad");
+		setSubline(act, act.blocked.findings);
+		costEl.textContent = money(act.blocked.cost_usd) + " per commit";
+		statusEl.textContent = "blocked · " + act.blocked.findings +
+			(act.blocked.findings === 1 ? " finding" : " findings");
+		statusEl.className = "bad";
+	});
+
+	at(start + off.caption, function () {
+		statusEl.textContent = act.caption;
+		statusEl.className = "note";
+	});
+
+	at(start + off.swap, function () {
+		blockedLayer.style.setProperty("--fade", T.CARD_FADE + "ms");
+		passedLayer.style.setProperty("--fade", T.CARD_FADE + "ms");
+		blockedLayer.dataset.state = "hidden";
+		passedLayer.dataset.state = "shown";
+		fileMetaEl.textContent = act.fixedMeta;
+	});
+
+	at(rebarsAt - 400, function () {
+		statusEl.textContent = "asking jev…";
+		statusEl.className = "";
+		counterEl.textContent = "0.00 s";
+		costEl.textContent = "";
+	});
+	countTo(rebarsAt, passAt - rebarsAt, act.passed.duration_ms);
+
+	act.fixedRows.forEach(function (row, i) {
+		at(rebarsAt + i * T.BAR_STAGGER, function () {
+			setBar(row, T.BAR_DUR);
+		});
+	});
+
+	at(passAt, function () {
+		setHeadline(act.fixedLead, "Passed in " + seconds(act.passed.duration_ms) + ".", "good");
+		setSubline(act, act.passed.findings);
+		costEl.textContent = money(act.passed.cost_usd) + " per commit";
+		setStrip(act.passed);
+		statusEl.textContent = "passed · 0 findings";
+		statusEl.className = "good";
+	});
+
+	return { verdictAt: verdictAt, passAt: passAt };
 }
 
 function play() {
 	for (const t of timers) clearTimeout(t);
 	timers = [];
+	started = Date.now();
 
-	clearBars();
-	statusEl.textContent = "";
-	statusEl.className = "status";
-	captionEl.dataset.shown = "0";
-	diffstatEl.textContent = RUN.diffstat.blocked;
-	numbersEl.textContent = statsLine(RUN.blocked.stats);
-	blockedLayer.dataset.state = "shown";
-	passedLayer.dataset.state = "hidden";
+	blackoutEl.dataset.shown = "1";
+	cardEl.dataset.shown = "0";
+	sessionEl.textContent = "";
+	sessionEl.style.transform = "translateY(0)";
+	sessionCount = 0;
+	progressEl.style.transition = "none";
+	progressEl.style.width = "0";
 
-	at(T.STATUS_ASKING, function () {
-		statusEl.textContent = "asking jev…";
+	const marks = [];
+	ACTS.forEach(function (act, i) {
+		marks.push(scheduleAct(act, T.AT[i]));
 	});
 
-	RUN.blocked.rows.forEach(function (row, i) {
-		at(T.BAR_START + i * T.BAR_STAGGER, function () {
-			setBar(row, T.BAR_DUR);
-		});
+	at(0, function () {
+		blackoutEl.dataset.shown = "0";
+		progressEl.style.transition = "width " + (TOTAL - T.PRE) + "ms linear";
+		progressEl.style.width = "100%";
 	});
 
-	at(VERDICT_AT, function () {
-		statusEl.textContent = "commit blocked · " + RUN.blocked.findings + " findings";
-		statusEl.className = "status bad";
+	at(T.END, function () {
+		cardEl.style.setProperty("--card-fade", T.CARD_FADE + "ms");
+		cardEl.dataset.shown = "1";
 	});
 
-	at(CAPTION_AT, function () {
-		captionEl.dataset.shown = "1";
+	at(T.END + T.CARD_HOLD, function () {
+		blackoutEl.dataset.shown = "1";
 	});
 
-	at(DIFF_AT, function () {
-		blockedLayer.style.setProperty("--fade", T.DIFF_FADE + "ms");
-		passedLayer.style.setProperty("--fade", T.DIFF_FADE + "ms");
-		blockedLayer.dataset.state = "hidden";
-		passedLayer.dataset.state = "shown";
-		diffstatEl.textContent = RUN.diffstat.passed;
-		statusEl.textContent = "asking jev…";
-		statusEl.className = "status";
-	});
-
-	RUN.passed.rows.forEach(function (row, i) {
-		at(REBAR_AT + i * T.REBAR_STAGGER, function () {
-			setBar(row, T.REBAR_DUR);
-		});
-	});
-
-	at(PASS_AT, function () {
-		statusEl.textContent = "commit passed · " + RUN.passed.findings + " findings";
-		statusEl.className = "status good";
-		numbersEl.textContent = statsLine(RUN.passed.stats);
-		captionEl.dataset.shown = "0";
-	});
+	return marks;
 }
 
-renderDiff(blockedLayer, DIFF_BLOCKED);
-renderDiff(passedLayer, DIFF_PASSED);
-renderTenets();
 cutoffEl.style.left = (CUTOFF * 100).toFixed(1).replace(/\.0$/, "") + "%";
 fit();
 window.addEventListener("resize", fit);
@@ -690,8 +1136,11 @@ window.addEventListener("keydown", function (e) {
 	}
 });
 window.addEventListener("click", play);
-play();
-console.log("demo/index.html: " + (TOTAL / 1000).toFixed(1) + " s from the first frame to the last");
+const marks = play();
+console.log("demo/index.html: acts at " + T.AT.map(function (ms) { return (T.PRE + ms) / 1000; }).join(", ") +
+	" s, end card at " + (T.PRE + T.END) / 1000 + " s, " + (TOTAL / 1000).toFixed(1) + " s in all");
+console.log("verdicts at " + marks.map(function (m) { return (T.PRE + m.verdictAt) / 1000; }).join(", ") +
+	" s, passes at " + marks.map(function (m) { return (T.PRE + m.passAt) / 1000; }).join(", ") + " s");
 </script>
 </body>
 </html>
