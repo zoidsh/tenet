@@ -20,7 +20,18 @@ func TestMain(m *testing.M) {
 	if err := os.Setenv(report.FormatEnv, report.FormatText); err != nil {
 		panic(err)
 	}
-	os.Exit(m.Run())
+	// The config home is moved somewhere empty so that a key saved on the
+	// machine running the tests is not the key a test that saved none finds.
+	empty, err := os.MkdirTemp("", "tenet-config")
+	if err != nil {
+		panic(err)
+	}
+	if err := os.Setenv("XDG_CONFIG_HOME", empty); err != nil {
+		panic(err)
+	}
+	code := m.Run()
+	_ = os.RemoveAll(empty)
+	os.Exit(code)
 }
 
 // goldenDir is settled before any test moves the working directory, which the

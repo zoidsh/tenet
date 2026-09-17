@@ -10,6 +10,7 @@ import (
 
 	"github.com/zoidsh/tenetlint/internal/check"
 	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/provider"
 	"github.com/zoidsh/tenetlint/internal/report"
 	"github.com/zoidsh/tenetlint/internal/tenets"
 )
@@ -102,11 +103,11 @@ func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
 		return err
 	}
 
-	key := jev.KeyFromEnv()
-	if key == "" {
-		return fail(missingKeyError())
+	p, key, err := keyFor(cfg)
+	if err != nil {
+		return fail(err)
 	}
-	results, stats, err := checkExamples(cmd, o, key, model, selected)
+	results, stats, err := checkExamples(cmd, o, p, key, model, selected)
 	if err != nil {
 		return fail(err)
 	}
@@ -146,9 +147,9 @@ func selectTenets(cfg *tenets.Config, ids []string) ([]*tenets.Tenet, error) {
 	return selected, nil
 }
 
-func checkExamples(cmd *cobra.Command, o *checkOptions, key, model string, ts []*tenets.Tenet) ([]check.Result, check.Stats, error) {
+func checkExamples(cmd *cobra.Command, o *checkOptions, p provider.Provider, key, model string, ts []*tenets.Tenet) ([]check.Result, check.Stats, error) {
 	c := &check.Checker{
-		Asker:       jev.New(key, jev.WithModel(model)),
+		Asker:       p.Client(key, model),
 		MinExamples: o.minExamples,
 		Runs:        o.runs,
 	}

@@ -12,10 +12,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/zoidsh/tenetlint/internal/auth"
 	"github.com/zoidsh/tenetlint/internal/baseline"
 	"github.com/zoidsh/tenetlint/internal/cache"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/judge"
+	"github.com/zoidsh/tenetlint/internal/provider"
 	"github.com/zoidsh/tenetlint/internal/report"
 	"github.com/zoidsh/tenetlint/internal/source"
 	"github.com/zoidsh/tenetlint/internal/tenets"
@@ -55,8 +57,27 @@ func openCache(noCache bool) (*cache.Cache, error) {
 
 // missingKeyError is shared with init, so that whichever command a newcomer
 // runs first names the same key and the same way out.
-func missingKeyError() error {
-	return fmt.Errorf("%s is not set: export your TypeSafe API key to lint, or set %s=1 to commit without linting", jev.APIKeyEnv, SkipEnv)
+func missingKeyError(p provider.Provider) error {
+	return fmt.Errorf("%s is not set: export your %s API key to lint, or set %s=1 to commit without linting", p.Env, p.Label, SkipEnv)
+}
+
+// keyFor is the key this config's provider is asked with.
+func keyFor(cfg *tenets.Config) (provider.Provider, string, error) {
+	p, err := provider.Lookup(cfg.Provider)
+	if err != nil {
+		return p, "", err
+	}
+	if err := p.Available(); err != nil {
+		return p, "", err
+	}
+	key, _, err := auth.Resolve(p)
+	if err != nil {
+		return p, "", err
+	}
+	if key == "" {
+		return p, "", missingKeyError(p)
+	}
+	return p, key, nil
 }
 
 type lintOptions struct {
@@ -135,12 +156,13 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 // decides what to print or write about it. The findings' paths are still the
 // repository-relative ones the tenets were matched against.
 type run struct {
-	dir     string
-	cfg     *tenets.Config
-	model   string
-	key     string
-	set     *source.Set
-	outcome judge.Outcome
+	dir      string
+	cfg      *tenets.Config
+	model    string
+	provider provider.Provider
+	key      string
+	set      *source.Set
+	outcome  judge.Outcome
 }
 
 // collectRun reads the config and gathers what the options select, without
@@ -169,9 +191,9 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	}
 	cfg.SetModel(model)
 
-	key := jev.KeyFromEnv()
-	if key == "" {
-		return nil, missingKeyError()
+	p, key, err := keyFor(cfg)
+	if err != nil {
+		return nil, err
 	}
 
 	ids := make([]string, 0, len(cfg.Tenets))
@@ -191,12 +213,13 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 		}
 	}
 	return &run{
-		dir:     dir,
-		cfg:     cfg,
-		model:   model,
-		key:     key,
-		set:     set,
-		outcome: judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}},
+		dir:      dir,
+		cfg:      cfg,
+		model:    model,
+		provider: p,
+		key:      key,
+		set:      set,
+		outcome:  judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}},
 	}, nil
 }
 
@@ -206,7 +229,7 @@ func (r *run) judge(cmd *cobra.Command, o *lintOptions) error {
 	if len(windows) == 0 {
 		return nil
 	}
-	outcome, err := lintWindows(cmd.Context(), cmd, o, r.cfg, windows, r.key, r.model)
+	outcome, err := lintWindows(cmd.Context(), cmd, o, r.cfg, windows, r.provider, r.key, r.model)
 	if err != nil {
 		return err
 	}
@@ -341,8 +364,8 @@ func relativeTo(dir, path string) string {
 	return rel
 }
 
-func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) (judge.Outcome, error) {
-	j := &judge.Judge{Asker: jev.New(key, jev.WithModel(model)), Tenets: cfg.Tenets}
+func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, p provider.Provider, key, model string) (judge.Outcome, error) {
+	j := &judge.Judge{Asker: p.Client(key, model), Tenets: cfg.Tenets}
 	c, err := openCache(o.noCache)
 	if err != nil {
 		return judge.Outcome{}, err

@@ -14,6 +14,7 @@ import (
 
 	"github.com/zoidsh/tenetlint/internal/importer"
 	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/provider"
 	"github.com/zoidsh/tenetlint/internal/report"
 	"github.com/zoidsh/tenetlint/internal/source"
 	"github.com/zoidsh/tenetlint/internal/tenets"
@@ -134,11 +135,11 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		candidates = append(candidates, importer.Split(name, data)...)
 	}
 
-	key := jev.KeyFromEnv()
-	if key == "" {
-		return fail(missingKeyError())
+	p, key, err := keyFor(&tenets.Config{})
+	if err != nil {
+		return fail(err)
 	}
-	sorted, stats, err := sortCandidates(ctx, cmd, o, key, candidates)
+	sorted, stats, err := sortCandidates(ctx, cmd, o, p, key, candidates)
 	if err != nil {
 		return fail(err)
 	}
@@ -158,9 +159,9 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	return writeImport(out, r, o.format)
 }
 
-func sortCandidates(ctx context.Context, cmd *cobra.Command, o *initOptions, key string, candidates []importer.Candidate) ([]importer.Sorted, importer.Stats, error) {
+func sortCandidates(ctx context.Context, cmd *cobra.Command, o *initOptions, p provider.Provider, key string, candidates []importer.Candidate) ([]importer.Sorted, importer.Stats, error) {
 	sorter := &importer.Sorter{
-		Asker: jev.New(key, jev.WithModel(jev.DefaultModel)),
+		Asker: p.Client(key, jev.DefaultModel),
 		Model: jev.DefaultModel,
 	}
 	c, err := openCache(o.noCache)
