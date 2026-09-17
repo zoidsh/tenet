@@ -1,0 +1,11 @@
+# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see the Criteria section of the README.
+version: 1
+tenets:
+  - id: comment-says-why-code-exists
+    tenet: A comment says why the code exists, not what it does.
+    source: CLAUDE.md:42
+    severity: warn
+  - id: comment-says-why-written-way
+    tenet: A comment says why it is written this way.
+    source: AGENTS.md:7
+    severity: warn

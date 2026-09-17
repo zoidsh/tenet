@@ -1,0 +1,106 @@
+package importer_test
+
+import (
+	"os"
+	"reflect"
+	"testing"
+
+	"github.com/zoidsh/tenetlint/internal/importer"
+	"github.com/zoidsh/tenetlint/internal/tenets"
+)
+
+func TestSlug(t *testing.T) {
+	cases := []struct {
+		text string
+		want string
+	}{
+		{"A comment says why the code exists, not what it does.", "comment-says-why-code-exists"},
+		{"Never mock anything in tests.", "never-mock-anything-tests"},
+		{"Do not add `fallbacks` or silent degradation paths.", "do-not-add-fallbacks-silent"},
+		{"The it is of a to be.", "tenet"},
+	}
+	taken := map[string]bool{}
+	for _, c := range cases {
+		if got := importer.Slug(c.text, taken); got != c.want {
+			t.Errorf("Slug(%q) = %q, want %q", c.text, got, c.want)
+		}
+	}
+}
+
+func TestSlugDeduplicates(t *testing.T) {
+	taken := map[string]bool{}
+	const text = "A comment says why, not what."
+	want := []string{"comment-says-why-not", "comment-says-why-not-2", "comment-says-why-not-3"}
+	for _, w := range want {
+		if got := importer.Slug(text, taken); got != w {
+			t.Errorf("got %q, want %q", got, w)
+		}
+	}
+}
+
+func sorted(text, file string, line int, accepted bool) importer.Sorted {
+	return importer.Sorted{
+		Candidate: importer.Candidate{File: file, Line: line, Text: text},
+		Kind:      importer.KindCodeRule,
+		Accepted:  accepted,
+	}
+}
+
+func TestDraftGolden(t *testing.T) {
+	draft, err := importer.Draft([]importer.Sorted{
+		sorted("A comment says why the code exists, not what it does.", "CLAUDE.md", 42, true),
+		sorted("Ask before installing anything.", "CLAUDE.md", 50, false),
+		sorted("A comment says why it is written this way.", "AGENTS.md", 7, true),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	golden := "testdata/tenets.golden.yml"
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.WriteFile(golden, draft, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(golden)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(draft) != string(want) {
+		t.Errorf("draft is:\n%s\nwant:\n%s", draft, want)
+	}
+	if _, err := tenets.Parse(draft); err != nil {
+		t.Errorf("the draft does not load: %v", err)
+	}
+}
+
+// The starter file is a copy of one of this repository's own tenets, so it has
+// to say what that tenet says.
+func TestStarterMatchesTheRepositoryTenet(t *testing.T) {
+	starter, err := tenets.Parse(importer.StarterFile())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ours, err := tenets.Load("../../tenets.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want *tenets.Tenet
+	for _, tenet := range ours.Tenets {
+		if tenet.ID == "comment-why" {
+			want = tenet
+		}
+	}
+	if want == nil {
+		t.Fatal("this repository has no comment-why tenet any more")
+	}
+	if len(starter.Tenets) != 1 {
+		t.Fatalf("the starter holds %d tenets", len(starter.Tenets))
+	}
+	got := starter.Tenets[0]
+	// The repository excludes its own testdata, which means nothing anywhere
+	// else, so only what a user would want is compared.
+	want.Exclude = nil
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("starter tenet is %#v, want %#v", got, want)
+	}
+}
