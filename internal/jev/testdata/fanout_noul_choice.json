@@ -1,0 +1,45 @@
+{
+  "answers": {
+    "a": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "b": {
+      "type": "noul",
+      "noul": 0.96
+    },
+    "c": {
+      "type": "noul",
+      "noul": 0.96
+    },
+    "d": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "where": {
+      "type": "choice",
+      "choice": "L007",
+      "confidence": 0.56,
+      "probabilities": {
+        "L009": 0.0,
+        "L005": 0.0,
+        "L013": 0.0,
+        "L002": 0.0,
+        "L006": 0.0,
+        "L003": 0.0,
+        "L004": 0.0,
+        "L001": 0.0,
+        "L010": 0.0,
+        "none": 0.38,
+        "L007": 0.61,
+        "L008": 0.01,
+        "L011": 0.0,
+        "L012": 0.0
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 1071,
+    "output_tokens": 221
+  }
+}

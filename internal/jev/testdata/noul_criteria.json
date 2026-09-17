@@ -1,0 +1,12 @@
+{
+  "answers": {
+    "c": {
+      "type": "noul",
+      "noul": 0.06
+    }
+  },
+  "usage": {
+    "input_tokens": 663,
+    "output_tokens": 20
+  }
+}
