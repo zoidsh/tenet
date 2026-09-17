@@ -35,12 +35,6 @@ func (e *exitError) Unwrap() error { return e.err }
 
 func fail(err error) error { return &exitError{code: report.ExitError, err: err} }
 
-// newAsker builds the client a lint run asks. The end-to-end test replaces it
-// with one pointed at a local server.
-var newAsker = func(key, model string) judge.Asker {
-	return jev.New(key, jev.WithModel(model))
-}
-
 type lintOptions struct {
 	base    string
 	config  string
@@ -177,7 +171,7 @@ func displayPath(root, dir, path string) string {
 }
 
 func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) ([]judge.Finding, judge.Stats, error) {
-	j := &judge.Judge{Asker: newAsker(key, model), Tenets: cfg.Tenets}
+	j := &judge.Judge{Asker: jev.New(key, jev.WithModel(model)), Tenets: cfg.Tenets}
 	if !o.noCache {
 		c, err := cache.Open("")
 		if err != nil {

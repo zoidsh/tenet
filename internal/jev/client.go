@@ -33,6 +33,10 @@ const (
 // APIKeyEnv is where KeyFromEnv looks.
 const APIKeyEnv = "TYPESAFE_API_KEY"
 
+// BaseURLEnv points the client at another host, for a proxy, a recording or a
+// local stand-in.
+const BaseURLEnv = "TYPESAFE_BASE_URL"
+
 const requestIDHeader = "x-typesafe-request-id"
 
 // options configure a Client. Every field has a default; the last few are
@@ -150,6 +154,11 @@ func New(apiKey string, opts ...Option) *Client {
 		Random:         rand.Float64,
 		Now:            time.Now,
 	}
+	if url := os.Getenv(BaseURLEnv); url != "" {
+		WithBaseURL(url)(&o)
+	}
+	// The options come last so that a caller that names a host outranks the
+	// environment.
 	for _, apply := range opts {
 		apply(&o)
 	}

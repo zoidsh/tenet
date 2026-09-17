@@ -114,12 +114,7 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
 
-	server := answerServer(t)
-	restore := newAsker
-	newAsker = func(key, model string) judge.Asker {
-		return jev.New(key, jev.WithModel(model), jev.WithBaseURL(server.URL))
-	}
-	t.Cleanup(func() { newAsker = restore })
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
 
 	var stdout, stderr bytes.Buffer
 	root := newRootCmd()
@@ -168,12 +163,7 @@ func TestLintExplicitPath(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
 
-	server := answerServer(t)
-	restore := newAsker
-	newAsker = func(key, model string) judge.Asker {
-		return jev.New(key, jev.WithModel(model), jev.WithBaseURL(server.URL))
-	}
-	t.Cleanup(func() { newAsker = restore })
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
 
 	var stdout, stderr bytes.Buffer
 	root := newRootCmd()
@@ -201,12 +191,7 @@ func TestLintFromASubdirectory(t *testing.T) {
 	t.Chdir(filepath.Join(dir, "pkg"))
 	t.Setenv(jev.APIKeyEnv, "test-key")
 
-	server := answerServer(t)
-	restore := newAsker
-	newAsker = func(key, model string) judge.Asker {
-		return jev.New(key, jev.WithModel(model), jev.WithBaseURL(server.URL))
-	}
-	t.Cleanup(func() { newAsker = restore })
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
 
 	var stdout, stderr bytes.Buffer
 	root := newRootCmd()
