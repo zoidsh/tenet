@@ -59,6 +59,8 @@ From the root of your repository:
 
    Type the key at the prompt; it is kept in `~/.config/tenet/credentials`.
 
+   From here an agent can do the rest. Install the Claude Code plugin: `/plugin marketplace add zoidsh/tenet` then `/plugin install tenet@zoidsh`; for another agent, `tenet init --agent agents` (or `cursor`, `claude`) gives the same instructions. Then tell it to set tenet up: it runs `tenet init`, maps the drafted rules to built-in ones, installs the hooks, and calibrates the tenets that are yours alone, as For agents describes. Steps 2 to 5 are that same work done by hand.
+
 2. Draft a `tenet.yml` from the instruction files your agents already read, or turn on a preset from Built-in rules below.
 
    ```sh
@@ -441,7 +443,7 @@ Agents that read a repository rather than a plugin get the same instructions fro
 tenet init --agent cursor --agent agents
 ```
 
-Setting tenet up is one instruction to the agent. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
+Setting tenet up is one instruction to the agent, as Quick start says. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
 
 The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
 
