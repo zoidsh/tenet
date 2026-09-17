@@ -97,6 +97,10 @@ func collectDiff(ctx context.Context, root string, diffArgs []string, fromIndex 
 	if err != nil {
 		return nil, err
 	}
+	byPath, err := changedLines(ctx, root, diffArgs)
+	if err != nil {
+		return nil, err
+	}
 	set := &Set{Root: root}
 	for _, path := range paths {
 		if reason := skipByName(path); reason != "" {
@@ -112,9 +116,12 @@ func collectDiff(ctx context.Context, root string, diffArgs []string, fromIndex 
 		if err != nil {
 			return nil, err
 		}
-		lines, err := changedLines(ctx, root, diffArgs, path)
-		if err != nil {
-			return nil, err
+		// A nil map would mean every line is reportable, which is what the
+		// path modes want; here a file the diff gave no hunks for, such as a
+		// pure rename, has nothing to report on at all.
+		lines := byPath[path]
+		if lines == nil {
+			lines = map[int]bool{}
 		}
 		set.add(path, content, lines)
 	}

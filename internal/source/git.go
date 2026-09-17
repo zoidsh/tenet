@@ -49,7 +49,7 @@ func splitZ(out []byte) []string {
 }
 
 func changedPaths(ctx context.Context, root string, diffArgs []string) ([]string, error) {
-	args := append([]string{"diff", "--name-only", "--diff-filter=ACMR", "-z"}, diffArgs...)
+	args := append([]string{"diff", "--name-only", "--diff-filter=ACMR", "-M", "-z"}, diffArgs...)
 	out, err := git(ctx, root, args...)
 	if err != nil {
 		return nil, err
@@ -59,19 +59,36 @@ func changedPaths(ctx context.Context, root string, diffArgs []string) ([]string
 
 var hunkPattern = regexp.MustCompile(`^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@`)
 
-// changedLines are the lines a diff added or rewrote in one file, which are
-// the only lines a finding may be reported on in a diff mode.
-func changedLines(ctx context.Context, root string, diffArgs []string, path string) (map[int]bool, error) {
-	args := append([]string{"diff", "-U0"}, diffArgs...)
-	args = append(args, "--", path)
+// changedLines are the lines a diff added or rewrote, per file, which are the
+// only lines a finding may be reported on in a diff mode. The whole diff is
+// read in one go and attributed by its file headers, because naming a path on
+// the command line turns rename detection off and makes a renamed file look
+// entirely new.
+func changedLines(ctx context.Context, root string, diffArgs []string) (map[string]map[int]bool, error) {
+	args := append([]string{
+		"-c", "core.quotePath=false",
+		"diff", "-U0", "-M", "--src-prefix=a/", "--dst-prefix=b/",
+	}, diffArgs...)
 	out, err := git(ctx, root, args...)
 	if err != nil {
 		return nil, err
 	}
-	lines := map[int]bool{}
+
+	byPath := map[string]map[int]bool{}
+	var current map[int]bool
 	for _, line := range strings.Split(string(out), "\n") {
+		if after, ok := strings.CutPrefix(line, "+++ "); ok {
+			path, ok := diffPath(after)
+			if !ok {
+				current = nil
+				continue
+			}
+			current = map[int]bool{}
+			byPath[path] = current
+			continue
+		}
 		m := hunkPattern.FindStringSubmatch(line)
-		if m == nil {
+		if m == nil || current == nil {
 			continue
 		}
 		start, _ := strconv.Atoi(m[1])
@@ -80,10 +97,23 @@ func changedLines(ctx context.Context, root string, diffArgs []string, path stri
 			count, _ = strconv.Atoi(m[2])
 		}
 		for i := 0; i < count; i++ {
-			lines[start+i] = true
+			current[start+i] = true
 		}
 	}
-	return lines, nil
+	return byPath, nil
+}
+
+// diffPath reads the file header of a diff, which git quotes when the path
+// holds anything awkward.
+func diffPath(token string) (string, bool) {
+	if strings.HasPrefix(token, `"`) {
+		unquoted, err := strconv.Unquote(token)
+		if err != nil {
+			return "", false
+		}
+		token = unquoted
+	}
+	return strings.CutPrefix(token, "b/")
 }
 
 // ignored asks git which of these repository-relative paths are ignored. A

@@ -99,6 +99,89 @@ func TestCollectStaged(t *testing.T) {
 	}
 }
 
+func TestCollectStagedRename(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, "old.go", "one\ntwo\nthree\nfour\nfive\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-qm", "old")
+
+	run(t, dir, "git", "mv", "old.go", "new.go")
+	write(t, dir, "new.go", "one\ntwo\nthree\nfour\nfive\nsix\n")
+	run(t, dir, "git", "add", "-A")
+
+	set, err := Collect(context.Background(), Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(set); len(got) != 1 || got[0] != "new.go" {
+		t.Fatalf("collected %v", got)
+	}
+	f := fileByPath(t, set, "new.go")
+	for line := 1; line <= 5; line++ {
+		if f.Reportable(line) {
+			t.Errorf("line %d of a renamed file is reportable, only the added line is", line)
+		}
+	}
+	if !f.Reportable(6) {
+		t.Error("the line added along with the rename is not reportable")
+	}
+}
+
+func TestCollectStagedPureRenameHasNoWindow(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, "old.go", "one\ntwo\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-qm", "old")
+	run(t, dir, "git", "mv", "old.go", "new.go")
+
+	set, err := Collect(context.Background(), Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(set); len(got) != 0 {
+		t.Fatalf("collected %v, want nothing to lint", got)
+	}
+	if len(set.Windows()) != 0 {
+		t.Errorf("a rename that touched no line produced %d windows", len(set.Windows()))
+	}
+}
+
+func TestCollectStagedDeletionOnly(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, "a.go", "one\ntwo\nthree\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-qm", "a")
+	write(t, dir, "a.go", "one\nthree\n")
+	run(t, dir, "git", "add", "-A")
+
+	set, err := Collect(context.Background(), Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(set); len(got) != 0 {
+		t.Fatalf("collected %v, want nothing: only a line was removed", got)
+	}
+	if len(set.Windows()) != 0 {
+		t.Errorf("a deletion produced %d windows", len(set.Windows()))
+	}
+}
+
+func TestCollectStagedModeOnly(t *testing.T) {
+	dir := newRepo(t)
+	write(t, dir, "a.go", "one\ntwo\n")
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-qm", "a")
+	run(t, dir, "git", "update-index", "--chmod=+x", "a.go")
+
+	set, err := Collect(context.Background(), Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(set); len(got) != 0 {
+		t.Fatalf("collected %v, want nothing: only the mode changed", got)
+	}
+}
+
 func TestCollectBase(t *testing.T) {
 	dir := newRepo(t)
 	write(t, dir, "a.go", "one\ntwo\n")
