@@ -31,7 +31,7 @@ Setting tenet up and adding a rule are the two jobs that do edit `tenet.yml` and
 Do this when a person asks you to set tenet up, or when the repository has no `tenet.yml`. Installing the binary and running `tenet auth` stay with the person; the rest is one instruction to you.
 
 1. Run `tenet auth --status`. With no key, ask the person to run `tenet auth` and stop there, because the key is theirs to paste.
-2. Run `tenet init`. It reads `CLAUDE.md`, `AGENTS.md` and the other instruction files and asks jev what each sentence is, so do not parse those files yourself. Read the table it prints: every sentence it kept is now a drafted tenet in `tenet.yml`.
+2. Run `tenet init`. It reads `AGENTS.md`, `CLAUDE.md` and the other instruction files and asks jev what each sentence is, so do not parse those files yourself. Read the table it prints: every sentence it kept is now a drafted tenet in `tenet.yml`.
 3. Run `tenet rules`. For each drafted tenet that says what a built-in rule already says, delete the draft and name the built-in id under `rules:`, or the preset that holds it when several drafts map into the one preset. Keep a comment with the source line the draft came from.
 4. Run `tenet hook install`, so the built-in rules gate every commit from here on. Steps 1 to 4 are under two minutes; calibration comes after them.
 5. Calibrate each remaining custom tenet by the recipe in `rules/README.md`:
@@ -45,7 +45,7 @@ Do this when a person asks you to set tenet up, or when the repository has no `t
 
 ### Adding a rule later
 
-The same flow runs again whenever a rule arrives: a person asks for one, or `CLAUDE.md` or `tenet.yml` has gained a sentence since the last run. Take only the new tenets through step 5 and leave the rest as they are. Examples are how you tell the two apart: a tenet with an `examples` list or an `examples_from` path has been calibrated, and one with neither has not, so calibrate it before it gates anybody's commit.
+The same flow runs again whenever a rule arrives: a person asks for one, or `AGENTS.md` or `tenet.yml` has gained a sentence since the last run. Take only the new tenets through step 5 and leave the rest as they are. Examples are how you tell the two apart: a tenet with an `examples` list or an `examples_from` path has been calibrated, and one with neither has not, so calibrate it before it gates anybody's commit.
 
 ### Reporting
 

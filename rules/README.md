@@ -4,7 +4,7 @@ A built-in rule is a directory under `rules/<id>/` holding a `rule.yml`, an `exa
 
 ## 1. Write the tenet from a real source
 
-Quote a sentence someone already wrote for their own repository, from a public `CLAUDE.md`, `AGENTS.md` or contributing guide, and put where you found it in the rule's `source` field. A sentence invented for the corpus is a sentence nobody has had to live with, and it reads like one: it names a shape rather than a habit, and the examples you then write for it are the shape restated. Keep the quote as it stands, in one or two sentences; the place to add precision is the criteria, not the sentence.
+Quote a sentence someone already wrote for their own repository, from a public `AGENTS.md`, `CLAUDE.md` or contributing guide, and put where you found it in the rule's `source` field. A sentence invented for the corpus is a sentence nobody has had to live with, and it reads like one: it names a shape rather than a habit, and the examples you then write for it are the shape restated. Keep the quote as it stands, in one or two sentences; the place to add precision is the criteria, not the sentence.
 
 ```yaml
 id: no-fallback
