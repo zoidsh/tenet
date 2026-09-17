@@ -18,20 +18,14 @@ const SlugWords = 5
 // about.
 const Header = "# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see the Criteria section of the README.\n"
 
-// starterTenet is the rule init writes when it finds no rule files at all:
-// the comment rule this repository judges itself by, as somewhere to start.
-const starterTenet = `  - id: comment-why
-    tenet: A comment says why the code exists or why it is written this way, not what the code does.
-    criteria:
-      true: A comment inside a function body, or a doc comment that only repeats the identifier's name in other words, that restates what the code visibly does, narrates steps, names the operation, or is a section label. A reader of the code learns nothing new from it.
-      false: The comment gives a reason, a constraint, a contract, a workaround for an external system, a reference explaining the choice, or a warning about ordering or invariants that the code does not show, or is a doc comment on an exported identifier stating what callers can rely on.
-    severity: warn
-    include: ["**/*.go"]
-`
+// DefaultPreset is what a repository that has written nothing down starts
+// from, the same preset this repository judges itself by.
+const DefaultPreset = "agent-hygiene"
 
-// StarterFile is the whole starter tenets.yml.
-func StarterFile() []byte {
-	return []byte(Header + "version: 1\ntenets:\n" + starterTenet)
+// PresetFile is a tenets.yml that names presets and nothing else. It carries
+// no header, because a file with no tenet in it has nowhere to put criteria.
+func PresetFile(presets []string) []byte {
+	return fmt.Appendf(nil, "version: 1\npresets: [%s]\n", strings.Join(presets, ", "))
 }
 
 var stopWords = map[string]bool{
@@ -105,6 +99,7 @@ func Assign(sorted []Sorted) {
 
 type draftFile struct {
 	Version int          `yaml:"version"`
+	Presets []string     `yaml:"presets,omitempty,flow"`
 	Tenets  []draftTenet `yaml:"tenets"`
 }
 
@@ -116,9 +111,9 @@ type draftTenet struct {
 }
 
 // Draft is the tenets.yml for everything the sort accepted, which Assign has
-// named by the time it is called.
-func Draft(sorted []Sorted) ([]byte, error) {
-	file := draftFile{Version: 1}
+// named by the time it is called, under the presets the run was asked for.
+func Draft(sorted []Sorted, presets []string) ([]byte, error) {
+	file := draftFile{Version: 1, Presets: presets}
 	for _, c := range Accepted(sorted) {
 		file.Tenets = append(file.Tenets, draftTenet{
 			ID:       c.ID,

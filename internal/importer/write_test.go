@@ -53,7 +53,7 @@ func TestDraftGolden(t *testing.T) {
 		sorted("A comment says why it is written this way.", "AGENTS.md", 7, true),
 	}
 	importer.Assign(candidates)
-	draft, err := importer.Draft(candidates)
+	draft, err := importer.Draft(candidates, []string{importer.DefaultPreset})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,10 +75,10 @@ func TestDraftGolden(t *testing.T) {
 	}
 }
 
-// The starter file is a copy of one of this repository's own tenets, so it has
-// to say what that tenet says.
-func TestStarterMatchesTheRepositoryTenet(t *testing.T) {
-	starter, err := tenets.Parse(importer.StarterFile())
+// The starter file names the preset this repository judges itself by, so it
+// has to resolve to the same rules.
+func TestStarterMatchesTheRepositoryRules(t *testing.T) {
+	starter, err := tenets.Parse(importer.PresetFile([]string{importer.DefaultPreset}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,27 +86,15 @@ func TestStarterMatchesTheRepositoryTenet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var want *tenets.Tenet
-	for _, tenet := range ours.Tenets {
-		if tenet.ID == "comment-why" {
-			want = tenet
-		}
+	if !reflect.DeepEqual(ids(starter), ids(ours)) {
+		t.Errorf("the starter resolves to %v, this repository to %v", ids(starter), ids(ours))
 	}
-	if want == nil {
-		t.Fatal("this repository has no comment-why tenet any more")
+}
+
+func ids(cfg *tenets.Config) []string {
+	var out []string
+	for _, t := range cfg.Tenets {
+		out = append(out, t.ID)
 	}
-	if len(starter.Tenets) != 1 {
-		t.Fatalf("the starter holds %d tenets", len(starter.Tenets))
-	}
-	got := starter.Tenets[0]
-	// The repository excludes its own testdata and carries the labelled
-	// examples check measures this tenet against, neither of which means
-	// anything in somebody else's repository, so only what a user would want
-	// is compared.
-	want.Exclude = nil
-	want.Examples, want.ExamplesFrom = nil, ""
-	want.Tags, want.Origin = nil, got.Origin
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("starter tenet is %#v, want %#v", got, want)
-	}
+	return out
 }

@@ -308,14 +308,84 @@ func TestInitStarterWhenNothingIsFound(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if !strings.Contains(stdout, "tenets.yml") {
-		t.Errorf("stdout does not say where it wrote: %q", stdout)
+	if !strings.Contains(stdout, "tenets.yml") || !strings.Contains(stdout, importer.DefaultPreset) {
+		t.Errorf("stdout does not say what it wrote where: %q", stdout)
+	}
+	assertPresetFile(t, filepath.Join(dir, "tenets.yml"), importer.DefaultPreset)
+}
+
+// assertPresetFile holds the written file to naming presets and nothing else,
+// which is the whole point of starting from one.
+func assertPresetFile(t *testing.T, path string, presets ...string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := string(importer.PresetFile(presets))
+	if string(data) != want {
+		t.Errorf("wrote\n%s\nwant\n%s", data, want)
+	}
+	cfg, err := tenets.Load(path)
+	if err != nil {
+		t.Fatalf("the file does not load: %v", err)
+	}
+	rules, err := tenets.BuiltinPreset(presets[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Tenets) < len(rules.Rules) {
+		t.Errorf("it resolves to %d tenets, fewer than the %d the preset names", len(cfg.Tenets), len(rules.Rules))
+	}
+}
+
+func TestInitFromAPreset(t *testing.T) {
+	dir := initRepo(t)
+	t.Setenv(jev.APIKeyEnv, "")
+
+	code, stdout, stderr := runInitCmd(t, "--preset", "agent-hygiene")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "agent-hygiene") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	// The repository has a CLAUDE.md, which a preset on its own says not to
+	// read; the file holds the preset and nothing drafted from it.
+	assertPresetFile(t, filepath.Join(dir, "tenets.yml"), "agent-hygiene")
+}
+
+func TestInitFromAPresetAndAFile(t *testing.T) {
+	dir := initRepo(t)
+
+	if code, _, stderr := runInitCmd(t, "--preset", "agent-hygiene", "--from", "CLAUDE.md"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
 	}
 	cfg, err := tenets.Load(filepath.Join(dir, "tenets.yml"))
 	if err != nil {
-		t.Fatalf("the starter does not load: %v", err)
+		t.Fatal(err)
 	}
-	if len(cfg.Tenets) != 1 || cfg.Tenets[0].ID != "comment-why" {
-		t.Errorf("the starter holds %#v", cfg.Tenets)
+	preset, err := tenets.BuiltinPreset("agent-hygiene")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Tenets) != len(preset.Rules)+1 {
+		t.Errorf("resolved to %d tenets, want the preset's %d and the drafted one", len(cfg.Tenets), len(preset.Rules))
+	}
+	last := cfg.Tenets[len(cfg.Tenets)-1]
+	if last.Tenet != commentRule || last.Origin != tenets.OriginLocal {
+		t.Errorf("the drafted tenet is %#v", last)
+	}
+}
+
+func TestInitFromAnUnknownPreset(t *testing.T) {
+	initRepo(t)
+
+	code, _, stderr := runInitCmd(t, "--preset", "house-style")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr, "house-style") {
+		t.Errorf("stderr is %q", stderr)
 	}
 }

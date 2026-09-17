@@ -34,6 +34,7 @@ var ruleFiles = []string{
 
 type initOptions struct {
 	from    []string
+	presets []string
 	dryRun  bool
 	force   bool
 	config  string
@@ -52,6 +53,7 @@ func newInitCmd() *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringArrayVar(&o.from, "from", nil, "read this rule file instead of the ones init looks for; repeatable")
+	f.StringArrayVar(&o.presets, "preset", nil, "start from this built-in preset instead of reading any rule file; repeatable")
 	f.BoolVar(&o.dryRun, "dry-run", false, "print what would be drafted without writing it")
 	f.BoolVar(&o.force, "force", false, "overwrite an existing tenets.yml")
 	f.StringVar(&o.config, "config", "", "path to write, tenets.yml in the repository root by default")
@@ -85,6 +87,12 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		return fail(err)
 	}
 
+	for _, name := range o.presets {
+		if _, err := tenets.BuiltinPreset(name); err != nil {
+			return fail(err)
+		}
+	}
+
 	paths, err := o.rulePaths(root)
 	if err != nil {
 		return fail(err)
@@ -93,8 +101,13 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	if err != nil {
 		return fail(err)
 	}
+	// A preset is already a set of rules, so on its own it is the whole file;
+	// only --from asks for rule files to be read as well.
+	if len(o.presets) > 0 && len(o.from) == 0 {
+		return o.writePresets(cmd, o.presets, target, shown, "")
+	}
 	if len(paths) == 0 {
-		return o.starter(cmd, target, shown)
+		return o.writePresets(cmd, []string{importer.DefaultPreset}, target, shown, "found no rule files to read; ")
 	}
 
 	var candidates []importer.Candidate
@@ -122,7 +135,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	importer.Assign(sorted)
 	r := importer.Report{Candidates: sorted, Stats: stats, DryRun: o.dryRun}
 	if stats.Tenets > 0 && !o.dryRun {
-		draft, err := importer.Draft(sorted)
+		draft, err := importer.Draft(sorted, o.presets)
 		if err != nil {
 			return fail(err)
 		}
@@ -166,12 +179,12 @@ func writeImport(out io.Writer, r importer.Report, format string) error {
 	return nil
 }
 
-// starter writes the one rule a repository with no instruction file can start
-// from, so that init always leaves something to edit.
-func (o *initOptions) starter(cmd *cobra.Command, target, shown string) error {
+// writePresets writes the rules that ship in the binary and nothing else,
+// which is what a repository with no instruction file of its own starts from.
+func (o *initOptions) writePresets(cmd *cobra.Command, presets []string, target, shown, note string) error {
 	r := importer.Report{DryRun: o.dryRun}
 	if !o.dryRun {
-		if err := os.WriteFile(target, importer.StarterFile(), 0o600); err != nil {
+		if err := os.WriteFile(target, importer.PresetFile(presets), 0o600); err != nil {
 			return fail(err)
 		}
 		r.Written = shown
@@ -179,11 +192,12 @@ func (o *initOptions) starter(cmd *cobra.Command, target, shown string) error {
 	if o.format == report.FormatJSON {
 		return writeImport(cmd.OutOrStdout(), r, o.format)
 	}
-	verb := "wrote a starter " + tenets.FileName + " to "
+	verb := "wrote "
 	if o.dryRun {
-		verb = "would write a starter " + tenets.FileName + " to "
+		verb = "would write "
 	}
-	_, err := fmt.Fprintf(cmd.OutOrStdout(), "found no rule files to read; %s%s\n", verb, shown)
+	_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s%s%s with the %s preset in it, to %s\n",
+		note, verb, tenets.FileName, strings.Join(presets, " and "), shown)
 	return err
 }
 
