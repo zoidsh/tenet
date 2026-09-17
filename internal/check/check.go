@@ -93,7 +93,6 @@ func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats,
 	return results, stats, nil
 }
 
-// pass judges every example of every tenet once.
 func (c *Checker) pass(ctx context.Context, ts []*tenets.Tenet, skipCache bool) ([][]Judged, Stats, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
