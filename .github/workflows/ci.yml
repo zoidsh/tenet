@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # goreleaser derives its version string from the tags and history.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - run: go build ./...
+
+      - run: go test -race -count=1 ./...
+
+      - run: golangci-lint run
+
+      - run: goreleaser build --snapshot --clean
+
+  tenets:
+    needs: test
+    runs-on: ubuntu-latest
+    # A job-level `if` cannot read `secrets`, so every step below is gated on the
+    # environment variable instead, and the job is a no-op without the key.
+    env:
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+    steps:
+      # tenetlint --base needs a merge base, which the default shallow clone has not got.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@v2
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: go-${{ runner.os }}-
+
+      - name: Check the built-in rules against their examples
+        if: env.TYPESAFE_API_KEY != ''
+        run: go run ./cmd/tenetlint check --builtin --format json > check.json
+
+      # check reports and never fails, so the verdicts are what fails this job.
+      - name: Fail on a blurry or unmeasurable rule
+        if: env.TYPESAFE_API_KEY != ''
+        run: |
+          bad=$(jq -r '.tenets[] | select(.verdict == "blurry" or .verdict == "too few examples") | "\(.tenet): \(.verdict)"' check.json)
+          if [ -n "$bad" ]; then
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: Lint the branch against tenets.yml
+        if: env.TYPESAFE_API_KEY != '' && github.event_name == 'pull_request'
+        run: go run ./cmd/tenetlint --base origin/${{ github.base_ref }} --format json
+
+      - uses: actions/upload-artifact@v4
+        if: always() && env.TYPESAFE_API_KEY != ''
+        with:
+          name: check.json
+          path: check.json
+          if-no-files-found: ignore
