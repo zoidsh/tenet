@@ -208,7 +208,7 @@ tenets:
           		return nil, err
           	}
           	size := binary.BigEndian.Uint32(head[4:])
-          	// snappy v0.0.4 は長さ 0 のブロックでパニックするので、Decode の前で切り上げる。
+          	// snappy v0.0.4 は長さ 0 のブロックでパニックするので、Decode の前に抜ける。
           	if size == 0 {
           		return &Frame{Kind: head[0]}, nil
           	}
@@ -251,7 +251,7 @@ tenets:
             for (const op of patch.ops) {
               applyOp(next, op);
             }
-            // 最後に上げる。上の applyOp が next.version を読んで操作の由来を刻む。
+            // 最後に増やす。上の applyOp が next.version を読んで操作の由来を刻む。
             next.version = patch.baseVersion + 1;
             return next;
           }

@@ -15,7 +15,7 @@ From the repository root, with a key configured (`tenet auth`, or `TYPESAFE_API_
 
     bench/run.sh
 
-It refuses to run with uncommitted changes, because it measures a fixed commit, so commit the previous `bench/results.md` first. It checks that commit out into a throwaway git worktree, points `XDG_CACHE_HOME` at a fresh directory so the cold run is cold and the developer's cache is left alone, and removes both at exit.
+It refuses to run with uncommitted changes, because it measures a fixed commit, so commit the previous `bench/results.md` first. It checks that commit out into a throwaway git worktree, points `XDG_CACHE_HOME` at a fresh directory so the cold run is cold and the developer's cache is left alone, and removes both at exit. That isolation is Linux only, because `os.UserCacheDir` reads `XDG_CACHE_HOME` there and `~/Library/Caches` on macOS, where the warm sweep therefore reads and fills the developer's own cache; the cold sweep is still cold everywhere, because `--no-cache` and not the directory is what makes it so.
 
 It costs real money and takes minutes: the full sweep judges the whole tree, and `check --builtin --runs 3` judges every rule's corpus three times.
 

@@ -15,7 +15,6 @@ COMMIT=f0fdf08
 # the measured count back in the table.
 BASE=7911bea
 
-# The estimate the agent-reviewer rows are built from.
 AGENT_BYTES_PER_TOKEN=4
 AGENT_OUTPUT_TOKENS=1000
 
@@ -64,8 +63,11 @@ else
 	bin="$tmp/tenet"
 fi
 
-# A cache of its own, so that the cold run is cold whatever the developer's
-# cache holds and their cache is not filled with a benchmark's answers.
+# A cache of its own, so that the developer's is not filled with a benchmark's
+# answers. It only takes effect where os.UserCacheDir reads XDG_CACHE_HOME,
+# which is Linux; on macOS that is ~/Library/Caches and the warm sweep reads
+# the developer's cache. The cold sweep is cold either way, because --no-cache
+# and not the directory is what makes it so.
 export XDG_CACHE_HOME="$tmp/cache"
 mkdir -p "$XDG_CACHE_HOME"
 
@@ -78,8 +80,8 @@ git worktree add --detach "$tmp/repo" "$COMMIT" >/dev/null
 
 repo=$PWD
 
-# lint runs one measured lint. A finding is exit 1 and is what the run is
-# for; anything above that is a broken run and stops the script.
+# A finding is exit 1 and is what the run is for; anything above that is a
+# broken run and stops the script.
 lint() {
 	out=$tmp/$1
 	dir=$2
@@ -123,8 +125,6 @@ numstat_lines() {
 	git -C "$tmp/repo" diff --numstat "$@" | awk '{ a += $1; d += $2 } END { print a + d + 0 }'
 }
 
-# Speed and cost.
-
 lint cold.json "$tmp/repo" --no-cache .
 lint warm.json "$tmp/repo" .
 
@@ -141,8 +141,6 @@ lint diff.json "$tmp/repo" --no-cache --base "$BASE"
 # branch, not of COMMIT, and neither reads the tree, so this one runs here.
 pr_lines=$(wc -l <bench/pr.txt | tr -d ' ')
 lint pr.json "$repo" --no-cache --pr-text bench/pr.txt --config bench/pr-tenets.yml
-
-# Rule quality and the languages.
 
 "$bin" check --builtin --no-cache --runs 3 --format json >"$tmp/builtin.json" 2>"$tmp/stderr.txt" || {
 	cat "$tmp/stderr.txt" >&2
@@ -180,7 +178,6 @@ rule_rows() {
 	                    (.stability.max_std_dev // -1), (.stability.crossed | length)] | @tsv' "$1"
 }
 
-# The agent-reviewer prices, one hand-written record per model.
 prices() {
 	awk '
 		function value(line) {
@@ -207,8 +204,6 @@ prices() {
 		END { flush() }
 	' bench/prices.yml
 }
-
-# Writing.
 
 speed_row() {
 	label=$1
@@ -308,7 +303,7 @@ agent_input=$((base_bytes / AGENT_BYTES_PER_TOKEN))
 	echo
 	echo "| Reviewer | Input tokens | Output tokens | Cost | Time |"
 	echo "| --- | --- | --- | --- | --- |"
-	printf '| tenetlint, measured | %s | — | %s | %s |\n' \
+	printf '| tenetlint, measured | %s | n/a | %s | %s |\n' \
 		"$(group "$diff_tokens")" "$(cost "$diff_usd")" "$(secs "$diff_ms")"
 	prices | while IFS=$'\t' read -r id name inp outp tps ttft _ _ _ _ _; do
 		[ -n "$name" ] && [ "$name" != null ] || name=$id

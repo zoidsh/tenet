@@ -4,7 +4,7 @@
 
 tenetlint is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.1 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
 
-TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.5 s and cost $0.0036. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 12x faster than the Sonnet one, dividing each of those times by its own 1.5 s. It is cheaper than both, $0.0036 against $0.0258 and $0.0516, and dearer than GPT-5 nano, whose estimate is $0.0014. The Benchmarks section has the tables all of these come from.
+TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.5 s and cost $0.0036. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 12x faster than the Sonnet one, dividing each of those times by its 1.5 s. It is cheaper than both, $0.0036 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
 
 ## Install
 
@@ -211,7 +211,7 @@ no-defensive-nil       rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
 
-A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and the part that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer. A tenet is judged in whatever language you write it in, and the Languages table under Benchmarks measures the same rule in English, German and Japanese.
+A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and the part that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer. A tenet need not be in English: the Languages table under Benchmarks measures comment-why in German and in Japanese beside its English corpus.
 
 ```yaml
   - id: comment-why
@@ -377,9 +377,9 @@ This is about fit rather than speed; the timings are under Benchmarks.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Static linters (eslint, ruff, golangci-lint) | no, rules are code | yes | type-aware rules need a build | yes | yes, exact match | no | no | package-scoped rules only | if you wire it up |
 | Prose linters (Vale) | word lists and regex | yes | yes | yes | yes, exact match | prose files only | no | no | if you wire it up |
-| AI review bots (CodeRabbit, Copilot code review, Cursor Bugbot) | yes | no, a pull request bot | yes | yes | no, free text | no, code diffs | yes, uncalibrated | yes | yes |
+| AI review bots (CodeRabbit, Copilot code review, Cursor Bugbot) | yes | mostly no, PR bots | yes | yes | no, free text | PR text at most | yes, uncalibrated | yes | yes |
 | An agent asked to review | yes | network call each time | yes | if you wire it up | no, free text | yes | yes, uncalibrated | yes | if you wire it up |
-| tenetlint | yes | yes, one API call | yes | yes | yes | yes | no | no | no |
+| tenetlint | yes | yes, over the network | yes | yes | yes | yes | no | no | no |
 
 tenetlint's three no's are the same decision three times: it judges the changed windows against the rule you wrote, never the program's behaviour and never the rest of the tree. So a logic bug, and a contract broken between two files that each look fine, are still a reviewer's job. It has no way to post a comment either, and the GitHub Action's annotations are annotations rather than review comments.
 
