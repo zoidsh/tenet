@@ -15,8 +15,11 @@ import (
 func newRootCmd() *cobra.Command {
 	opts := &lintOptions{}
 	root := &cobra.Command{
-		Use:           "tenetlint [paths...]",
-		Short:         "Lint code against the rules you wrote in English",
+		Use:   "tenetlint [paths...]",
+		Short: "Lint code against the rules you wrote in English",
+		// Without this, cobra reads the first path as the name of a subcommand
+		// it does not have.
+		Args:          cobra.ArbitraryArgs,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

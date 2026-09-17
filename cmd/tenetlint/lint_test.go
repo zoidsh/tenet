@@ -160,6 +160,35 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	}
 }
 
+func TestLintExplicitPath(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	writeFile(t, dir, "inc.go", staged)
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+
+	server := answerServer(t)
+	restore := newAsker
+	newAsker = func(key, model string) judge.Asker {
+		return jev.New(key, jev.WithModel(model), jev.WithBaseURL(server.URL))
+	}
+	t.Cleanup(func() { newAsker = restore })
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"--no-cache", "--fail-on", "never", "inc.go"})
+
+	if code := execute(root); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.HasPrefix(stdout.String(), "inc.go:3: error comment-why (p=0.91)") {
+		t.Errorf("stdout is %q", stdout.String())
+	}
+}
+
 func TestLintWithoutAKey(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
