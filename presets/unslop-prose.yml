@@ -1,0 +1,20 @@
+# The sentences an LLM writes into a README, a docs page or a changelog when
+# nobody rewrites the draft: praise that names nothing, an opener that clears
+# its throat before the first fact, a closing section that restates the one
+# above it, a false contrast, a colon standing in for a verb, a range whose
+# ends are not on a scale, a hedge stacked on a hedge, a conclusion about the
+# future, a bold lead-in that repeats itself, an actor hidden behind a passive,
+# a metaphor noun where a literal word exists, and a sentence whose subject is
+# an abstraction rather than somebody doing something.
+#
+# Left out on purpose, because a regex decides them and a model should not be
+# paid to: em dashes, emoji, curly quotes, buzzword lists (comprehensive,
+# robust, seamless, leverage, delve), caps on exclamation marks, ellipses and
+# other punctuation, title case in headings, and runs of same-length
+# sentences. Those belong in a `grep -nE` in a pre-commit hook or in a Vale
+# style, which answer instantly and never cost a call.
+version: 1
+name: unslop-prose
+description: The prose an LLM writes into a README when nobody rewrites the draft.
+rules:
+  - project-specific

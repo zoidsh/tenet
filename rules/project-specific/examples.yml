@@ -1,0 +1,261 @@
+# Labelled cases for the project-specific tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # quiver
+
+    quiver is a powerful and flexible toolkit that makes working with your data
+    a joy. It is built from the ground up to be fast, reliable and easy to use,
+    so your team can focus on what matters most.
+
+    ## Install
+
+        go install github.com/quiver/cmd/quiver@latest
+
+    ## Usage
+
+        quiver index ./corpus
+        quiver search "release notes"
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # Scheduling
+
+    The scheduler is a critical part of the system and has been carefully
+    designed to deliver best-in-class performance at scale. Getting scheduling
+    right is hard, and we have put a lot of thought into making it work well.
+
+    ## Queues
+
+    Each queue has a name, a concurrency limit and a retry policy. A job that
+    exceeds the limit waits in the queue; a job that fails is retried with
+    exponential backoff up to the policy's maximum.
+
+    ## Priorities
+
+    Priority is an integer from 0 to 9. Ties are broken by enqueue time.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## 2.4.0 - 2025-11-02
+
+    This release represents a significant step forward for the project and
+    reflects our ongoing commitment to quality.
+
+    ### Added
+
+    - `--watch` re-runs the build when a tracked file changes.
+    - `config.toml` accepts a `[cache]` table with a `dir` key.
+
+    ### Fixed
+
+    - `build --clean` no longer deletes files outside the output directory.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # Contributing
+
+    We welcome contributions of all kinds. Our community is what makes this
+    project great, and every contribution, however small, helps us build
+    something better together.
+
+    ## Before you open a pull request
+
+    Run `make check`, which runs the unit tests, `golangci-lint` and a
+    `gofmt -l` over the tree. CI runs the same target, so a green `make check`
+    is a green CI.
+
+    Sign your commits with `git commit -s`; the DCO bot rejects a pull request
+    whose commits are unsigned.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    ## Why use it
+
+    Modern teams need tooling that keeps up with them. This project was built to
+    meet that need, bringing together the ideas that work and leaving behind the
+    ones that do not.
+
+    ## Getting started
+
+    Point it at a directory and it writes a `report.json` beside it:
+
+        ./bin/audit ./services --out report.json
+
+    The report lists one entry per service, with the image digest, the chart
+    version and the last deploy time read from the cluster.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # Architecture
+
+    The architecture is designed for scale, resilience and developer happiness.
+    Every component is built with care, following industry best practices that
+    have been proven over many years.
+
+    ## Components
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from the
+    `jobs` stream in Redis and writes results back to Postgres. `cron` enqueues
+    the nightly reconciliation at 02:00 UTC.
+
+    ## Failure modes
+
+    If Redis is unreachable the gateway answers reads from its in-process cache
+    for up to 60 seconds, then returns 503.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # 1.0
+
+    1.0 is here, and it is the most complete and most polished release yet.
+    Everything you loved is still here, and the rough edges have been smoothed.
+
+    ## Upgrading from 0.9
+
+    `config.yaml` moved to `config/app.yaml`; run `app config migrate` to move
+    it and rewrite the two renamed keys.
+
+    The `/v0` HTTP routes are gone. `/v1` takes the same query parameters and
+    returns the same shapes, with `created` as RFC 3339 rather than a Unix
+    second.
+- label: ok
+  lang: markdown
+  code: |
+    # quiver
+
+    quiver indexes a directory of Markdown files into a single BoltDB file and
+    answers phrase queries against it from the command line. It holds the whole
+    posting list in memory, so an index over more than about two million
+    documents will not fit on a 16 GB machine.
+
+    ## Install
+
+        go install github.com/quiver/cmd/quiver@latest
+
+    ## Usage
+
+        quiver index ./corpus
+        quiver search "release notes"
+- label: ok
+  lang: markdown
+  code: |
+    # Scheduling
+
+    Each queue has a name, a concurrency limit and a retry policy. A job over
+    the limit waits; a job that fails is retried with exponential backoff,
+    doubling from one second up to the policy's maximum, and is then moved to
+    the dead-letter queue.
+
+    ## Priorities
+
+    Priority is an integer from 0 to 9, where 0 runs first. Ties are broken by
+    enqueue time, so a burst of equal-priority jobs runs in the order it
+    arrived.
+
+    ## Limits
+
+    A queue holds at most 100000 pending jobs. Enqueueing past that returns
+    `ErrQueueFull` rather than blocking.
+- label: ok
+  lang: markdown
+  code: |
+    ## 2.4.0 - 2025-11-02
+
+    ### Added
+
+    - `--watch` re-runs the build when a tracked file changes, debounced by
+      200ms.
+    - `config.toml` accepts a `[cache]` table with a `dir` key.
+
+    ### Changed
+
+    - The default cache directory moved from `./.cache` to the platform cache
+      directory, `~/.cache/app` on Linux.
+
+    ### Fixed
+
+    - `build --clean` no longer deletes files outside the output directory.
+- label: ok
+  note: "The sentence claims speed and simplicity, which is the shape the tenet is suspicious of, but each claim names the mechanism behind it, so it could not be moved into another project's docs."
+  lang: markdown
+  code: |
+    # Why another migration tool
+
+    It is fast because it never opens a connection per migration: it reads the
+    whole directory, sorts by the numeric prefix, and runs the batch inside one
+    transaction, so a hundred-file migration costs one round trip rather than a
+    hundred.
+
+    It is simple in one specific way: there is no down migration. Rolling back
+    means writing a new forward migration, which is the only thing that
+    survives a partially applied batch.
+
+    ## Ordering
+
+    The numeric prefix is the whole of the order. Two files that share a prefix
+    are an error at load time, not a coin toss at run time.
+- label: ok
+  lang: markdown
+  code: |
+    # Contributing
+
+    ## Before you open a pull request
+
+    Run `make check`, which runs the unit tests, `golangci-lint` and a
+    `gofmt -l` over the tree. CI runs the same target, so a green `make check`
+    is a green CI.
+
+    Sign your commits with `git commit -s`; the DCO bot rejects a pull request
+    whose commits are unsigned.
+
+    ## Reviews
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two, because that package is the only one the SDK's compatibility
+    test pins.
+- label: ok
+  lang: markdown
+  code: |
+    # Architecture
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from the
+    `jobs` stream in Redis and writes results to Postgres. `cron` enqueues the
+    nightly reconciliation at 02:00 UTC.
+
+    ## Failure modes
+
+    If Redis is unreachable, the gateway answers reads from its in-process
+    cache for up to 60 seconds and then returns 503. Writes fail immediately
+    with 503; there is no local queue, because a write the client believes
+    landed and the cluster never saw is worse than a retry.
+- label: ok
+  note: "A plain description of what the library is, with no claim about its quality at all. The tenet is about a sentence that says nothing, not about a sentence that is unexciting."
+  lang: markdown
+  code: |
+    # ledger
+
+    ledger is a double-entry accounting library for Python.
+
+    ## Install
+
+        pip install ledger
+
+    ## Usage
+
+        from ledger import Book
+
+        book = Book("2025")
+        book.post("2025-01-03", debit="assets:bank", credit="income:sales",
+                  amount="120.00")
+        print(book.balance("assets:bank"))
+
+    Amounts are `decimal.Decimal`; the library refuses a float, because a cent
+    that rounds is a cent that disappears from a trial balance.

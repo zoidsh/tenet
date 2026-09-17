@@ -1,0 +1,9 @@
+id: project-specific
+tenet: "Say what it does, not how it feels. If the sentence could appear unchanged in another project's docs, it says nothing about this one. Cut it."
+criteria:
+  true: "A sentence asserts that the project is good, fast, simple, powerful, flexible, modern, reliable or carefully built without naming anything a reader could check: no command, flag, file, format, version, number, algorithm, limit, or named system it talks to. Lifted into an unrelated project's documentation the sentence would still read as true, because its subject is the reader's feelings or the authors' intentions rather than the software's behaviour."
+  false: "Each claim rests on something particular to this project: a command or flag, a configuration key, a file or wire format, a supported version, a measured quantity, a data structure or algorithm, a named limit or failure mode, or an external system it reads or writes. A plain statement of what the project is or how to install it is specific even when the words are ordinary, and a claim of speed or simplicity is specific when the sentence names the mechanism that makes it so."
+source: cursor/plugins pstack/skills/unslop/SKILL.md #27
+include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
+kind: [prose]
+tags: [prose, docs]
