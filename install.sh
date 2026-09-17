@@ -2,14 +2,17 @@
 # curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
 set -eu
 
-# The published name, in one place: the repository, the archive, the binary and
-# what a message calls itself all carry it.
+# The published names, in one place: NAME is the project, which the repository
+# and the release archives carry, BIN is the command inside them, and ALIAS is
+# the name the command used to have, kept beside it.
 NAME=tenetlint
+BIN=tenet
+ALIAS=tenetlint
 REPO=zoidsh/tenetlint
 INSTALL_DIR=${TENETLINT_INSTALL_DIR:-$HOME/.local/bin}
 
 die() {
-	echo "$NAME: $1" >&2
+	echo "$BIN: $1" >&2
 	exit 1
 }
 
@@ -112,14 +115,15 @@ main() {
 	got=$(checksum "$tmp/$archive")
 	[ "$want" = "$got" ] || die "checksum mismatch for $archive: expected $want, got $got"
 
-	tar -xzf "$tmp/$archive" -C "$tmp" "$NAME"
+	tar -xzf "$tmp/$archive" -C "$tmp" "$BIN"
 	mkdir -p "$INSTALL_DIR"
-	install -m 755 "$tmp/$NAME" "$INSTALL_DIR/$NAME" 2>/dev/null || {
-		cp "$tmp/$NAME" "$INSTALL_DIR/$NAME"
-		chmod 755 "$INSTALL_DIR/$NAME"
+	install -m 755 "$tmp/$BIN" "$INSTALL_DIR/$BIN" 2>/dev/null || {
+		cp "$tmp/$BIN" "$INSTALL_DIR/$BIN"
+		chmod 755 "$INSTALL_DIR/$BIN"
 	}
+	ln -sf "$BIN" "$INSTALL_DIR/$ALIAS"
 
-	echo "$NAME $version installed to $INSTALL_DIR/$NAME"
+	echo "$BIN $version installed to $INSTALL_DIR/$BIN, with $ALIAS beside it"
 	if ! on_path "$INSTALL_DIR"; then
 		echo "$INSTALL_DIR is not on your PATH; add it with:"
 		echo "  export PATH=\"$INSTALL_DIR:\$PATH\""

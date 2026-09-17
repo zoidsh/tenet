@@ -1,0 +1,5 @@
+#!/bin/sh
+# The command is tenet; this is the old name, kept so that anything that already
+# calls tenetlint goes on working. goreleaser's archives cannot carry a symlink,
+# so the alias is a wrapper.
+exec "$(dirname "$0")/tenet" "$@"
