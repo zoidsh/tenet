@@ -290,6 +290,55 @@ tenets:
 	}
 }
 
+// A tenet init drafts names neither an include nor a lang, and the language
+// fallback for one is text. It is still code that it is judging.
+func TestATenetThatNamesNothingIsFramedAsCode(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`version: 1
+tenets:
+  - id: house-style
+    tenet: Be tidy.
+    examples:
+      - label: ok
+        code: |
+          PAGE = 500
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asker := &table{answers: map[string]answer{"PAGE": {prob: 0.1}}}
+	if _, _, err := (&check.Checker{Asker: asker}).Run(context.Background(), cfg.Tenets); err != nil {
+		t.Fatal(err)
+	}
+	want := "Language: text. File: example.txt. Source file excerpt:\nL001 PAGE = 500\n"
+	if asker.states[0] != want {
+		t.Errorf("state is %q, want %q", asker.states[0], want)
+	}
+}
+
+func TestATenetsKindFramesItsExamples(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`version: 1
+tenets:
+  - id: plain-english
+    tenet: Write plainly.
+    kind: [prose]
+    examples:
+      - label: ok
+        code: |
+          The key is read from the environment.
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	asker := &table{answers: map[string]answer{"key": {prob: 0.1}}}
+	if _, _, err := (&check.Checker{Asker: asker}).Run(context.Background(), cfg.Tenets); err != nil {
+		t.Fatal(err)
+	}
+	want := "Document: text. File: example.txt. Text excerpt:\nL001 The key is read from the environment.\n"
+	if asker.states[0] != want {
+		t.Errorf("state is %q, want %q", asker.states[0], want)
+	}
+}
+
 func TestCachedExamplesCostNothing(t *testing.T) {
 	dir := t.TempDir()
 	c, err := cache.Open(dir)

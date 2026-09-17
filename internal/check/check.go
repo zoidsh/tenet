@@ -151,8 +151,7 @@ func (c *Checker) pass(ctx context.Context, ts []*tenets.Tenet, skipCache bool) 
 func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example, skipCache bool) (Judged, Stats, error) {
 	var stats Stats
 	lines := e.CodeLines()
-	lang := exampleLang(t, e)
-	state := judge.StateOf(source.KindForLanguage(lang), lang, exampleFile(t, e), lines)
+	state := judge.StateOf(exampleKind(t, e), exampleLang(t, e), exampleFile(t, e), lines)
 	key := cache.Key(state, t.Hash())
 
 	judged := Judged{Example: e}
@@ -221,6 +220,20 @@ func exampleLang(t *tenets.Tenet, e tenets.Example) string {
 		return source.LanguageForPath(t.Include[0])
 	}
 	return "text"
+}
+
+// exampleKind is the framing the example is judged under. The language
+// fallback is text, which is prose, so a tenet that says nothing about what it
+// judges would have its code read as a document: only a kind the tenet names,
+// or a language something in the config actually chose, moves it off code.
+func exampleKind(t *tenets.Tenet, e tenets.Example) string {
+	if len(t.Kind) == 1 {
+		return t.Kind[0]
+	}
+	if e.Lang == "" && len(t.Include) == 0 {
+		return source.KindCode
+	}
+	return source.KindForLanguage(exampleLang(t, e))
 }
 
 // exampleFile is the file name the example is shown under. It is taken from
