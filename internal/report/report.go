@@ -35,6 +35,9 @@ type Report struct {
 	Findings []judge.Finding
 	Stats    judge.Stats
 	Skipped  []source.Skip
+
+	// Quiet drops the summary line, leaving only the findings themselves.
+	Quiet bool
 }
 
 // ExitCode is 1 when a finding at or above failOn stands. A low confidence
@@ -115,8 +118,10 @@ func (r Report) Text(w io.Writer, color bool) error {
 		}
 		b.WriteString("\n")
 	}
-	b.WriteString(p.paint(dim, r.summary()))
-	b.WriteString("\n")
+	if !r.Quiet {
+		b.WriteString(p.paint(dim, r.summary()))
+		b.WriteString("\n")
+	}
 	_, err := io.WriteString(w, b.String())
 	return err
 }

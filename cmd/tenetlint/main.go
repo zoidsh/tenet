@@ -2,25 +2,29 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/zoidsh/tenetlint/internal/buildinfo"
+	"github.com/zoidsh/tenetlint/internal/report"
 )
 
 func newRootCmd() *cobra.Command {
+	opts := &lintOptions{}
 	root := &cobra.Command{
-		Use:           "tenetlint",
+		Use:           "tenetlint [paths...]",
 		Short:         "Lint code against the rules you wrote in English",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runLint(cmd, args, opts)
 		},
 	}
-	root.AddCommand(newVersionCmd())
+	addLintFlags(root, opts)
+	root.AddCommand(newVersionCmd(), newHookCmd())
 	return root
 }
 
@@ -36,9 +40,23 @@ func newVersionCmd() *cobra.Command {
 	}
 }
 
-func main() {
-	if err := newRootCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "tenetlint:", err)
-		os.Exit(1)
+// execute runs the command tree and maps whatever comes back to an exit code.
+func execute(root *cobra.Command) int {
+	err := root.Execute()
+	if err == nil {
+		return report.ExitOK
 	}
+	var exit *exitError
+	if errors.As(err, &exit) {
+		if exit.err != nil {
+			_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenetlint:", exit.err)
+		}
+		return exit.code
+	}
+	_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenetlint:", err)
+	return report.ExitError
+}
+
+func main() {
+	os.Exit(execute(newRootCmd()))
 }

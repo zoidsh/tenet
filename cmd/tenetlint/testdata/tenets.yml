@@ -1,0 +1,8 @@
+version: 1
+tenets:
+  - id: comment-why
+    tenet: A comment says why the code exists or why it is written this way, not what the code does.
+    criteria:
+      true: The comment restates what the code visibly does, narrates steps, names the operation, or is a section label. A reader of the code learns nothing new from it.
+      false: The comment gives a reason, a constraint, a contract, a workaround for an external system, a reference explaining the choice, or a warning about ordering or invariants that the code does not show.
+    include: ["**/*.go"]
