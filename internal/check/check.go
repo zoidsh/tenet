@@ -192,7 +192,7 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 			judged.Prob = answer.Prob()
 		}
 		if answer, ok := resp.Answers[locationQuestion]; ok {
-			located = judge.TopLine(answer)
+			located = judge.TopLine(answer, false)
 		}
 		switch {
 		case skipCache:

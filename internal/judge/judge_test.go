@@ -371,6 +371,23 @@ func TestAnExemptLineIsNotOffered(t *testing.T) {
 	}
 }
 
+// The sibling of the case above: with a line held back, none is an answer
+// again, and the model taking it means the violation is on the exempt line.
+func TestNoneOverTheOpenLinesIsNoFinding(t *testing.T) {
+	j, f, windows := fixture(t, "x := 1 // tenet\x3aignore comment-why\ny := 2\n", nil)
+	f.verdict["comment-why"] = 0.9
+	f.verdict["no-fallback"] = 0.1
+	f.where["comment-why"] = map[string]float64{"L002": 0.3, "none": 0.7}
+
+	out, err := j.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Findings) != 0 {
+		t.Errorf("findings are %#v", out.Findings)
+	}
+}
+
 // A location cached by a run that could report on the whole file is no answer
 // for a run whose diff touched one line of it.
 func TestACachedLineOutsideTheOpenSetIsAskedAgain(t *testing.T) {

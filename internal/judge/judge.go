@@ -422,7 +422,7 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 		if !ok {
 			continue
 		}
-		p.line = TopLine(answer)
+		p.line = TopLine(answer, len(p.open) < len(w.Lines))
 		if p.line != "" {
 			j.Cache.PutLocation(p.key, p.prob, p.line)
 		}
@@ -430,10 +430,21 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 	return nil
 }
 
-// TopLine is the most probable line, read from the distribution with none
-// taken out: the verdict has already decided that the window violates the
-// rule, so the question left is only which line shows it best.
-func TopLine(a jev.Answer) string {
+// TopLine is the most probable line, empty when the model named none. With
+// every line of the window on offer, none is taken out of the distribution
+// first: the verdict has already decided that the window violates the rule,
+// so the question left is only which line shows it best. With some of them
+// held back, none stays in the running and winning it means the violation is
+// on a line this run cannot report on, which is no finding rather than one
+// pushed onto the neighbour.
+func TopLine(a jev.Answer, keepNone bool) string {
+	if keepNone {
+		label, _ := a.Top()
+		if label == NoneLabel {
+			return ""
+		}
+		return label
+	}
 	trimmed := jev.Answer{Probabilities: map[string]float64{}}
 	for label, p := range a.Probabilities {
 		if label == NoneLabel {
