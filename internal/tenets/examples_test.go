@@ -1,3 +1,6 @@
+// The examples in the config below are labelled violations of comment-why, so
+// the comment that restates the code is the fixture and not a slip.
+// tenet:ignore-file comment-why
 package tenets_test
 
 import (

@@ -2,6 +2,10 @@
 // the network, so these tests answer from a table instead: the substitute is
 // the point of the seam, not a way around a real dependency.
 // tenet:ignore-file no-mocking
+//
+// The examples in the config below are labelled violations of comment-why, so
+// the comment that restates the code is the fixture and not a slip.
+// tenet:ignore-file comment-why
 package check_test
 
 import (
