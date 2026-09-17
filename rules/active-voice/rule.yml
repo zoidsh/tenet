@@ -1,0 +1,9 @@
+id: active-voice
+tenet: "Active voice. Passive is fine only when the actor is unknown or genuinely doesn't matter."
+criteria:
+  true: "The passage names the doer within a line or two — a command, a process, a file, a maintainer, the reader being addressed — and the sentence describing what that doer does leaves it out anyway, putting the affected thing in the subject and the verb in the passive. Because the actor can be pointed at in the same passage, it is neither unknown nor beside the point, so the tenet's exception does not reach it. An impersonal frame that reports a choice, a decision or an expectation with nobody behind it is the same fault: a person made that call, and the sentence is built to avoid saying who. The rewrite needs no new information, because the passage supplies the missing subject a sentence or two later; where a paragraph runs two or three such sentences together and only afterwards says who was doing all of it, the whole run is the violation."
+  false: "The actor is genuinely out of reach or genuinely beside the point: nothing on the page records who or what did it, or the doer is the single mechanism the whole section is about and naming it again in every sentence would add nothing. Or the affected thing is the topic — the paragraph is about what becomes of a job, a record or a request — so promoting the actor would move the paragraph off its subject. Imperatives addressed to the reader, and ordinary active sentences, are outside this rule."
+source: cursor/plugins pstack/skills/unslop/SKILL.md #29
+include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
+kind: [prose]
+tags: [prose, docs]

@@ -1,0 +1,228 @@
+# Labelled cases for the active-voice tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # The daemon
+
+    Configuration is read at startup and the listening port is set from it.
+    The file is re-read whenever SIGHUP is received.
+
+    `appd` is the process that does all of this. `appctl` talks to it over
+    the unix socket at `/run/app.sock`.
+
+    ## Keys
+
+    Keys are case-sensitive, and an environment variable of the same name
+    uppercased and prefixed `APP_` wins over the file.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Down migrations
+
+    It was decided that down migrations would not be supported, and the
+    alternative of a new forward migration was chosen instead.
+
+    Rolling back means writing a new forward migration, which is the only
+    thing that survives a partially applied batch.
+
+    ## Ordering
+
+    The numeric prefix is the whole of the order. Two files that share a
+    prefix are an error at load time rather than a coin toss at run time.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Before a migration
+
+    A backup should be taken before the migration is run, and the output of
+    `app backup --verify` should be read before the deploy is started.
+
+    `app backup` writes a single tar to the path you name. `app migrate`
+    runs the whole batch inside one transaction.
+
+    ## During
+
+    Writers carry on. A migration that adds a column takes no lock; one that
+    rewrites a table takes the table lock for the length of the rewrite.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Merging
+
+    Once the branch has been reviewed and an approval has been given, the
+    merge can be performed.
+
+    A maintainer reviews the branch. One approval merges a patch, and a
+    change under `internal/wire` needs two.
+
+    ## After the merge
+
+    The release job tags the commit and uploads the binaries under a prefix
+    of the same name.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    ## Errors
+
+    Errors are logged and the job is marked failed. After a third failure
+    the job is moved to the dead-letter queue and the last error is stored
+    beside it.
+
+    The worker does all of this. Nothing else writes to the job table, and
+    `app status` reads it without taking a lock.
+
+    ## Retries
+
+    A retry waits one second, then two, then four.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Contributing
+
+    The tests are expected to be run before a pull request is opened, and
+    `golangci-lint` is expected to be run as well.
+
+    `make check` runs both with the repository's own config, and CI runs the
+    same target, so a green `make check` is a green CI.
+
+    ## Signing
+
+    Sign your commits with `git commit -s`; the DCO bot rejects a pull
+    request whose commits are unsigned.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Caching a step
+
+    The digest of the declared reads is computed and is compared against the
+    one stored from the last successful run. If they match, the step is
+    skipped.
+
+    The runner does all of this before the first step starts, so a pipeline
+    of cached steps costs one pass over the declarations.
+
+    ## Invalidating
+
+    `--no-cache` skips the comparison and still writes the digests.
+- label: ok
+  note: "The actor is the same in every case and adds nothing: it is the parser, on every line of the section, and naming it would displace the frame, which is what the paragraph is about."
+  lang: markdown
+  code: |
+    ## The wire format
+
+    A frame is a four-byte big-endian length followed by that many bytes of
+    CBOR. Lengths above 16 MiB are rejected before the body is read.
+
+    A frame whose body is not valid CBOR closes the connection. No error is
+    sent first, because the length is the only thing that has been trusted
+    at that point.
+
+    ## Handshake
+
+    The client sends its highest supported version and the server answers
+    with the one it chose.
+- label: ok
+  note: "The actor is genuinely unrecorded, and the sentence says so."
+  lang: markdown
+  code: |
+    ## Recovering a segment
+
+    A segment written during the maintenance window carries no worker id.
+    It was written by whichever worker held the lease at the time, and the
+    log does not record which.
+
+    `app segment repair` rewrites the header from the surrounding segments
+    and leaves the body alone.
+
+    ## When it cannot
+
+    A segment whose neighbours are both missing is moved to `lost/` and
+    reported. Nothing tries to guess at its contents.
+- label: ok
+  lang: markdown
+  code: |
+    # Workers
+
+    A worker leases a job for 30 seconds and extends the lease every 10
+    while it runs. A lease that expires is handed to another worker, which
+    starts the job from the beginning.
+
+    A worker runs one job at a time. Run more processes to run more jobs;
+    there is no pool inside one.
+
+    ## Draining
+
+    `SIGTERM` finishes the job in flight and exits. A second `SIGTERM`
+    exits at once and the lease expires 30 seconds later.
+- label: ok
+  lang: markdown
+  code: |
+    # Contributing
+
+    Run `make check` before you open a pull request. CI runs the same
+    target, so a green `make check` is a green CI.
+
+    A maintainer reviews your branch. One approval merges a patch, and a
+    change under `internal/wire` needs two, because that package is the
+    only one the compatibility test pins.
+
+    ## Signing
+
+    Sign your commits with `git commit -s`; the DCO bot rejects a pull
+    request whose commits are unsigned.
+- label: ok
+  lang: markdown
+  code: |
+    # The daemon
+
+    `appd` reads `/etc/app/config.toml` at startup, takes the listening port
+    from it, and re-reads the file on SIGHUP.
+
+    `appctl` talks to `appd` over the unix socket at `/run/app.sock` and
+    needs no configuration of its own.
+
+    ## Keys
+
+    Keys are case-sensitive. An environment variable of the same name
+    uppercased and prefixed `APP_` wins over the file, and a flag wins over
+    both.
+- label: ok
+  lang: markdown
+  code: |
+    ## Down migrations
+
+    There are no down migrations. Rolling back means writing a new forward
+    migration, which is the only thing that survives a partially applied
+    batch.
+
+    The tool runs the whole batch inside one transaction, so a failure
+    leaves the schema where it started.
+
+    ## Ordering
+
+    The numeric prefix is the whole of the order. Two files that share a
+    prefix are an error at load time.
+- label: ok
+  note: "The topic of each sentence is the job rather than the worker, and the worker is named in the section above; promoting it would move the paragraph off its subject."
+  lang: markdown
+  code: |
+    ## What happens to a failed job
+
+    A failed job is retried three times, one second apart, then two, then
+    four. After the third it is moved to the dead-letter queue with its last
+    error stored beside it.
+
+    A job in the dead-letter queue is never picked up again. It is
+    re-enqueued by hand with `app requeue <id>`, which clears the error.
+
+    ## Inspecting one
+
+    `app job show <id>` prints the payload, the attempt count and the last
+    error.
