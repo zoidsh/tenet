@@ -11,7 +11,7 @@ Read the report with `--format json`. Each entry in `findings` carries `file`, `
 
 Take each finding in turn: open `file` at `line`, read the sentence in `message`, and change the code so the sentence holds. Rewrite the comment, drop the fallback, rename the thing.
 
-When the code is right for a reason the tenet cannot see, exempt the line rather than contorting it: put `tenet:ignore <id>` in a comment on that line and write the reason in the same comment. `tenet:ignore-next-line <id>` covers the line below and `tenet:ignore-file <id>` covers the file.
+When the code is right for a reason the tenet cannot see, exempt the line rather than contorting it: put `tenet:ignore <id>` in a comment on that line and write the reason after the id list, in the same comment, where any words that follow are left alone. `tenet:ignore-next-line <id>` covers the line below and `tenet:ignore-file <id>` covers the file.
 
 Never edit `tenets.yml`, never lower a tenet's `fail`, never set `TENETLINT_SKIP` to get a commit through, and never reword or delete a rule to make a finding go away; those are the maintainers' to change, not yours. `tenet baseline` accepts what a codebase already had, so never run it over a finding your own change introduced, and `tenet check`, which measures a tenet against labelled examples, is how a person tunes one. A finding marked `[baselined]`, or one in the `baselined` array, is history the repository has already accepted, and is not yours to fix.
 

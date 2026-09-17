@@ -72,6 +72,32 @@ func TestStripDirectives(t *testing.T) {
 	}
 }
 
+// The reason a line is exempt belongs in the same comment, so the id list
+// ends at the first word that no comma joined to it.
+func TestStripDirectivesKeepsWordsAfterTheIDList(t *testing.T) {
+	lines := []string{
+		"x := 1 // tenet\x3aignore comment-why because the vendor API lies",
+		"y := 2 // tenet\x3aignore comment-why,no-fallback the two of them",
+	}
+	stripped, sup, err := stripDirectives("a.go", lines, knownTenets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sup.Line(1, "comment-why") || !sup.Line(2, "no-fallback") {
+		t.Error("the ids before the words were not honoured")
+	}
+	if sup.Line(1, "no-fallback") {
+		t.Error("a word after the list was read as an id")
+	}
+	want := []string{
+		"x := 1 //  because the vendor API lies",
+		"y := 2 //  the two of them",
+	}
+	if !reflect.DeepEqual(stripped, want) {
+		t.Errorf("stripped:\n%q\nwant:\n%q", stripped, want)
+	}
+}
+
 func TestStripDirectivesIDListSpacing(t *testing.T) {
 	lines := []string{"x := 1 // tenet\x3aignore comment-why, no-fallback"}
 	stripped, sup, err := stripDirectives("a.go", lines, knownTenets)

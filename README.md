@@ -136,7 +136,7 @@ fix the lines above or mark one with a tenet:ignore <id> directive, then commit 
 
 ## Directives
 
-Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it; the first line is the usual place, but it is not a rule. Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. A directive that names an id your `tenets.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
+Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it; the first line is the usual place, but it is not a rule. Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. Words may follow the list after a space, which is where the reason for the exemption goes: the list ends at the first token that is not an id or a comma, so write `tenet:ignore no-fallback the vendor API lies` and put no comma before the reason. A directive that names an id your `tenets.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
 
 ```go
 x := fallback() // tenet:ignore no-fallback
