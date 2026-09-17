@@ -36,11 +36,47 @@ func (f *File) Reportable(line int) bool {
 }
 
 // Language names the file's language for the model, falling back to text.
-func (f *File) Language() string {
-	if lang, ok := languages[strings.ToLower(filepath.Ext(f.Path))]; ok {
+func (f *File) Language() string { return LanguageForPath(f.Path) }
+
+// LanguageForPath names the language a path is written in, falling back to
+// text. A glob is a path for this purpose, so that a tenet's include pattern
+// names the language of its examples.
+func LanguageForPath(path string) string {
+	if lang, ok := languages[strings.ToLower(filepath.Ext(path))]; ok {
 		return lang
 	}
 	return "text"
+}
+
+// ExtensionFor is the extension a file of the named language is written with,
+// empty for a language tenetlint does not know. It is spelled out rather than
+// read backwards out of the extension table, which holds several extensions
+// per language and no opinion on which one to write.
+func ExtensionFor(lang string) string {
+	return extensions[lang]
+}
+
+var extensions = map[string]string{
+	"go":         ".go",
+	"typescript": ".ts",
+	"javascript": ".js",
+	"python":     ".py",
+	"rust":       ".rs",
+	"java":       ".java",
+	"kotlin":     ".kt",
+	"swift":      ".swift",
+	"ruby":       ".rb",
+	"php":        ".php",
+	"c":          ".c",
+	"cpp":        ".cpp",
+	"csharp":     ".cs",
+	"shell":      ".sh",
+	"sql":        ".sql",
+	"yaml":       ".yml",
+	"json":       ".json",
+	"markdown":   ".md",
+	"html":       ".html",
+	"css":        ".css",
 }
 
 // Window is a slice of a file small enough to ask about in one call.

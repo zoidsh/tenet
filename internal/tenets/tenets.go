@@ -61,6 +61,31 @@ func ParseSeverity(s string) (Severity, error) {
 	}
 }
 
+// Label is what an example is known to be.
+type Label string
+
+// The labels an example may carry.
+const (
+	LabelViolation Label = "violation"
+	LabelOK        Label = "ok"
+)
+
+// Example is a labelled snippet that check measures a tenet against. Line is
+// the one-based line within Code a finding should land on, left out when the
+// example is not about a particular line.
+type Example struct {
+	Label Label  `yaml:"label"`
+	Line  int    `yaml:"line"`
+	Lang  string `yaml:"lang"`
+	Code  string `yaml:"code"`
+}
+
+// Lines are the example's code lines. The newline a YAML block scalar ends on
+// is not a line of code.
+func (e Example) Lines() []string {
+	return strings.Split(strings.TrimRight(e.Code, "\n"), "\n")
+}
+
 // Criteria describe to the model what a true and a false verdict mean.
 type Criteria struct {
 	True  string `yaml:"true"`
@@ -80,6 +105,9 @@ type Tenet struct {
 	Confident *float64  `yaml:"confident"`
 	Include   []string  `yaml:"include"`
 	Exclude   []string  `yaml:"exclude"`
+
+	Examples     []Example `yaml:"examples"`
+	ExamplesFrom string    `yaml:"examples_from"`
 
 	model string
 }
@@ -107,6 +135,9 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	cfg.Path = path
+	if err := cfg.ResolveExamples(filepath.Dir(path)); err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }
 
@@ -167,7 +198,53 @@ func (c *Config) validate() error {
 				}
 			}
 		}
+		if err := validateExamples(t.ID, t.Examples); err != nil {
+			return err
+		}
 		t.model = c.Model
+	}
+	return nil
+}
+
+func validateExamples(id string, examples []Example) error {
+	for i, e := range examples {
+		switch e.Label {
+		case LabelViolation, LabelOK:
+		default:
+			return fmt.Errorf("tenet %q: examples[%d]: label must be %s or %s, got %q", id, i, LabelViolation, LabelOK, e.Label)
+		}
+		if strings.TrimSpace(e.Code) == "" {
+			return fmt.Errorf("tenet %q: examples[%d]: code is required", id, i)
+		}
+		if e.Line < 0 || e.Line > len(e.Lines()) {
+			return fmt.Errorf("tenet %q: examples[%d]: line %d is outside the %d lines of code", id, i, e.Line, len(e.Lines()))
+		}
+	}
+	return nil
+}
+
+// ResolveExamples appends the examples each tenet keeps in a sibling file,
+// named relative to dir, to the ones written inline.
+func (c *Config) ResolveExamples(dir string) error {
+	for _, t := range c.Tenets {
+		if t.ExamplesFrom == "" {
+			continue
+		}
+		path := filepath.Join(dir, filepath.FromSlash(t.ExamplesFrom))
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("tenet %q: examples_from: %w", t.ID, err)
+		}
+		var examples []Example
+		decoder := yaml.NewDecoder(bytes.NewReader(data))
+		decoder.KnownFields(true)
+		if err := decoder.Decode(&examples); err != nil && !errors.Is(err, io.EOF) {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		if err := validateExamples(t.ID, examples); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		t.Examples = append(t.Examples, examples...)
 	}
 	return nil
 }
@@ -223,7 +300,9 @@ func (t *Tenet) Applies(relPath string) bool {
 
 // Hash identifies what the model is asked, so that a cached answer survives
 // everything that does not change the question. Threshold and severity are
-// left out because they are applied to the answer, not asked of the model.
+// left out because they are applied to the answer, not asked of the model,
+// and examples because they are never shown to it, so adding one must not
+// throw away the answers a lint has already paid for.
 func (t *Tenet) Hash() string {
 	h := sha256.New()
 	write := func(parts ...string) {
