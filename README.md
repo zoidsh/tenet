@@ -14,32 +14,32 @@ TypeSafe's jev model answers each rule with a calibrated probability, so a tenet
 
 Homebrew, on macOS and on Linux:
 
-```
+```sh
 brew install zoidsh/tap/tenet
 ```
 
 npm, which carries the binary for your platform as an optional dependency:
 
-```
+```sh
 npm install -g @zoidsh/tenet
 npx @zoidsh/tenet
 ```
 
 As a devDependency, so everyone working on the repository gets the same tenet:
 
-```
+```sh
 npm install --save-dev @zoidsh/tenet
 ```
 
 The installer script, which puts the binary in `~/.local/bin` and never asks for sudo:
 
-```
+```sh
 curl -fsSL https://raw.githubusercontent.com/zoidsh/tenet/main/install.sh | sh
 ```
 
 From source, which needs a Go toolchain:
 
-```
+```sh
 go install github.com/zoidsh/tenet/cmd/tenet@latest
 ```
 
@@ -53,7 +53,7 @@ From the root of your repository:
 
 1. Save the key your lints are judged with, which comes from a TypeSafe account at [typesafe.ai](https://typesafe.ai).
 
-   ```
+   ```sh
    tenet auth
    ```
 
@@ -61,19 +61,19 @@ From the root of your repository:
 
 2. Draft a `tenet.yml` from the instruction files your agents already read.
 
-   ```
+   ```sh
    tenet init
    ```
 
 3. Read what it drafted, delete the rules you did not mean, and print what the file now resolves to.
 
-   ```
+   ```sh
    tenet config
    ```
 
 4. Lint your staged changes.
 
-   ```
+   ```sh
    tenet
    ```
 
@@ -81,7 +81,7 @@ From the root of your repository:
 
 5. Install the hooks, so every commit is linted from here on.
 
-   ```
+   ```sh
    tenet hook install
    ```
 
@@ -191,7 +191,7 @@ The order is the order of that file: the presets in the order you list them, the
 
 An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenet config`, from Quick start step 3, prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
-```
+```console
 $ tenet config --config tenet.yml
 tenet.yml
 
@@ -210,6 +210,7 @@ no-defensive-nil       rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **
 A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and the part that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer. A tenet need not be in English: the Languages table under Benchmarks measures comment-why in German and in Japanese beside its English corpus.
 
 ```yaml
+tenets:
   - id: comment-why
     tenet: A comment says why the code exists or why it is written this way, not what the code does.
     criteria:
@@ -224,6 +225,8 @@ A tenet is judged by its sentence alone unless you give it criteria: a `true` de
 Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenet check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
 
 ```yaml
+tenets:
+  - id: comment-why
     examples:
       - label: violation
         lines: 2
@@ -292,7 +295,7 @@ A first full sweep of code nobody wrote against these tenets finds things nobody
 
 An entry is matched by the file, the tenet and a hash of the offending line with the lines around it, so it survives the code above it moving and is gone the moment the line itself is edited. As the old findings get fixed, `tenet baseline --prune .` rewrites the file with only the entries the run still produces and says how many it dropped; it never accepts anything new. The file records the scope it was written over, and a prune from a narrower one stops rather than drop the entries it never looked at, naming both scopes.
 
-```
+```console
 $ tenet baseline .
 wrote 2 findings to .tenet-baseline.json
 
@@ -309,6 +312,7 @@ The comment lines git strips itself, and everything below a `>8` scissors line, 
 The hooks from Quick start step 5 include this one, the `commit-msg` hook, which git runs after `pre-commit`, so the code is judged first and the message only once the code passes.
 
 ```yaml
+tenets:
   - id: commit-subject
     tenet: The commit subject is in the imperative mood and says what changed for a reader, not which functions were touched.
     kind: [commit]
@@ -317,6 +321,7 @@ The hooks from Quick start step 5 include this one, the `commit-msg` hook, which
 `tenet --pr-text <file>` lints a pull request's title and description, which the file holds one after the other, as a file named `PULL_REQUEST` of kind `pr`. Nothing is stripped, because a description is prose rather than a file with comments in it, and a finding says `edit the pull request title or description, then push again`. The action writes the title and the description of the pull request it is running on and lints them itself, so this flag is for running the same rule anywhere else. A rule about what a change is called is usually about both texts, and one tenet can cover them:
 
 ```yaml
+tenets:
   - id: says-what-changed
     tenet: The subject or title says what changed for a reader, not which functions were touched, and the body says why.
     kind: [commit, pr]
@@ -340,6 +345,7 @@ repos:
 The action downloads the release binary for the runner and lints the pull request against its base:
 
 ```yaml
+steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
@@ -396,7 +402,7 @@ Reading the report is one thing and knowing to run it is another, so `plugin/` i
 
 Agents that read a repository rather than a plugin get the same instructions from `tenet init --agent`. `--agent cursor` writes them to `.cursor/rules/tenet.mdc`, `--agent agents` and `--agent claude` keep them as a `## tenet` section of `AGENTS.md` or `CLAUDE.md`, replacing the section an earlier run wrote rather than adding a second one, and the flag repeats. A run that names an agent writes those files and nothing else, so it refuses `--from`, `--preset`, `--config` and `--force` rather than half-doing two jobs, and `--dry-run` names the files it would write.
 
-```
+```sh
 tenet init --agent cursor --agent agents
 ```
 
