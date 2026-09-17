@@ -2,6 +2,7 @@
 "use strict";
 
 const { spawnSync } = require("child_process");
+const os = require("os");
 
 // The published name, in one place: the scope of the platform packages, the
 // binary inside them, the override variable and what an error calls itself.
@@ -9,20 +10,29 @@ const NAME = "tenetlint";
 const SCOPE = "@tenetlint";
 const OVERRIDE = "TENETLINT_BINARY";
 
-const platform = `${process.platform}-${
-  process.arch === "x64" ? "x64" : "arm64"
-}`;
-const pkg = `${SCOPE}/${platform}`;
+const PLATFORMS = new Set([
+  "darwin-arm64",
+  "darwin-x64",
+  "linux-arm64",
+  "linux-x64",
+]);
+
+const platform = `${process.platform}-${process.arch}`;
 
 function binaryPath() {
   if (process.env[OVERRIDE]) {
     return process.env[OVERRIDE];
   }
+  if (!PLATFORMS.has(platform)) {
+    console.error(`${NAME}: there is no ${NAME} build for ${platform}`);
+    process.exit(1);
+  }
+  const pkg = `${SCOPE}/${platform}`;
   try {
     return require.resolve(`${pkg}/${NAME}`);
   } catch {
     console.error(
-      `${NAME}: no binary for ${platform}; install ${pkg} or set ${OVERRIDE}`
+      `${NAME}: no binary installed for ${platform}; install ${pkg} or set ${OVERRIDE}`
     );
     process.exit(1);
   }
@@ -37,6 +47,10 @@ if (result.error) {
   process.exit(1);
 }
 
-// A binary killed by a signal has a null status; the shell's own convention is
-// what the caller of npx expects to see.
-process.exit(result.status === null ? 128 : result.status);
+if (result.signal !== null) {
+  // A binary killed by a signal has a null status, and a shell reports such a
+  // death as 128 plus the signal, which is what a caller of npx expects.
+  process.exit(128 + (os.constants.signals[result.signal] || 0));
+}
+
+process.exit(result.status === null ? 1 : result.status);
