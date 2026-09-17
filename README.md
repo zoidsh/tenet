@@ -155,19 +155,19 @@ A `tenets.yml` composes what will run out of the rules that ship inside the bina
 
 ```
 agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
-  comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified
+  comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified, no-fallback
 
 unslop-prose  The prose an LLM writes into a README when nobody rewrites the draft.
-  project-specific, no-generic-conclusion, no-metaphor-noun
+  project-specific, no-generic-conclusion, no-metaphor-noun, no-false-contrast
 ```
 
 ```yaml
 version: 1
 presets: [agent-hygiene]        # built-in presets, expanded in order
-rules: [no-fallback]            # individual built-in rules, added after presets
+rules: [no-defensive-nil]       # individual built-in rules, added after presets
 disable: [no-mocking]           # removed after expansion, by id
 override:                       # per-id patches applied last
-  no-fallback:
+  no-defensive-nil:
     fail: 0.9
     include: ["**/*.go"]
     kind: [code]                # code, prose, data or commit; the globs narrow further
@@ -192,7 +192,8 @@ no-mocking             agent-hygiene  code  0.80  **/*_test.go, **/*.test.ts, **
 no-transcript-comment  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-placeholder-phrase  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 assertion-justified    agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
-no-fallback            rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-fallback            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-defensive-nil       rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 ```
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
