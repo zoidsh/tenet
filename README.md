@@ -16,9 +16,24 @@ CLAUDE.md
   19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
 ```
 
-Then read what it drafted, delete the rules you did not mean, and run `tenetlint`, which lints your staged changes. `tenetlint --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. A finding at or above `--fail-on`, `warn` by default, exits 1; a broken run exits 2.
+Then read what it drafted, delete the rules you did not mean, and run `tenetlint`, which lints your staged changes. `tenetlint --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
 
 Finally, `tenetlint hook install` writes a pre-commit hook that runs the lint on every commit, and `tenetlint hook uninstall` takes it away again.
+
+## Pass or fail
+
+A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenetlint check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
+
+```
+internal/cache/cache.go:42: comment-why (p=0.91)
+internal/judge/judge.go:118: no-fallback (p=0.86)
+
+comment-why  A comment says why the code exists or why it is written this way, not what the code does.
+no-fallback  Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths.
+
+2 findings · 7 windows, 9 calls, 4 cached · $0.0031 · 2.4s
+fix the lines above or mark one with a tenet:ignore <id> directive, then commit again
+```
 
 ## Configuration
 
@@ -31,19 +46,19 @@ rules: [comment-why]            # individual built-in rules, added after presets
 disable: [no-mocking]           # removed after expansion, by id
 override:                       # per-id patches applied last
   no-fallback:
-    severity: error
+    fail: 0.9
     include: ["**/*.go"]
 tenets: [...]                   # your own tenets, as before
 ```
 
-The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, severity, threshold and include globs of every tenet that will run.
+The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, cutoff and include globs of every tenet that will run.
 
 ```
 tenets.yml
 
-id                origin         severity  threshold  include
-comment-why       agent-hygiene  warn      0.50       **/*.go
-no-fallback       agent-hygiene  warn      0.50       **/*.go
+id                origin         fail  include
+comment-why       agent-hygiene  0.80  **/*.go
+no-fallback       agent-hygiene  0.80  **/*.go
 ```
 
 `tenetlint init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
@@ -100,15 +115,15 @@ Then run `tenetlint check`, which judges every example of every tenet that has a
 comment-why: sharp
   examples          8 (4 violation, 4 ok)
   auc               1.00
-  accuracy          1.00 at threshold 0.50, 0.88 at confident 0.70
+  accuracy          1.00 at fail 0.80 · 0.88 at 0.70, 1.00 at 0.80, 0.75 at 0.90
   mean probability  violation 0.84, ok 0.14, gap 0.69
   location          4 of 4 lines named (1.00)
 ```
 
 Choose the examples as carefully as the wording: they are what the numbers mean. This repository leaves one case out of `comment-why` on purpose, a function whose only comment is a `TODO`, because the model scores it 0.20 and the tenet never says where it stands on TODOs; a tenet that has not taken a position cannot be measured on one.
 
-The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all; the accuracies say whether your `threshold` and `confident` are the right places to cut. A tenet is `sharp` when nothing lands on the wrong side of its threshold, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at, and one line of advice names what usually moves the numbers: a `false` criterion when the innocent examples score high, a `true` criterion when the violations score low, and a rewrite of the sentence itself when both sit in the middle. `check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
+The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all; the accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys. A tenet is `sharp` when nothing lands on the wrong side of its cutoff, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at, and one line of advice names what usually moves the numbers: a lower `fail`, and which value, when the violations cluster just under the cutoff; a higher one when an innocent example reaches it; a `false` criterion when the innocent examples score high, a `true` criterion when the violations score low, and a rewrite of the sentence itself when both sit in the middle. `check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
 
-Set `TYPESAFE_API_KEY` to your key. `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in, and `TENETLINT_SKIP=1` makes the installed pre-commit hook exit without linting.
+Set `TYPESAFE_API_KEY` to your key. `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in, and `TENETLINT_SKIP=1` makes the installed pre-commit hook exit without linting. Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent; `TENETLINT_FORMAT=text` or `json` settles it either way.
 
 Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.
