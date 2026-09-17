@@ -1,0 +1,112 @@
+# Labelled cases for the no-defensive-nil tenet, measured by `tenetlint check`.
+- label: violation
+  lines: [4, 5]
+  code: |
+    func (s *Service) BuildInvoice(ctx context.Context, order Order) (*Invoice, error) {
+    	lines := s.expandLines(order)
+    	inv := NewInvoice(order.ID, lines)
+    	if inv == nil {
+    		return nil, nil
+    	}
+    	inv.Subtotal = 0
+    	for _, l := range lines {
+    		inv.Subtotal += l.Amount
+    	}
+    	inv.Tax = s.taxer.For(order.Region).Apply(inv.Subtotal)
+    	inv.Total = inv.Subtotal + inv.Tax
+    	if err := s.repo.Save(ctx, inv); err != nil {
+    		return nil, err
+    	}
+    	return inv, nil
+    }
+- label: violation
+  lines: [8, 9]
+  code: |
+    func (p *Projector) Project(evt Event) *Snapshot {
+    	state := Snapshot{
+    		StreamID: evt.StreamID,
+    		Version:  evt.Version,
+    		Fields:   make(map[string]string, len(evt.Fields)),
+    	}
+    	out := &state
+    	if out == nil {
+    		return nil
+    	}
+    	for k, v := range evt.Fields {
+    		out.Fields[k] = v
+    	}
+    	out.UpdatedAt = evt.OccurredAt
+    	return out
+    }
+- label: violation
+  lines: [9, 10]
+  code: |
+    func (r *Resolver) Author(ctx context.Context, post *Post) (*Author, error) {
+    	if post == nil {
+    		return nil, ErrNoPost
+    	}
+    	author, err := r.loader.Load(ctx, post.AuthorID)
+    	if err != nil {
+    		return nil, err
+    	}
+    	if post == nil {
+    		return nil, nil
+    	}
+    	return &Author{
+    		ID:          author.ID,
+    		DisplayName: author.DisplayName,
+    		AvatarURL:   r.cdn.Avatar(author.ID),
+    	}, nil
+    }
+- label: ok
+  code: |
+    func (c *Catalog) PriceFor(sku string, tier string) (Money, error) {
+    	table, ok := c.tables[tier]
+    	if !ok {
+    		return Money{}, fmt.Errorf("unknown tier %q", tier)
+    	}
+    	price, ok := table[sku]
+    	if !ok {
+    		return Money{}, ErrNoPrice
+    	}
+    	if price.Currency == "" {
+    		price.Currency = c.defaultCurrency
+    	}
+    	return price, nil
+    }
+- label: ok
+  code: |
+    func (s *Scheduler) NextRun(job Job, now time.Time) (time.Time, error) {
+    	// Lookup returns nil when the job has no schedule configured.
+    	spec := s.specs.Lookup(job.ID)
+    	if spec == nil {
+    		return time.Time{}, ErrNoSchedule
+    	}
+    	next := spec.Next(now)
+    	if next.IsZero() {
+    		return time.Time{}, ErrScheduleExhausted
+    	}
+    	if next.Before(now) {
+    		next = now
+    	}
+    	return next, nil
+    }
+- label: ok
+  code: |
+    func (w *Writer) Append(ctx context.Context, rec *Record) error {
+    	if rec.Metadata == nil {
+    		rec.Metadata = map[string]string{}
+    	}
+    	blob, err := json.Marshal(rec)
+    	if err != nil {
+    		return fmt.Errorf("marshal record %s: %w", rec.ID, err)
+    	}
+    	if _, err := w.file.Write(append(blob, '\n')); err != nil {
+    		return err
+    	}
+    	w.count++
+    	if w.count%w.syncEvery == 0 {
+    		return w.file.Sync()
+    	}
+    	return nil
+    }

@@ -1,0 +1,142 @@
+# Labelled cases for the no-mocking tenet, measured by `tenetlint check`.
+- label: violation
+  lines: [1, 20]
+  code: |
+    type recordingNotifier struct {
+    	sent []string
+    }
+
+    func (r *recordingNotifier) Notify(ctx context.Context, userID string) error {
+    	r.sent = append(r.sent, userID)
+    	return nil
+    }
+
+    func TestDigestNotifiesEverySubscriber(t *testing.T) {
+    	rec := &recordingNotifier{}
+    	svc := NewDigestService(rec)
+
+    	if err := svc.SendDigest(context.Background(), []string{"u1", "u2"}); err != nil {
+    		t.Fatalf("SendDigest: %v", err)
+    	}
+
+    	want := []string{"u1", "u2"}
+    	if !reflect.DeepEqual(rec.sent, want) {
+    		t.Errorf("notified %v, want %v", rec.sent, want)
+    	}
+    }
+- label: violation
+  lines: [3, 6]
+  code: |
+    func TestChargeUsesTheGateway(t *testing.T) {
+    	ctrl := gomock.NewController(t)
+    	gateway := NewMockGateway(ctrl)
+    	gateway.EXPECT().
+    		Charge(gomock.Any(), "cus_42", int64(2500)).
+    		Return(&Receipt{ID: "rcpt_1"}, nil)
+
+    	svc := NewBilling(gateway, NewLedger())
+    	receipt, err := svc.Charge(context.Background(), "cus_42", 2500)
+    	if err != nil {
+    		t.Fatalf("Charge: %v", err)
+    	}
+    	if receipt.ID != "rcpt_1" {
+    		t.Errorf("receipt id = %q, want %q", receipt.ID, "rcpt_1")
+    	}
+    }
+- label: violation
+  lines: [1, 17]
+  code: |
+    type failingStore struct{}
+
+    func (failingStore) Load(ctx context.Context, id string) (*Profile, error) {
+    	return nil, errors.New("store offline")
+    }
+
+    func TestHandlerReportsStoreFailure(t *testing.T) {
+    	h := NewProfileHandler(failingStore{})
+    	req := httptest.NewRequest(http.MethodGet, "/profiles/7", nil)
+    	rec := httptest.NewRecorder()
+
+    	h.ServeHTTP(rec, req)
+
+    	if rec.Code != http.StatusBadGateway {
+    		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadGateway)
+    	}
+    	if !strings.Contains(rec.Body.String(), "store offline") {
+    		t.Errorf("body = %q, want the store failure mentioned", rec.Body.String())
+    	}
+    }
+- label: ok
+  code: |
+    func TestArchiveRoundTrip(t *testing.T) {
+    	dir := t.TempDir()
+    	src := filepath.Join(dir, "notes.txt")
+    	if err := os.WriteFile(src, []byte("hello archive"), 0o600); err != nil {
+    		t.Fatalf("write source: %v", err)
+    	}
+
+    	archive := filepath.Join(dir, "notes.tar.gz")
+    	if err := Compress(src, archive); err != nil {
+    		t.Fatalf("Compress: %v", err)
+    	}
+
+    	out := filepath.Join(dir, "restored.txt")
+    	if err := Extract(archive, out); err != nil {
+    		t.Fatalf("Extract: %v", err)
+    	}
+
+    	got, err := os.ReadFile(out)
+    	if err != nil {
+    		t.Fatalf("read restored: %v", err)
+    	}
+    	if string(got) != "hello archive" {
+    		t.Errorf("restored %q, want %q", got, "hello archive")
+    	}
+    }
+- label: ok
+  code: |
+    func TestClientFollowsRedirect(t *testing.T) {
+    	mux := http.NewServeMux()
+    	mux.HandleFunc("/old", func(w http.ResponseWriter, r *http.Request) {
+    		http.Redirect(w, r, "/new", http.StatusFound)
+    	})
+    	mux.HandleFunc("/new", func(w http.ResponseWriter, r *http.Request) {
+    		w.Header().Set("Content-Type", "application/json")
+    		fmt.Fprint(w, `{"status":"ok"}`)
+    	})
+
+    	srv := httptest.NewServer(mux)
+    	t.Cleanup(srv.Close)
+
+    	client := NewClient(srv.URL, srv.Client())
+    	status, err := client.Status(context.Background())
+    	if err != nil {
+    		t.Fatalf("Status: %v", err)
+    	}
+    	if status != "ok" {
+    		t.Errorf("status = %q, want %q", status, "ok")
+    	}
+    }
+- label: ok
+  code: |
+    func TestNormalizeHost(t *testing.T) {
+    	tests := []struct {
+    		name string
+    		in   string
+    		want string
+    	}{
+    		{"already normal", "example.com", "example.com"},
+    		{"uppercase", "Example.COM", "example.com"},
+    		{"trailing dot", "example.com.", "example.com"},
+    		{"host and port", "example.com:8443", "example.com"},
+    		{"padded", "  example.com  ", "example.com"},
+    	}
+
+    	for _, tt := range tests {
+    		t.Run(tt.name, func(t *testing.T) {
+    			if got := normalizeHost(tt.in); got != tt.want {
+    				t.Errorf("normalizeHost(%q) = %q, want %q", tt.in, got, tt.want)
+    			}
+    		})
+    	}
+    }

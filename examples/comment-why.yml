@@ -1,0 +1,144 @@
+# Labelled cases for the comment-why tenet, measured by `tenetlint check`.
+- label: violation
+  lines: 7
+  code: |
+    func (c *Counter) Record(event string) {
+    	c.mu.Lock()
+    	defer c.mu.Unlock()
+    	if c.counts == nil {
+    		c.counts = make(map[string]int)
+    	}
+    	// increment counter
+    	c.counts[event]++
+    	c.total++
+    	if c.total > c.limit {
+    		c.flush()
+    	}
+    }
+- label: violation
+  lines: 10
+  code: |
+    func normalizeHost(raw string) string {
+    	raw = strings.TrimSpace(strings.ToLower(raw))
+    	raw = strings.TrimSuffix(raw, ".")
+    	if h, _, err := net.SplitHostPort(raw); err == nil {
+    		return h
+    	}
+    	return raw
+    }
+
+    // Helpers
+
+    func joinPath(base, rel string) string {
+    	if strings.HasPrefix(rel, "/") {
+    		return rel
+    	}
+    	return strings.TrimSuffix(base, "/") + "/" + rel
+    }
+- label: violation
+  lines: 1
+  code: |
+    // ParseDuration takes a string and returns a time.Duration and an error.
+    func ParseDuration(s string) (time.Duration, error) {
+    	s = strings.TrimSpace(s)
+    	if s == "" {
+    		return 0, errEmptyDuration
+    	}
+    	if d, err := time.ParseDuration(s); err == nil {
+    		return d, nil
+    	}
+    	n, err := strconv.Atoi(s)
+    	if err != nil {
+    		return 0, fmt.Errorf("parse duration %q: %w", s, err)
+    	}
+    	return time.Duration(n) * time.Second, nil
+    }
+- label: violation
+  lines: 7
+  code: |
+    func BuildReport(ctx context.Context, db *sql.DB, month time.Time) (*Report, error) {
+    	rows, err := db.QueryContext(ctx, reportQuery, month)
+    	if err != nil {
+    		return nil, err
+    	}
+    	defer rows.Close()
+    	// Iterate the rows, scan each one into a line, and append it to the slice.
+    	var lines []Line
+    	for rows.Next() {
+    		var l Line
+    		if err := rows.Scan(&l.SKU, &l.Units, &l.Revenue); err != nil {
+    			return nil, err
+    		}
+    		lines = append(lines, l)
+    	}
+    	return &Report{Month: month, Lines: lines}, rows.Err()
+    }
+- label: ok
+  code: |
+    func (c *Client) FetchQuote(ctx context.Context, sym string) (Quote, error) {
+    	var q Quote
+    	var err error
+    	// Retry because the API drops the first call
+    	for attempt := 0; attempt < 2; attempt++ {
+    		q, err = c.fetchOnce(ctx, sym)
+    		if err == nil {
+    			return q, nil
+    		}
+    	}
+    	return Quote{}, fmt.Errorf("fetch quote %s: %w", sym, err)
+    }
+- label: ok
+  code: |
+    // Lock held by caller.
+    func (c *Cache) evictLocked(now time.Time) int {
+    	removed := 0
+    	for key, entry := range c.entries {
+    		if entry.expiresAt.After(now) {
+    			continue
+    		}
+    		delete(c.entries, key)
+    		c.bytes -= entry.size
+    		removed++
+    	}
+    	return removed
+    }
+- label: ok
+  code: |
+    func FirstAfter(deadlines []time.Time, t time.Time) (time.Time, bool) {
+    	if len(deadlines) == 0 {
+    		return time.Time{}, false
+    	}
+    	// Sort first, binary search below assumes order
+    	sort.Slice(deadlines, func(i, j int) bool {
+    		return deadlines[i].Before(deadlines[j])
+    	})
+    	i := sort.Search(len(deadlines), func(i int) bool {
+    		return deadlines[i].After(t)
+    	})
+    	if i == len(deadlines) {
+    		return time.Time{}, false
+    	}
+    	return deadlines[i], true
+    }
+- label: ok
+  code: |
+    func decodeFrame(r io.Reader) (*Frame, error) {
+    	head := make([]byte, 8)
+    	if _, err := io.ReadFull(r, head); err != nil {
+    		return nil, err
+    	}
+    	size := binary.BigEndian.Uint32(head[4:])
+    	// snappy v0.0.4 panics on a zero-length block, so short-circuit before Decode.
+    	if size == 0 {
+    		return &Frame{Kind: head[0]}, nil
+    	}
+    	body := make([]byte, size)
+    	if _, err := io.ReadFull(r, body); err != nil {
+    		return nil, err
+    	}
+    	out, err := snappy.Decode(nil, body)
+    	if err != nil {
+    		return nil, err
+    	}
+    	return &Frame{Kind: head[0], Body: out}, nil
+    }

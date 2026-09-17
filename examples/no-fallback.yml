@@ -1,0 +1,120 @@
+# Labelled cases for the no-fallback tenet, measured by `tenetlint check`.
+- label: violation
+  lines: [5, 7]
+  code: |
+    func (s *Server) handleReport(w http.ResponseWriter, r *http.Request) error {
+    	month := r.URL.Query().Get("month")
+    	var total int64
+    	err := s.db.QueryRowContext(r.Context(), totalQuery, month).Scan(&total)
+    	if err != nil {
+    		log.Println("report total:", err)
+    	}
+    	resp := ReportResponse{
+    		Month: month,
+    		Total: total,
+    	}
+    	w.Header().Set("Content-Type", "application/json")
+    	return json.NewEncoder(w).Encode(resp)
+    }
+- label: violation
+  lines: [12, 14]
+  code: |
+    const defaultUpstreamURL = ""
+
+    func LoadConfig(path string) (Config, error) {
+    	data, err := os.ReadFile(path)
+    	if err != nil {
+    		return Config{}, fmt.Errorf("reading %s: %w", path, err)
+    	}
+    	var cfg Config
+    	if err := json.Unmarshal(data, &cfg); err != nil {
+    		return Config{}, fmt.Errorf("parsing %s: %w", path, err)
+    	}
+    	if cfg.UpstreamURL == "" {
+    		cfg.UpstreamURL = defaultUpstreamURL
+    	}
+    	cfg.Timeout = time.Duration(cfg.TimeoutSeconds) * time.Second
+    	return cfg, nil
+    }
+- label: violation
+  lines: [12, 14]
+  code: |
+    func (c *PriceClient) Latest(ctx context.Context, sym string) (Price, error) {
+    	var lastErr error
+    	for attempt := 0; attempt < 3; attempt++ {
+    		p, err := c.fetch(ctx, sym)
+    		if err == nil {
+    			c.cache.Store(sym, p)
+    			return p, nil
+    		}
+    		lastErr = err
+    		time.Sleep(backoff(attempt))
+    	}
+    	if stale, ok := c.cache.Load(sym); ok {
+    		return stale.(Price), nil
+    	}
+    	return Price{}, lastErr
+    }
+- label: ok
+  code: |
+    func LoadServer(ctx context.Context, path string) (*Server, error) {
+    	cfg, err := config.Load(path)
+    	if err != nil {
+    		return nil, fmt.Errorf("loading config: %w", err)
+    	}
+    	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+    	if err != nil {
+    		return nil, fmt.Errorf("connecting to %s: %w", cfg.DatabaseHost, err)
+    	}
+    	if err := pool.Ping(ctx); err != nil {
+    		pool.Close()
+    		return nil, fmt.Errorf("pinging database: %w", err)
+    	}
+    	return &Server{cfg: cfg, pool: pool}, nil
+    }
+- label: ok
+  code: |
+    type Unavailable struct {
+    	Service string
+    	Until   time.Time
+    }
+
+    func (e *Unavailable) Error() string {
+    	return fmt.Sprintf("%s unavailable until %s", e.Service, e.Until.Format(time.RFC3339))
+    }
+
+    func (b *Breaker) Do(ctx context.Context, fn func(context.Context) error) error {
+    	b.mu.Lock()
+    	open := b.failures >= b.threshold && b.clock.Now().Before(b.openUntil)
+    	b.mu.Unlock()
+    	if open {
+    		return &Unavailable{Service: b.name, Until: b.openUntil}
+    	}
+    	if err := fn(ctx); err != nil {
+    		b.recordFailure()
+    		return err
+    	}
+    	b.recordSuccess()
+    	return nil
+    }
+- label: ok
+  code: |
+    type ClientOption func(*Client)
+
+    func WithTimeout(d time.Duration) ClientOption {
+    	return func(c *Client) {
+    		c.timeout = d
+    	}
+    }
+
+    func NewClient(baseURL string, opts ...ClientOption) (*Client, error) {
+    	u, err := url.Parse(baseURL)
+    	if err != nil {
+    		return nil, fmt.Errorf("parsing base URL %q: %w", baseURL, err)
+    	}
+    	c := &Client{base: u, timeout: 30 * time.Second}
+    	for _, opt := range opts {
+    		opt(c)
+    	}
+    	return c, nil
+    }
