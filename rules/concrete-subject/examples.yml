@@ -1,7 +1,7 @@
 # Labelled cases for the concrete-subject tenet, measured by `tenetlint check`.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [3, 12]
   code: |
     # Design
 
@@ -17,7 +17,7 @@
     enqueued first.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [3, 12]
   code: |
     # Architecture
 
@@ -33,7 +33,7 @@
     cache for 60 seconds and then returns 503.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [3, 12]
   code: |
     # Why another migration tool
 
@@ -49,7 +49,7 @@
     prefix are an error at load time.
 - label: violation
   lang: markdown
-  lines: [6, 7]
+  lines: [3, 11]
   code: |
     ## The cache
 
@@ -65,7 +65,7 @@
     so give each process its own.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [3, 12]
   code: |
     # Errors
 
@@ -81,7 +81,7 @@
     the attempt number.
 - label: violation
   lang: markdown
-  lines: [8, 9]
+  lines: [3, 9]
   code: |
     ## Roadmap
 
@@ -98,7 +98,7 @@
     Open an issue with the config and the output of `audit --version`.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [3, 12]
   code: |
     # Contributing
 
