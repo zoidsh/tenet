@@ -1,0 +1,8 @@
+id: body-says-why
+tenet: "Communicate the why, not just the how."
+criteria:
+  true: "The description accounts only for the change itself: it narrates what was added, moved, renamed or rewritten, walks through the mechanics in order, or restates the diff as a summary. Where a reason is offered it fails in one of two ways. It is the change restated behind a purpose word, so that deleting to, so that or because leaves a sentence saying the same thing. Or it defers, putting a ticket, an issue, a design document or a release's own list of fixes where the reason belongs. Those say where the reason is filed, or what somebody else changed, and neither says what made this change worth making here and now."
+  false: "Something the reader could not have got from the diff is stated. It is a failure that happened, or a constraint the code had to meet that the code does not show. It is a cost or a limit being paid, or a complaint that kept coming back. Or it is a cause outside the repository that forces the change, an interface being switched off, a version leaving support, a date or a policy the project is now held to, which is not the same as a summary of what an upstream release contains. One such sentence is enough, however much mechanism surrounds it."
+source: mattpocock/skills pr SKILL.md line 32
+kind: [pr]
+tags: [pr, prose]

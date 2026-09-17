@@ -1,0 +1,186 @@
+# Labelled cases for the body-says-why tenet, measured by `tenet check`.
+# Each example is a pull request text: the title on the first line, a blank
+# line, then the description.
+- label: violation
+  lines: [3, 8]
+  lang: text
+  code: |
+    Rework the session store
+
+    This PR reworks the session store.
+
+    - Moves `Store` from `internal/auth` to `internal/session`
+    - Splits `Get` into `Get` and `GetWithTTL`
+    - Adds a `sweeper` goroutine started from `New`
+    - Updates the twelve call sites to the new import path
+
+    All existing tests pass.
+- label: violation
+  lines: [5, 6]
+  lang: text
+  code: |
+    Make the retry budget configurable
+
+    The retry budget was hard-coded to 3. It is now read from
+    `RetryBudget` on the client config, defaulting to 3 so nothing
+    changes for existing callers. This was done so that the retry
+    budget can be configured.
+- label: violation
+  lines: 3
+  lang: text
+  code: |
+    Add a per-tenant rate limiter to the ingest path
+
+    Implements PLAT-4471. See the linked ticket and the design doc in
+    Notion for the background.
+
+    The limiter is a token bucket keyed by tenant id, filled at
+    `limits.PerSecond` and drained in `ingest.Handle` before the batch
+    is decoded. Requests over budget get a 429 with `Retry-After`.
+  note: >-
+    The ticket and the doc are where the reason is kept, not the reason. On
+    the tenet's own words the description still does not communicate the why.
+- label: violation
+  lines: [5, 12]
+  lang: text
+  code: |
+    Update the billing exporter
+
+    Changes by file:
+
+    `exporter/rows.go` — `buildRow` now takes a `*Account` rather than
+    an account id, and looks the plan up from it.
+
+    `exporter/client.go` — `Flush` batches at 500 rows instead of 100.
+
+    `exporter/schema.sql` — adds the `plan_code` column.
+
+    `exporter/rows_test.go` — updates the fixtures for the new column.
+- label: violation
+  lines: [10, 11]
+  lang: text
+  code: |
+    Replace the polling watcher with an inotify watcher
+
+    ## What
+
+    The `Watcher` interface gains a `Close`, and `NewWatcher` returns an
+    inotify-backed implementation on Linux and the old poller elsewhere.
+
+    ## Why
+
+    Because we are replacing the polling watcher with one based on
+    inotify, which is a better fit for the watcher.
+  note: >-
+    The Why heading is filled with the What restated. The label is about the
+    sentence, not the heading: a reader learns nothing the diff would not say.
+- label: violation
+  lines: [3, 11]
+  lang: text
+  code: |
+    Extract the PDF renderer into its own package
+
+    The renderer used to live in `report`. It now lives in `render`.
+
+    Step by step: `report/pdf.go` moved to `render/pdf.go`, the
+    unexported `layout` helpers moved with it and became exported so
+    `report` can still reach them, `report` gained a dependency on
+    `render`, and the two fixtures under `report/testdata` moved to
+    `render/testdata`.
+
+    No behaviour changes.
+- label: violation
+  lines: [3, 7]
+  lang: text
+  code: |
+    Bump lodash from 4.17.20 to 4.17.21
+
+    Bumps lodash from 4.17.20 to 4.17.21.
+
+    The changelog for 4.17.21 lists a fix to `zipObjectDeep` and a fix
+    to `template`. The lockfile is regenerated and one transitive
+    dependency of lodash moves with it.
+- label: ok
+  lang: text
+  code: |
+    Key the session cache by tenant as well as user
+
+    Two customers on the shared staging tenant saw each other's saved
+    filters last Thursday. The cache key was the user id alone, and
+    user ids are only unique within a tenant, so a collision across
+    tenants served one user's entry to another.
+
+    The key is now `tenant:user`. Existing entries have the old shape
+    and are treated as misses, so the cache refills over the first
+    minute after deploy.
+- label: ok
+  lang: text
+  code: |
+    Stream the export instead of building it in memory
+
+    The nightly export for our largest account started OOM-killing the
+    worker at around 900k rows; the whole result set was built as a
+    slice before the first byte was written.
+
+    Rows are now written to the response as they are scanned. Peak RSS
+    on that account's export drops from 3.1G to about 40M.
+- label: ok
+  lang: text
+  code: |
+    Move off the deprecated Stripe charges API
+
+    Stripe is turning off the Charges API for new integrations on
+    1 March and has it marked deprecated in the dashboard already.
+
+    Payments now go through PaymentIntents. The stored `charge_id` is
+    kept and read for old records, and new records write
+    `payment_intent_id` instead.
+- label: ok
+  lang: text
+  code: |
+    Let a workspace pin a formatter version
+
+    Support has fielded the same complaint four times this quarter: a
+    formatter release changes output, and a whole repository reformats
+    on the next save with no warning.
+
+    A workspace can now set `formatter.version`, which is honoured by
+    the language server and the CLI. Unset keeps today's behaviour of
+    tracking the latest release.
+- label: ok
+  lang: text
+  code: |
+    Read the feature flags from the cache, not the database
+
+    Flag evaluation was running a query per request and is the largest
+    single contributor to p99 on the API.
+
+    `flags.Evaluate` now reads a snapshot refreshed every ten seconds
+    by a background goroutine.
+  note: >-
+    Short, and most of the body is mechanism. One sentence still names a cost
+    that existed before the change, which is what the tenet asks for.
+- label: ok
+  lang: text
+  code: |
+    Write the manifest to a temp file and rename it
+
+    The manifest is read by the updater, which may run at any moment.
+    Writing it in place left a window where the updater could read a
+    half-written file, and we have one report of an update failing
+    that way.
+
+    Rename on the same filesystem is atomic, so the updater sees
+    either the old manifest or the new one. The obvious alternative, a
+    lock file, would have needed the updater to take the lock too, and
+    the updater ships on a slower release train.
+- label: ok
+  lang: text
+  code: |
+    Drop the Node 18 build
+
+    Node 18 went out of maintenance support in April and our own
+    support policy is maintained releases only.
+
+    The matrix now runs 20 and 22, and `engines` in package.json is
+    raised to `>=20`.
