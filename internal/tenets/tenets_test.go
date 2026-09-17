@@ -355,6 +355,30 @@ func TestFindNamesTheSearchAndTheWayOut(t *testing.T) {
 	}
 }
 
+func TestParseProvider(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(strings.Replace(sample, "version: 1", "version: 1\nprovider: typesafe", 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Provider != "typesafe" {
+		t.Errorf("provider is %q", cfg.Provider)
+	}
+}
+
+func TestParseRejectsAnUnknownProvider(t *testing.T) {
+	_, err := tenets.Parse([]byte("version: 1\nprovider: openai\n"))
+	if err == nil || !strings.Contains(err.Error(), "openai") {
+		t.Fatalf("error is %v", err)
+	}
+}
+
+func TestParseRefusesAProviderThatIsNotThereYet(t *testing.T) {
+	_, err := tenets.Parse([]byte("version: 1\nprovider: tenetlint\n"))
+	if err == nil || !strings.Contains(err.Error(), "not available yet") {
+		t.Fatalf("error is %v", err)
+	}
+}
+
 func mustMkdir(t *testing.T, dir string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o750); err != nil {

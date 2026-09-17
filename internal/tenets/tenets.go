@@ -18,6 +18,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
 
+	"github.com/zoidsh/tenetlint/internal/provider"
 	"github.com/zoidsh/tenetlint/internal/source"
 )
 
@@ -149,6 +150,7 @@ const (
 // the config is resolved, and every tenet that will run afterwards.
 type Config struct {
 	Version  int                  `yaml:"version"`
+	Provider string               `yaml:"provider"`
 	Model    string               `yaml:"model"`
 	Presets  []string             `yaml:"presets"`
 	Rules    []string             `yaml:"rules"`
@@ -221,6 +223,9 @@ func (c *Config) validate() error {
 	if c.Version != 1 {
 		return fmt.Errorf("version: must be 1, got %d", c.Version)
 	}
+	if err := c.validateProvider(); err != nil {
+		return err
+	}
 	seen := make(map[string]bool, len(c.Tenets))
 	for i, t := range c.Tenets {
 		if t.ID == "" {
@@ -258,6 +263,22 @@ func (c *Config) validate() error {
 		t.model = c.Model
 	}
 	return c.validateOverrides()
+}
+
+// validateProvider settles the name here rather than where a key is looked
+// for, so that a typo is a broken config instead of a missing key.
+func (c *Config) validateProvider() error {
+	if c.Provider == "" {
+		return nil
+	}
+	p, err := provider.Lookup(c.Provider)
+	if err != nil {
+		return fmt.Errorf("provider: %w", err)
+	}
+	if err := p.Available(); err != nil {
+		return fmt.Errorf("provider: %w", err)
+	}
+	return nil
 }
 
 func (c *Config) validateOverrides() error {
