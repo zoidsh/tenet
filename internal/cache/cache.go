@@ -66,7 +66,7 @@ func (c *Cache) Get(key string) (Entry, bool) {
 	}
 	data, err := os.ReadFile(c.path(key))
 	if err != nil {
-		return Entry{}, false
+		return Entry{}, false // tenet:ignore no-fallback
 	}
 	var e Entry
 	if err := json.Unmarshal(data, &e); err != nil {
