@@ -12,10 +12,16 @@ import (
 // after a directive is caught as an unknown tenet rather than silently
 // suppressing one.
 //
-// A token is all this can look for without parsing every language, so a
-// directive inside a string literal counts too; test fixtures that hold one
-// escape the colon to keep it from applying to their own file.
+// Where the token counts is what keeps a file that merely talks about
+// directives from being ruled by them: in code it has to sit in a comment, in
+// prose and data at the start of a line or in an HTML comment. Only a commit
+// message, which has no comment syntax of its own, still takes one anywhere.
 var directivePattern = regexp.MustCompile(`\btenet:(ignore[a-z-]*)\b((?:[ \t]+[a-z0-9-]+(?:[ \t]*,[ \t]*[a-z0-9-]+)*)?)`)
+
+// What may precede a directive at the start of a line in prose or data: list
+// and quote markers, and a line comment marker, so that a directive can be
+// written the way the format's own comments are.
+var linePrefixPattern = regexp.MustCompile(`^[ \t]*(?:(?:[-*+>]|[0-9]+[.)])[ \t]+)*(?:(?:#+|//|--|;)[ \t]*)?$`)
 
 // AllTenets is the key under which a directive that names no tenet is
 // recorded.
@@ -80,17 +86,24 @@ func (s *Suppressions) addLine(line int, ids []string) {
 // is cut out of its line rather than the line out of the file. A directive
 // that names a tenet the config does not define, or a keyword that is not a
 // directive, is an error: a typo that silently suppressed nothing would be
-// worse than a failed run.
+// worse than a failed run. A mention that does not count where it stands is
+// not a directive at all: it stays in the text, and is never validated.
 func stripDirectives(path string, lines []string, known map[string]bool) ([]string, *Suppressions, error) {
 	sup := newSuppressions()
 	out := make([]string, len(lines))
 	copy(out, lines)
+	counts := directiveCounts(path, lines)
 	for i, line := range lines {
 		matches := directivePattern.FindAllStringSubmatchIndex(line, -1)
 		if matches == nil {
 			continue
 		}
+		var kept [][]int
 		for _, m := range matches {
+			if !counts(i, m[0]) {
+				continue
+			}
+			kept = append(kept, m)
 			keyword := line[m[2]:m[3]]
 			ids := parseIDs(group(line, m, 2))
 			if err := check(path, i+1, keyword, ids, known); err != nil {
@@ -105,9 +118,33 @@ func stripDirectives(path string, lines []string, known map[string]bool) ([]stri
 				sup.addFile(ids)
 			}
 		}
-		out[i] = cut(line, matches)
+		if kept != nil {
+			out[i] = cut(line, kept)
+		}
 	}
 	return out, sup, nil
+}
+
+// directiveCounts reports, for a zero-based line and the byte offset a
+// directive was found at, whether that mention is a directive at all.
+func directiveCounts(path string, lines []string) func(line, col int) bool {
+	anywhere := func(int, int) bool { return true }
+	switch Kind(path) {
+	case KindCommit:
+		return anywhere
+	case KindProse, KindData:
+		spans := commentSpans(lines, htmlStyle)
+		return func(line, col int) bool {
+			return linePrefixPattern.MatchString(lines[line][:col]) || inSpans(spans[line], col)
+		}
+	default:
+		syn, ok := commentSyntaxes[LanguageForPath(path)]
+		if !ok {
+			return anywhere
+		}
+		spans := commentSpans(lines, syn)
+		return func(line, col int) bool { return inSpans(spans[line], col) }
+	}
 }
 
 func check(path string, line int, keyword string, ids []string, known map[string]bool) error {
