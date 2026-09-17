@@ -197,7 +197,7 @@ no-fallback            rules          code  0.80  **/*.go, **/*.ts, **/*.tsx, **
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
 
-A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and they are the lever that moves a rule from roughly right to reliable. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer.
+A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and they are the part of a tenet that most changes what the model answers. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer.
 
 ```yaml
   - id: comment-why
@@ -266,7 +266,7 @@ One line of advice names what usually moves the numbers: a lower `fail`, and whi
 
 `--runs 3` judges every example three times, leaving the cache out of it so the passes are independent, and adds a `stability` line per tenet: the largest standard deviation it saw over any one example, and every example whose probability landed on both sides of the cutoff between passes. The numbers above that line are still the first pass's, so asking for several passes does not change what one of them says. It is what tells you whether a verdict sitting near `fail` is a verdict or a coin toss, and it is the evidence a cutoff of its own should rest on.
 
-Choose the examples as carefully as the wording: they are what the numbers mean. Where a label is a call the tenet's sentence does not obviously make, write the reason in the example's `note`; `comment-why` carries a function whose only comment is a `TODO`, labelled `ok` with a note saying that a TODO restates nothing, because the tenet is about a comment that repeats the code. `rules/README.md` is how the built-in rules were built, step by step, and is the recipe to follow for one of your own.
+Where a label is a call the tenet's sentence does not obviously make, write the reason in the example's `note`; `comment-why` carries a function whose only comment is a `TODO`, labelled `ok` with a note saying that a TODO restates nothing, because the tenet is about a comment that repeats the code. `rules/README.md` is how the built-in rules were built, step by step, and is the recipe to follow for one of your own.
 
 ## Adopting on an existing codebase
 
