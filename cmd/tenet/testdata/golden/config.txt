@@ -4,7 +4,7 @@ id                     origin         kind  fail  include
 comment-why            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-fallback            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-mocking             agent-hygiene  code  0.80  **/*_test.go, **/*.test.ts, **/*.test.tsx, **/*.spec.ts, **/*.spec.tsx, **/test_*.py, **/*_test.py
-no-defensive-nil       agent-hygiene  code  0.75  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-defensive-nil       agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-transcript-comment  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-placeholder-phrase  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 assertion-justified    agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py

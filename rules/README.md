@@ -32,31 +32,20 @@ Read the verdict, then the misjudged list. `sharp` means nothing landed on the w
 
 ## 4. Sharpen the criteria against the misjudged list
 
-Change `criteria.true` and `criteria.false`, not the examples. Leave `fail` alone while you are here: lowering the cutoff to cover a rule's own weak spot buys a number and costs every repository that runs the rule, and step 5 says what it takes to move it.
+Change `criteria.true` and `criteria.false`, not the examples. The cutoff is 0.8 for every built-in rule and no rule moves it: lowering it to cover a rule's own weak spot buys a number and costs every repository that runs the rule. A rule whose violations will not reach 0.8 is a rule that has not finished being written, and the criteria are the only lever.
 
 Name the concrete shape the misjudged examples share: "an error value assigned to the blank identifier", "a comment that is a section header", "a value the function just produced with a `New...` constructor". Add an exclusion to `criteria.false` for the shape the acceptable examples share, which is what stops a criterion that lifts the violations from dragging the innocent cases up with them. Do not paste examples into the criteria as text; the spike measured that and it changes nothing at a cost of about 130 tokens a call.
 
 Rerun after each edit and keep the numbers. Four attempts is enough to find out whether the wording is the problem: if the misses are still there with the AUC at 1.00, the remaining gap is the model's, not the sentence's, and the honest thing is to ship the rule as `usable` and say so.
 
-## 5. Move the cutoff only with evidence
-
-`fail` is 0.8 unless the rule says otherwise, and sharpening the criteria is the first answer to a violation that scores under it. A rule may set `fail` lower only when `check` shows no ok example at or above the proposed value with 0.05 to spare: for `fail: 0.75`, nothing acceptable may reach 0.70. The rule.yml then carries a comment naming the highest probability an ok example scored, because that number is the whole of the argument and the next person cannot re-derive it from the file.
-
-```yaml
-# The highest an ok example scores is 0.09, so 0.75 clears every acceptable
-# case by 0.66. The violations this rule is least sure of are the unreachable
-# checks it has to read across lines to see, and they sit in the seventies.
-fail: 0.75
-```
-
-The condition is a gate, not a preference, and it is rechecked whenever the corpus changes. `no-fallback` held `fail: 0.75` on a highest ok of 0.39 until an example was relabelled `ok`; that example scores 0.77, which is above 0.70, so the rule went back to 0.8 and lost its comment with its cutoff.
-
-To read that highest probability off `check`, point it at a config that overrides the rule's `fail` down to a floor nothing sits under, and every ok example is then listed as misjudged with its probability. `check --runs 3` is the other half of the argument: it says which examples land on both sides of the cutoff from one pass to the next, which is usually what a lower cutoff is really for. Never lower a cutoff to cover a violation that an acceptable example is scoring near: that is a rule asking to be reworded, not recalibrated.
-
-## 6. Add it to a preset
+## 5. Add it to a preset
 
 A rule that belongs in no preset ships in the binary and runs for nobody. Name it in a file under `presets/`, or give it the `standalone` tag when leaving it out is deliberate. `TestBuiltinRulesShip` fails on a rule that is neither.
 
-## 7. Let the corpus test hold the line
+A preset is a promise that every rule in it holds its corpus above 0.8, so a rule that `check` calls `usable` rather than `sharp` waits outside one under the `standalone` tag until a wording gets it there. It still ships, and a config that wants it names it under `rules:`; what it does not do is arrive unasked in somebody's pre-commit hook and fail to fire. Say in the preset file what each rule left out is short of, because the next person to open it will be deciding whether to promote one.
+
+`check --runs 3` is what says whether a rule is really over the line: it judges every example three times with the cache out of the way, and names the ones that land on both sides of 0.8 between passes. A rule that is sharp on one pass and not on the next is not sharp.
+
+## 6. Let the corpus test hold the line
 
 `TestBuiltinRulesShip` requires twelve examples per rule and both labels present. It is the reason a rule cannot arrive with three cases and a verdict that means nothing.
