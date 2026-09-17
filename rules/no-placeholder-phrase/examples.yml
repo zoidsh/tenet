@@ -104,17 +104,20 @@
         invoices.sort(key=lambda inv: inv.created_at)
         return invoices
 - label: violation
-  lines: [4, 5]
+  lines: [6, 7]
   lang: python
   code: |
-    def charge_order(order, gateway, ledger):
+    def charge_order(order, gateway, ledger, receipts):
         if order.total_cents <= 0:
             raise ValueError(f"order {order.id} has nothing to charge")
+        if order.status is not OrderStatus.CONFIRMED:
+            raise OrderNotConfirmed(order.id, order.status)
         # This would normally call the payment gateway; a fake authorization
         # is returned while the sandbox credentials are missing.
         authorization = Authorization(id=f"auth_{order.id}", amount_cents=order.total_cents)
         ledger.record_charge(order.id, authorization.amount_cents)
         order.mark_paid(authorization.id)
+        receipts.send(order.customer_email, authorization.id, order.total_cents)
         return authorization
 - label: ok
   code: |
@@ -220,6 +223,20 @@
                     "total_cents": invoice.total_cents,
                     "issued_at": invoice.issued_at.isoformat(),
                 }
+- label: ok
+  lang: python
+  code: |
+    def compact(store, before):
+        removed = 0
+        for segment in store.segments_older_than(before):
+            if segment.has_open_readers():
+                raise SegmentBusy(segment.id)
+            store.drop(segment.id)
+            removed += 1
+        # TODO(marek, STOR-908): rewrite the index segment by segment, so that
+        # compaction stops holding the write lock for a whole serialisation.
+        store.rebuild_index()
+        return removed
 - label: ok
   lang: python
   code: |
