@@ -4,8 +4,6 @@
 
 tenetlint is a command-line linter for the rules you wrote in English. It reads tenets such as "a comment says why, not what" from a `tenets.yml`, sends your staged changes to TypeSafe's jev model for judgement, and reports each violation with a file, a line and a probability, so the conventions in your CLAUDE.md become a gate you can run on every commit instead of a document nobody rereads.
 
-Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
-
 ## Install
 
 The command is `tenet`, and every path below installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
@@ -66,9 +64,35 @@ In GitHub Actions, where the action downloads the release binary for the runner 
 
 Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenetlint/releases).
 
-## Usage
+## Quick start
 
-Start with `tenet init`, which drafts a `tenets.yml` from the instruction files your agents already read. It splits each file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, and `--format json` gives you every candidate with its probabilities.
+Set `TYPESAFE_API_KEY` to your key, then, from the root of your repository:
+
+1. Draft a `tenets.yml` from the instruction files your agents already read.
+
+   ```
+   tenet init
+   ```
+
+2. Read what it drafted, delete the rules you did not mean, and print what the file now resolves to.
+
+   ```
+   tenet config
+   ```
+
+3. Lint your staged changes.
+
+   ```
+   tenet
+   ```
+
+4. Install the hooks, so every commit is linted from here on.
+
+   ```
+   tenet hook install
+   ```
+
+`tenet init` splits each instruction file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name, and the flag is repeatable. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, `--config path` writes somewhere other than the repository root, and `--format json` gives you every candidate with its probabilities.
 
 ```
 CLAUDE.md
@@ -78,23 +102,11 @@ CLAUDE.md
   19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
 ```
 
-Then read what it drafted, delete the rules you did not mean, and run `tenet`, which lints your staged changes. `tenet --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
-
-Finally, `tenet hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenet hook uninstall` takes them away again.
-
-## Commit messages
-
-`tenet --commit-msg <file>` lints a commit message rather than code. The message is of kind `commit`, so `kind: [commit]` is how a tenet says it is about the message and nothing else, and it is linted as a file named `COMMIT_EDITMSG`, which an include glob can name instead; the comment lines git strips itself, and everything below a `>8` scissors line, are gone before the model sees any of it, and the lines that are left keep the numbers your editor showed them under. `tenet hook install` writes this as the `commit-msg` hook, which git runs after `pre-commit`, so the code is judged first and the message only once the code passes. A finding says `reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again`, and a config with no tenet for the message costs nothing, because there is nothing to ask.
-
-```yaml
-  - id: commit-subject
-    tenet: The commit subject is in the imperative mood and says what changed for a reader, not which functions were touched.
-    kind: [commit]
-```
+`tenet` on its own lints your staged changes. `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged. `tenet hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenet hook uninstall` takes them away again.
 
 ## Pass or fail
 
-A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
+A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2. There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
 
 ```
 internal/cache/cache.go:42: comment-why (p=0.91)
@@ -122,20 +134,6 @@ A directive only counts inside a comment, so a string, a test fixture or a sente
 
 The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
 
-## Adopting on an existing codebase
-
-A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenetlint-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds, and `tenet --show-baselined` lists the accepted ones alongside, marked `[baselined]` and still passing, when you want to see what is waiting, which in JSON is a `baselined` array beside `findings`, of the same shape. `--no-baseline` is a run that honours nothing, which is the sweep to do before a release.
-
-An entry is matched by the file, the tenet and a hash of the offending line with the lines around it, so it survives the code above it moving and is gone the moment the line itself is edited. As the old findings get fixed, `tenet baseline --prune .` rewrites the file with only the entries the run still produces and says how many it dropped; it never accepts anything new. The file records the scope it was written over, and a prune from a narrower one stops rather than drop the entries it never looked at, naming both scopes.
-
-```
-$ tenet baseline .
-wrote 34 findings to .tenetlint-baseline.json
-
-$ tenet .
-0 findings, 34 baselined · 41 windows, 0 calls, 41 cached · $0.0000 · 0.6s
-```
-
 ## Configuration
 
 A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
@@ -150,7 +148,7 @@ override:                       # per-id patches applied last
     fail: 0.9
     include: ["**/*.go"]
     kind: [code]                # code, prose, data or commit; the globs narrow further
-tenets: [...]                   # your own tenets, as before
+tenets: [...]                   # your own tenets, written out in full
 ```
 
 A tenet's `kind` is how it says what it is about. Every file is code, prose or data, read off its name: `.md`, `.rst`, `.txt` and the like, everything under `locales/` and `i18n/` whatever it is serialised as, and a README, CHANGELOG, CONTRIBUTING or LICENSE are prose; `.json`, `.yml`, `.toml`, `.csv` and lock files are data; anything else under `docs/` is prose, so a `docs/api.json` stays data; everything else is code. A commit message is a kind of its own, `commit`, read off the literal name `COMMIT_EDITMSG` it is linted under. The model is told which it is looking at, so a document is judged as a document rather than as source code, and a tenet that names a kind is asked only about files of that kind, on top of its include and exclude globs. A tenet that names none is asked about everything its globs match.
@@ -166,8 +164,6 @@ no-fallback       agent-hygiene  code  0.80  **/*.go
 ```
 
 `tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
-
-## Criteria
 
 A tenet is judged by its sentence alone unless you give it criteria: a `true` description of what a violation looks like and a `false` description of what an innocent change looks like. `init` drafts no criteria, because they are the one part of a tenet the model cannot guess at, and they are the lever that moves a rule from roughly right to reliable. Add them to any tenet the lint gets wrong, in the words you would use to explain the call to a new reviewer.
 
@@ -228,6 +224,46 @@ Choose the examples as carefully as the wording: they are what the numbers mean.
 
 The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all; the accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys. A tenet is `sharp` when nothing lands on the wrong side of its cutoff, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at, and one line of advice names what usually moves the numbers: a lower `fail`, and which value, when the violations cluster just under the cutoff; a higher one when an innocent example reaches it; a `false` criterion when the innocent examples score high, a `true` criterion when the violations score low, and a rewrite of the sentence itself when both sit in the middle. `check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. `--runs 3` judges every example three times, leaving the cache out of it so the passes are independent, and adds a `stability` line per tenet: the largest standard deviation it saw over any one example, and every example whose probability landed on both sides of the cutoff between passes. The numbers above that line are still the first pass's, so asking for several passes does not change what one of them says. It is what tells you whether a verdict sitting near `fail` is a verdict or a coin toss, and it is the evidence a cutoff of its own should rest on. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
 
-Set `TYPESAFE_API_KEY` to your key. `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in, and `TENETLINT_SKIP=1` makes the installed hooks exit without linting. Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent; `TENETLINT_FORMAT=text` or `json` settles it either way.
+## Adopting on an existing codebase
+
+A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenetlint-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds, and `tenet --show-baselined` lists the accepted ones alongside, marked `[baselined]` and still passing, when you want to see what is waiting, which in JSON is a `baselined` array beside `findings`, of the same shape. `--baseline path` reads a file other than the default one, and `--no-baseline` is a run that honours nothing, which is the sweep to do before a release.
+
+An entry is matched by the file, the tenet and a hash of the offending line with the lines around it, so it survives the code above it moving and is gone the moment the line itself is edited. As the old findings get fixed, `tenet baseline --prune .` rewrites the file with only the entries the run still produces and says how many it dropped; it never accepts anything new. The file records the scope it was written over, and a prune from a narrower one stops rather than drop the entries it never looked at, naming both scopes.
+
+```
+$ tenet baseline .
+wrote 34 findings to .tenetlint-baseline.json
+
+$ tenet .
+0 findings, 34 baselined · 41 windows, 0 calls, 41 cached · $0.0000 · 0.6s
+```
+
+## Commit messages
+
+`tenet --commit-msg <file>` lints a commit message rather than code. The message is of kind `commit`, so `kind: [commit]` is how a tenet says it is about the message and nothing else, and it is linted as a file named `COMMIT_EDITMSG`, which an include glob can name instead; the comment lines git strips itself, and everything below a `>8` scissors line, are gone before the model sees any of it, and the lines that are left keep the numbers your editor showed them under. `tenet hook install` writes this as the `commit-msg` hook, which git runs after `pre-commit`, so the code is judged first and the message only once the code passes. A finding says `reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again`, and a config with no tenet for the message costs nothing, because there is nothing to ask.
+
+```yaml
+  - id: commit-subject
+    tenet: The commit subject is in the imperative mood and says what changed for a reader, not which functions were touched.
+    kind: [commit]
+```
+
+## For agents
+
+Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
+
+Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
+
+## Environment variables
+
+- `TYPESAFE_API_KEY` is your key, and every command that asks the model needs it.
+- `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in.
+- `TENETLINT_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
+- `TENETLINT_SKIP=1` makes the installed hooks exit without linting.
+- `TENETLINT_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
+
+## Development
+
+`CLAUDE.md` in this repository has the toolchain, the test and lint commands, and what to run before a branch is done.
 
 Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.
