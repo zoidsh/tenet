@@ -32,7 +32,7 @@ const FormatEnv = "TENETLINT_FORMAT"
 
 // Next is what a user does about the findings above it. It names the
 // directive that silences one, so that the way out is on the screen.
-const Next = "fix the lines above or mark one with a tenet\x3aignore <id> directive, then commit again"
+const Next = "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again"
 
 // NextCommitMsg is what a user does about a finding in a commit message,
 // which git has already taken out of the editor by the time a commit-msg hook

@@ -320,7 +320,7 @@ func TestCollectStripsDirectivesFromContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := fileByPath(t, set, "a.go")
-	if strings.Contains(a.Lines[0], "tenet\x3aignore") {
+	if strings.Contains(a.Lines[0], "tenet:ignore") {
 		t.Errorf("the directive reached the model: %q", a.Lines[0])
 	}
 	if !a.Sup.Line(1, "comment-why") {

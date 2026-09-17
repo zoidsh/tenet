@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+// A fixture whose directive follows a comment marker escapes the colon: the
+// marker is a real one on this file's own line, so the directive would
+// otherwise apply here as well as in the fixture. A fixture with no marker
+// before it needs no escape.
 var knownTenets = map[string]bool{
 	"comment-why":  true,
 	"no-fallback":  true,
@@ -104,7 +108,7 @@ func TestStripDirectivesRejectsUnknownTenet(t *testing.T) {
 
 func TestStripDirectivesRejectsUnknownDirective(t *testing.T) {
 	_, _, err := stripDirectives("a.go", []string{"// tenet\x3aignore-foo"}, knownTenets)
-	if err == nil || !strings.Contains(err.Error(), "unknown directive tenet\x3aignore-foo") {
+	if err == nil || !strings.Contains(err.Error(), "unknown directive tenet:ignore-foo") {
 		t.Fatalf("error is %v", err)
 	}
 }
@@ -117,7 +121,7 @@ func TestStripDirectivesOnTheLastLineWithoutANewline(t *testing.T) {
 	if len(file.Lines) != 2 {
 		t.Fatalf("got %d lines: %q", len(file.Lines), file.Lines)
 	}
-	if strings.Contains(file.Lines[1], "tenet\x3aignore") {
+	if strings.Contains(file.Lines[1], "tenet:ignore") {
 		t.Errorf("the directive survived on the last line: %q", file.Lines[1])
 	}
 	if !file.Sup.Line(2, "comment-why") {
