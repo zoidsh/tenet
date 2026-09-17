@@ -22,7 +22,7 @@ import (
 )
 
 // FileName is the config file Find looks for.
-const FileName = "tenets.yml"
+const FileName = source.ConfigName
 
 // DefaultFail is the probability at or above which a verdict becomes a
 // finding, for a tenet that names no cutoff of its own. Measured over the

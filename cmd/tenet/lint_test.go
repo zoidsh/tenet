@@ -146,14 +146,19 @@ func TestLintStagedEndToEnd(t *testing.T) {
 	if got.Findings[0] != want {
 		t.Errorf("finding is %#v, want %#v", got.Findings[0], want)
 	}
-	// tenets.yml is staged too: it is a window that no tenet applies to.
-	if got.Stats.Files != 2 || got.Stats.Windows != 2 || got.Stats.Calls != 2 || got.Stats.InputTokens != 240 {
+	// The one window costs a verdict call and a location call; tenets.yml is
+	// staged too and skipped along with the key file.
+	if got.Stats.Files != 1 || got.Stats.Windows != 1 || got.Stats.Calls != 2 || got.Stats.InputTokens != 240 {
 		t.Errorf("stats are %#v", got.Stats)
 	}
 	if got.Stats.CostUSD <= 0 {
 		t.Errorf("cost is %v", got.Stats.CostUSD)
 	}
-	if len(got.Skipped) != 1 || got.Skipped[0].File != ".env" {
+	skipped := map[string]string{}
+	for _, s := range got.Skipped {
+		skipped[s.File] = s.Reason
+	}
+	if len(skipped) != 2 || skipped[".env"] == "" || skipped["tenets.yml"] == "" {
 		t.Errorf("skipped is %#v", got.Skipped)
 	}
 }

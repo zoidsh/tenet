@@ -13,10 +13,11 @@ import (
 	"time"
 
 	"github.com/zoidsh/tenetlint/internal/judge"
+	"github.com/zoidsh/tenetlint/internal/source"
 )
 
 // Name is the file a run looks for in the repository root.
-const Name = ".tenetlint-baseline.json"
+const Name = source.BaselineName
 
 // Version is the format, so that a later change retires the old file instead
 // of misreading it.
