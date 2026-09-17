@@ -115,9 +115,9 @@ type draftTenet struct {
 	Severity string `yaml:"severity"`
 }
 
-// Draft is the tenets.yml for everything the sort accepted.
+// Draft is the tenets.yml for everything the sort accepted, which Assign has
+// named by the time it is called.
 func Draft(sorted []Sorted) ([]byte, error) {
-	Assign(sorted)
 	file := draftFile{Version: 1}
 	for _, c := range Accepted(sorted) {
 		file.Tenets = append(file.Tenets, draftTenet{

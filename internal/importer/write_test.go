@@ -47,11 +47,13 @@ func sorted(text, file string, line int, accepted bool) importer.Sorted {
 }
 
 func TestDraftGolden(t *testing.T) {
-	draft, err := importer.Draft([]importer.Sorted{
+	candidates := []importer.Sorted{
 		sorted("A comment says why the code exists, not what it does.", "CLAUDE.md", 42, true),
 		sorted("Ask before installing anything.", "CLAUDE.md", 50, false),
 		sorted("A comment says why it is written this way.", "AGENTS.md", 7, true),
-	})
+	}
+	importer.Assign(candidates)
+	draft, err := importer.Draft(candidates)
 	if err != nil {
 		t.Fatal(err)
 	}
