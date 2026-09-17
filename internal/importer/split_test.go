@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/importer"
+	"github.com/zoidsh/tenet/internal/importer"
 )
 
 func TestSplitFixture(t *testing.T) {

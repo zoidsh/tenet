@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/source"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/source"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 const sample = `

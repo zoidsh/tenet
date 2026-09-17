@@ -3,7 +3,7 @@ package baseline_test
 import (
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/baseline"
+	"github.com/zoidsh/tenet/internal/baseline"
 )
 
 func paths(p ...string) baseline.Scope {

@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/importer"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 func TestSlug(t *testing.T) {

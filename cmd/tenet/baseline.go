@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/baseline"
+	"github.com/zoidsh/tenet/internal/baseline"
 )
 
 type baselineOptions struct {

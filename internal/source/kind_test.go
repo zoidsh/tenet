@@ -3,7 +3,7 @@ package source_test
 import (
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 func TestKind(t *testing.T) {

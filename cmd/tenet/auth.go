@@ -14,10 +14,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/provider"
-	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenet/internal/auth"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/report"
 )
 
 type authOptions struct {

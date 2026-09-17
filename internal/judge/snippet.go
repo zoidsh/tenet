@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/source"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/source"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // StateOf renders lines the way the model is shown a window, so that text

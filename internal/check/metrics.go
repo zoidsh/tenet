@@ -8,7 +8,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // DefaultMinExamples is how many examples a tenet needs before its numbers

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
-	"github.com/zoidsh/tenetlint/internal/importer"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/auth"
+	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 const rules = `# Rules

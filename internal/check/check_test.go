@@ -17,11 +17,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
-	"github.com/zoidsh/tenetlint/internal/check"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/report"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/cache"
+	"github.com/zoidsh/tenet/internal/check"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // answer is what the table says about the example whose code holds a token.

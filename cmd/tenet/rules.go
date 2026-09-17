@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // tenetWidth is how much of a tenet a listing shows before it is cut, so that

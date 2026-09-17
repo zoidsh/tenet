@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/zoidsh/tenetlint/internal/provider"
+	"github.com/zoidsh/tenet/internal/provider"
 )
 
 // Sources a key can come from. Resolve tries the last three in this order,

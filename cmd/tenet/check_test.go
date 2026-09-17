@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/check"
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/check"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 const checkConfig = `version: 1

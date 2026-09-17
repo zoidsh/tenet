@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/importer"
+	"github.com/zoidsh/tenet/internal/importer"
 )
 
 // repoDir is resolved while the working directory is still the package's own,

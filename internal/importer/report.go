@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 // SentenceWidth is how much of a candidate the table shows before it is cut,

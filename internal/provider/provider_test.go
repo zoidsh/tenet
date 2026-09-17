@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/provider"
+	"github.com/zoidsh/tenet/internal/provider"
 )
 
 func TestLookupDefaultsToTypeSafe(t *testing.T) {

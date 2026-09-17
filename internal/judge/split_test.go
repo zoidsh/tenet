@@ -9,9 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 func tenetsConfig(n, criteria int) string {

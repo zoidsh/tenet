@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/buildinfo"
+	"github.com/zoidsh/tenet/internal/buildinfo"
 )
 
 // Defaults, which mirror the official JS SDK so that behaviour under load

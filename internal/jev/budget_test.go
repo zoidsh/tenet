@@ -3,7 +3,7 @@ package jev_test
 import (
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 func TestEstimateTokens(t *testing.T) {

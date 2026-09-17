@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // minExamples is what a shipped rule's corpus must hold. It is twice

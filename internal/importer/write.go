@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 // SlugWords is how many significant words of a tenet make its id: enough to

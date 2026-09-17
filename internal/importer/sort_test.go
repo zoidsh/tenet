@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
-	"github.com/zoidsh/tenetlint/internal/importer"
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/cache"
+	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 // answers is what the fake asker replies for one candidate id.

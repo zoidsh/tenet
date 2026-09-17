@@ -13,12 +13,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/importer"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/provider"
-	"github.com/zoidsh/tenetlint/internal/report"
-	"github.com/zoidsh/tenetlint/internal/source"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/source"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // ruleFiles are the instruction files coding agents read, in the order init

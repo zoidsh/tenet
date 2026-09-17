@@ -12,15 +12,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
-	"github.com/zoidsh/tenetlint/internal/baseline"
-	"github.com/zoidsh/tenetlint/internal/cache"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/provider"
-	"github.com/zoidsh/tenetlint/internal/report"
-	"github.com/zoidsh/tenetlint/internal/source"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/auth"
+	"github.com/zoidsh/tenet/internal/baseline"
+	"github.com/zoidsh/tenet/internal/cache"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/source"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // exitError carries the code the process should end with, so that a finding

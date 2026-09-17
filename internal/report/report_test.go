@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/report"
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 func sample() report.Report {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 const withExamples = `version: 1

@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/source"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/cache"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/source"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // DefaultConcurrency is how many windows are in flight at once.

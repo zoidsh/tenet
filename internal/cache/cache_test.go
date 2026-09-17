@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
+	"github.com/zoidsh/tenet/internal/cache"
 )
 
 func TestRoundTrip(t *testing.T) {

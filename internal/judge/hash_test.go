@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/judge"
+	"github.com/zoidsh/tenet/internal/judge"
 )
 
 const hashed = `package main

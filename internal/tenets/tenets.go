@@ -18,8 +18,8 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
 
-	"github.com/zoidsh/tenetlint/internal/provider"
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 // FileName is the config file Find looks for.

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/cache"
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/cache"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 // ChunkSize is how many candidates one call asks about. Every candidate costs

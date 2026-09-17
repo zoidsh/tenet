@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/report"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 const testConfig = `version: 1

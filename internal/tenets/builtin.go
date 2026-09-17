@@ -13,7 +13,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	corpus "github.com/zoidsh/tenetlint"
+	corpus "github.com/zoidsh/tenet"
 )
 
 // Where the corpus sits inside the embedded file system.

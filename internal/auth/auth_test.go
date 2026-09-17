@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
-	"github.com/zoidsh/tenetlint/internal/provider"
+	"github.com/zoidsh/tenet/internal/auth"
+	"github.com/zoidsh/tenet/internal/provider"
 )
 
 const (

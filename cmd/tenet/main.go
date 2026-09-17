@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/buildinfo"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/provider"
-	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenet/internal/buildinfo"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/report"
 )
 
 // providerFlags are the pair of flags one provider answers to, named after it

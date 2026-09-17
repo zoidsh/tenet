@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/baseline"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/baseline"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // marked is a file whose one violation is on a line the answer server finds by

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/check"
-	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenet/internal/check"
+	"github.com/zoidsh/tenet/internal/jev"
 )
 
 // TestLiveCheck holds the repository's own comment-why examples to the

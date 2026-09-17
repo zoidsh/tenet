@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/importer"
-	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/report"
 )
 
 // agentRepo is a repository with nothing in it, because writing the

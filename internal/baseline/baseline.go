@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/zoidsh/tenetlint/internal/judge"
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 // Name is the file a run looks for in the repository root.

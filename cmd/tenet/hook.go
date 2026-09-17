@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 // Marker is how an uninstall tells our hook from one somebody else wrote. It

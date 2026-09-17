@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/check"
-	"github.com/zoidsh/tenetlint/internal/tenets"
+	"github.com/zoidsh/tenet/internal/check"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 func TestAUC(t *testing.T) {

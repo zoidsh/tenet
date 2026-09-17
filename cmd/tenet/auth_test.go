@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoidsh/tenetlint/internal/auth"
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenet/internal/auth"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/report"
 )
 
 const testKey = "ts-key-0123456789abcdef"

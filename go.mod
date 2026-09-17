@@ -1,4 +1,4 @@
-module github.com/zoidsh/tenetlint
+module github.com/zoidsh/tenet
 
 go 1.27
 

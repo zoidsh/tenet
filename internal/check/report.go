@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/zoidsh/tenetlint/internal/jev"
-	"github.com/zoidsh/tenetlint/internal/report"
+	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/report"
 )
 
 // Report is one check run.
