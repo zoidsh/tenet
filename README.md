@@ -8,7 +8,7 @@ Every path tenetlint prints, including the `file` field of `--format json`, is r
 
 ## Install
 
-Homebrew, on macOS and on Linux:
+Homebrew, on macOS; tenetlint ships as a cask, which Homebrew on Linux does not install, so use the installer script or npm below there:
 
 ```
 brew install zoidsh/tap/tenetlint
@@ -39,7 +39,7 @@ From source, which needs a Go toolchain:
 go install github.com/zoidsh/tenetlint/cmd/tenetlint@latest
 ```
 
-Through the [pre-commit](https://pre-commit.com) framework, which builds tenetlint with `go install` and so also needs Go on the machine; the three paths above do not:
+Through the [pre-commit](https://pre-commit.com) framework, which builds tenetlint from source itself, fetching a Go toolchain of its own if the machine has none:
 
 ```yaml
 repos:
