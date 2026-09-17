@@ -35,7 +35,7 @@ func newBaselineCmd() *cobra.Command {
 }
 
 func runBaseline(cmd *cobra.Command, paths []string, lint *lintOptions, o *baselineOptions) error {
-	run, err := judgeRun(cmd, paths, lint)
+	run, err := collectRun(cmd, paths, lint)
 	if err != nil {
 		return fail(err)
 	}
@@ -44,20 +44,20 @@ func runBaseline(cmd *cobra.Command, paths []string, lint *lintOptions, o *basel
 	if err != nil {
 		return fail(err)
 	}
+	// Whether a prune is allowed at all is settled before the model is asked
+	// anything, so that a refused one costs nothing.
+	var accepted *baseline.File
+	if o.prune {
+		if accepted, err = o.loadForPrune(run, path, scope); err != nil {
+			return fail(err)
+		}
+	}
+	if err := run.judge(cmd, lint); err != nil {
+		return fail(err)
+	}
 	entries := baseline.Entries(run.outcome.Findings)
 	var dropped int
 	if o.prune {
-		accepted, err := baseline.Load(path)
-		if err != nil {
-			return fail(err)
-		}
-		if accepted.Scope.Mode == "" {
-			return fail(fmt.Errorf("%s records no scope, so there is no telling what a prune would drop; write it again with tenetlint baseline", relativeTo(run.dir, path)))
-		}
-		if !scope.Covers(accepted.Scope) {
-			return fail(fmt.Errorf("%s was written over %s and this run covers %s, which would drop what it never looked at; prune over the same scope or a wider one",
-				relativeTo(run.dir, path), accepted.Scope, scope))
-		}
 		entries, dropped = accepted.Prune(entries)
 	}
 	if err := baseline.Save(path, scope, entries, time.Now()); err != nil {
@@ -72,8 +72,25 @@ func runBaseline(cmd *cobra.Command, paths []string, lint *lintOptions, o *basel
 	return err
 }
 
+// loadForPrune is the baseline a prune is about to rewrite, refused unless
+// this run looked at everything the baseline was written over.
+func (o *baselineOptions) loadForPrune(run *run, path string, scope baseline.Scope) (*baseline.File, error) {
+	accepted, err := baseline.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	if accepted.Scope.Mode == "" {
+		return nil, fmt.Errorf("%s records no scope, so there is no telling what a prune would drop; write it again with tenetlint baseline", relativeTo(run.dir, path))
+	}
+	if !scope.Covers(accepted.Scope) {
+		return nil, fmt.Errorf("%s was written over %s and this run covers %s, which would drop what it never looked at; prune over the same scope or a wider one",
+			relativeTo(run.dir, path), accepted.Scope, scope)
+	}
+	return accepted, nil
+}
+
 // scopeOf is what this run looked at, in paths the baseline can be read
-// against from anywhere in the repository.
+// against from anywhere in the repository..
 func scopeOf(run *run, lint *lintOptions, paths []string) (baseline.Scope, error) {
 	switch {
 	case len(paths) > 0:

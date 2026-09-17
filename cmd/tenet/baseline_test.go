@@ -470,3 +470,38 @@ func TestBaselineIsWrittenWholeAndReadable(t *testing.T) {
 		t.Errorf("temporary files left behind: %v", left)
 	}
 }
+
+// refusingServer fails the test if the model is asked anything at all.
+func refusingServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("the model was asked about a run that was going to be refused")
+		http.Error(w, "unexpected", http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+// A prune that is going to be refused must not be paid for first.
+func TestBaselinePruneRefusesBeforeAskingTheModel(t *testing.T) {
+	baselineRepo(t)
+	writeBaseline(t)
+	t.Setenv(jev.BaseURLEnv, refusingServer(t).URL)
+
+	code, _, stderr := runCmd(t, "baseline", "--prune", "--no-cache", "inc.go")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: %s", code, stderr)
+	}
+}
+
+// A lint pointed at a baseline that is not there says so instead of paying
+// for the answers first.
+func TestLintWithAMissingNamedBaselineAsksNothing(t *testing.T) {
+	baselineRepo(t)
+	t.Setenv(jev.BaseURLEnv, refusingServer(t).URL)
+
+	code, _, stderr := runCmd(t, "--no-cache", "--baseline", "nowhere.json", ".")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: %s", code, stderr)
+	}
+}

@@ -102,18 +102,24 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 	return nil
 }
 
-// run is what one judged pass over the selected code amounts to, before
-// anything decides what to print or write about it. The findings' paths are
-// still the repository-relative ones the tenets were matched against.
+// run is what one pass over the selected code amounts to, before anything
+// decides what to print or write about it. The findings' paths are still the
+// repository-relative ones the tenets were matched against.
 type run struct {
 	dir     string
+	cfg     *tenets.Config
+	model   string
+	key     string
 	set     *source.Set
 	outcome judge.Outcome
 }
 
-// judgeRun collects what the options select and judges it, which is the part
-// lint and baseline share.
-func judgeRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error) {
+// collectRun reads the config and gathers what the options select, without
+// asking the model anything. It is a step of its own because what a run is
+// allowed to do with its findings, such as pruning a baseline, is settled
+// against the files it covers, and settling that after the calls would have
+// paid for them.
+func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error) {
 	ctx := cmd.Context()
 	dir, err := os.Getwd()
 	if err != nil {
@@ -154,18 +160,29 @@ func judgeRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error) 
 			return nil, err
 		}
 	}
-	r := &run{dir: dir, set: set, outcome: judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}}}
-	windows := set.Windows()
+	return &run{
+		dir:     dir,
+		cfg:     cfg,
+		model:   model,
+		key:     key,
+		set:     set,
+		outcome: judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}},
+	}, nil
+}
+
+// judge asks the model about everything collected.
+func (r *run) judge(cmd *cobra.Command, o *lintOptions) error {
+	windows := r.set.Windows()
 	if len(windows) == 0 {
-		return r, nil
+		return nil
 	}
-	outcome, err := lintWindows(ctx, cmd, o, cfg, windows, key, model)
+	outcome, err := lintWindows(cmd.Context(), cmd, o, r.cfg, windows, r.key, r.model)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	outcome.Stats.Files = len(set.Files)
+	outcome.Stats.Files = len(r.set.Files)
 	r.outcome = outcome
-	return r, nil
+	return nil
 }
 
 func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
@@ -174,16 +191,20 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return fail(err)
 	}
 
-	run, err := judgeRun(cmd, paths, o)
+	run, err := collectRun(cmd, paths, o)
 	if err != nil {
+		return fail(err)
+	}
+	// The baseline is read before the calls are made, so that a run pointed at
+	// a file that is not there says so instead of billing for the answer first.
+	accepted, err := o.accepted(run.set.Root)
+	if err != nil {
+		return fail(err)
+	}
+	if err := run.judge(cmd, o); err != nil {
 		return fail(err)
 	}
 	set, dir, near := run.set, run.dir, run.outcome.NearMisses
-
-	accepted, err := o.accepted(set.Root)
-	if err != nil {
-		return fail(err)
-	}
 	findings, baselined := accepted.Split(run.outcome.Findings)
 
 	r := report.Report{
