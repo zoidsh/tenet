@@ -3,13 +3,13 @@
   lang: markdown
   lines: [3, 4]
   code: |
-    # The daemon
+    # appd
 
     Configuration is read at startup and the listening port is set from it.
     The file is re-read whenever SIGHUP is received.
 
-    `appd` is the process that does all of this. `appctl` talks to it over
-    the unix socket at `/run/app.sock`.
+    `appctl` talks to the daemon over the unix socket at `/run/app.sock`
+    and needs no configuration of its own.
 
     ## Keys
 
@@ -65,16 +65,16 @@
     of the same name.
 - label: violation
   lang: markdown
-  lines: [3, 5]
+  lines: [6, 8]
   code: |
     ## Errors
+
+    `worker` writes one JSON object per failed job to stderr, with the job
+    id and the attempt number.
 
     Errors are logged and the job is marked failed. After a third failure
     the job is moved to the dead-letter queue and the last error is stored
     beside it.
-
-    The worker does all of this. Nothing else writes to the job table, and
-    `app status` reads it without taking a lock.
 
     ## Retries
 
@@ -97,16 +97,16 @@
     request whose commits are unsigned.
 - label: violation
   lang: markdown
-  lines: [3, 4]
+  lines: [6, 8]
   code: |
     ## Caching a step
+
+    The runner reads every step's declarations before the first step starts,
+    so a pipeline of cached steps costs one pass over them.
 
     The digest of the declared reads is computed and is compared against the
     one stored from the last successful run. If they match, the step is
     skipped.
-
-    The runner does all of this before the first step starts, so a pipeline
-    of cached steps costs one pass over the declarations.
 
     ## Invalidating
 
