@@ -1,6 +1,8 @@
 // The answer server below stands in for the API, as the one in lint_test.go
-// does, so that a run can be judged without a key or the network.
-// tenet:ignore-file no-mocking
+// does, so that a run can be judged without a key or the network, and the
+// fixture's comment is written to violate comment-why, which is what the
+// answers here are about.
+// tenet:ignore-file no-mocking, comment-why
 package main
 
 import (
