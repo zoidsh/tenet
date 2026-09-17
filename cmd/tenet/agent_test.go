@@ -206,6 +206,17 @@ func TestInitAgentLeavesTheConfigAlone(t *testing.T) {
 	}
 }
 
+// The instructions go into CLAUDE.md and AGENTS.md as a section under
+// importer.AgentHeading, and a heading at that level or above would close the
+// section, leaving a later run replacing only the part above it.
+func TestAgentSkillHeadingsNestInsideTheSection(t *testing.T) {
+	for _, line := range strings.Split(importer.AgentSkill, "\n") {
+		if strings.HasPrefix(line, "# ") || strings.HasPrefix(line, "## ") {
+			t.Errorf("this heading closes the %q section: %q", importer.AgentHeading, line)
+		}
+	}
+}
+
 func read(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)

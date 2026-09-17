@@ -32,11 +32,13 @@ func TestSkillMatchesTheEmbeddedInstructions(t *testing.T) {
 	if !strings.HasPrefix(skill, "---\n") {
 		t.Fatalf("SKILL.md has no frontmatter:\n%s", skill)
 	}
-	_, body, found := strings.Cut(skill[len("---\n"):], "---\n")
+	_, body, found := strings.Cut(skill[len("---\n"):], "---\n\n")
 	if !found {
-		t.Fatalf("SKILL.md has no frontmatter:\n%s", skill)
+		t.Fatalf("SKILL.md has no frontmatter closed by a blank line:\n%s", skill)
 	}
-	if strings.TrimSpace(body) != strings.TrimSpace(importer.AgentSkill) {
+	// Byte-identical rather than trimmed, because the two files are edited by
+	// hand and a difference of any size is the drift this test is here for.
+	if body != importer.AgentSkill {
 		t.Errorf("SKILL.md has drifted from internal/importer/agent_skill.md:\n%s", body)
 	}
 	if !strings.Contains(skill, "name: tenet") {
