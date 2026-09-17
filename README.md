@@ -333,6 +333,19 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
 
 `next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
 
+Reading the report is one thing and knowing to run it is another, so `plugin/` is a Claude Code plugin that does both. It carries a `tenet` skill, which says when to run the lint and what to do with each finding, and a `PreToolUse` hook, which lints the staged changes before a `git commit` and hands the findings back instead of letting the commit through. This repository is its own marketplace:
+
+```
+/plugin marketplace add zoidsh/tenetlint
+/plugin install tenetlint@tenetlint
+```
+
+Agents that read a repository rather than a plugin get the same instructions from `tenet init --agent`. `--agent cursor` writes them to `.cursor/rules/tenet.mdc`, `--agent agents` and `--agent claude` keep them as a `## tenet` section of `AGENTS.md` or `CLAUDE.md`, replacing the section an earlier run wrote rather than adding a second one, and the flag repeats. A run that names an agent writes those files and nothing else, leaving your `tenets.yml` as it is.
+
+```
+tenet init --agent cursor --agent agents
+```
+
 ## Environment variables
 
 - `TYPESAFE_API_KEY` is your key, and every command that asks the model needs it.
