@@ -1,9 +1,9 @@
 version: 2
 
-project_name: tenetlint
+project_name: tenet
 
 builds:
-  - id: tenetlint
+  - id: tenet
     main: ./cmd/tenet
     binary: tenet
     env:
@@ -18,20 +18,17 @@ builds:
       - -s -w -X github.com/zoidsh/tenet/internal/buildinfo.version={{.Version}}
 
 archives:
-  - id: tenetlint
+  - id: tenet
     formats:
       - tar.gz
     files:
       - README.md
-      # The old name of the command, kept working as a wrapper beside it.
-      - src: packaging/tenetlint
-        dst: tenetlint
 
 checksum:
   name_template: checksums.txt
 
 homebrew_casks:
-  - name: tenetlint
+  - name: tenet
     repository:
       owner: zoidsh
       name: homebrew-tap
@@ -42,7 +39,6 @@ homebrew_casks:
     description: A command-line linter for the rules you wrote in English
     binaries:
       - tenet
-      - tenetlint
     hooks:
       post:
         # The binary is unsigned, so Gatekeeper quarantines it on download and
@@ -55,7 +51,7 @@ homebrew_casks:
 release:
   github:
     owner: zoidsh
-    name: tenetlint
+    name: tenet
   draft: false
 
 changelog:

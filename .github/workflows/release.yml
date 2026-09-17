@@ -46,7 +46,7 @@ jobs:
           for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
             npm publish --provenance --access public "npm/platforms/$platform"
           done
-          npm publish --provenance --access public npm/tenetlint
+          npm publish --provenance --access public npm/tenet
 
       - name: Move the v1 tag to this release
         if: startsWith(github.ref_name, 'v1.')

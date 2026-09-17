@@ -2,12 +2,13 @@
 # Usage: npm/stage.sh <dist-dir> <version>
 set -eu
 
-# The published names, in one place: NAME is the entry package and the scope of
-# the four platform packages, BIN is the command the platform packages carry.
-NAME=tenetlint
+# The published names, in one place: NAME is the directory and the archive
+# stem, PKG is the entry package and the stem of the four platform packages,
+# BIN is the command the platform packages carry.
+NAME=tenet
 BIN=tenet
-SCOPE=@tenetlint
-REPO=zoidsh/tenetlint
+PKG=@zoidsh/tenet
+REPO=zoidsh/tenet
 
 PLATFORMS="darwin-arm64 darwin-x64 linux-arm64 linux-x64"
 
@@ -31,7 +32,7 @@ platform_manifest() {
 
 	cat >"$npm_dir/platforms/$platform/package.json" <<EOF
 {
-  "name": "$SCOPE/$platform",
+  "name": "$PKG-$platform",
   "version": "$version",
   "description": "The $BIN binary for $os_name on $cpu",
   "license": "MIT",
@@ -60,14 +61,14 @@ entry_manifest() {
 	# shellcheck disable=SC2016 # the $ and ${} below are the node script's, not the shell's
 	node -e '
 		const fs = require("fs");
-		const [file, version, scope, platforms] = process.argv.slice(1);
+		const [file, version, prefix, platforms] = process.argv.slice(1);
 		const pkg = JSON.parse(fs.readFileSync(file, "utf8"));
 		pkg.version = version;
 		pkg.optionalDependencies = Object.fromEntries(
-			platforms.split(" ").map((p) => [`${scope}/${p}`, version])
+			platforms.split(" ").map((p) => [`${prefix}-${p}`, version])
 		);
 		fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\n");
-	' "$npm_dir/$NAME/package.json" "$version" "$SCOPE" "$PLATFORMS"
+	' "$npm_dir/$NAME/package.json" "$version" "$PKG" "$PLATFORMS"
 }
 
 entry_manifest
@@ -98,5 +99,5 @@ for platform in $PLATFORMS; do
 	platform_manifest "$platform"
 	cp "$built/$BIN" "$npm_dir/platforms/$platform/$BIN"
 	chmod 755 "$npm_dir/platforms/$platform/$BIN"
-	echo "staged $SCOPE/$platform $version from $built"
+	echo "staged $PKG-$platform $version from $built"
 done

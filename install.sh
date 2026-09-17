@@ -1,15 +1,13 @@
 #!/bin/sh
-# curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
+# curl -fsSL https://raw.githubusercontent.com/zoidsh/tenet/main/install.sh | sh
 set -eu
 
-# The published names, in one place: NAME is the project, which the repository
-# and the release archives carry, BIN is the command inside them, and ALIAS is
-# the name the command used to have, kept beside it.
-NAME=tenetlint
+# The published names, in one place: NAME is the project, which the release
+# archives carry, and BIN is the command inside them.
+NAME=tenet
 BIN=tenet
-ALIAS=tenetlint
-REPO=zoidsh/tenetlint
-INSTALL_DIR=${TENETLINT_INSTALL_DIR:-$HOME/.local/bin}
+REPO=zoidsh/tenet
+INSTALL_DIR=${TENET_INSTALL_DIR:-$HOME/.local/bin}
 
 die() {
 	echo "$BIN: $1" >&2
@@ -78,20 +76,20 @@ main() {
 	arch=$(detect_arch)
 	# A dry run resolves no version of its own, so that it stays offline and
 	# works before the first release exists.
-	case "${TENETLINT_VERSION:-latest}" in
+	case "${TENET_VERSION:-latest}" in
 	latest)
-		if [ "${TENETLINT_DRY_RUN:-}" = 1 ]; then
+		if [ "${TENET_DRY_RUN:-}" = 1 ]; then
 			version=LATEST
 		else
 			version=$(latest_version)
 		fi
 		;;
-	*) version=${TENETLINT_VERSION#v} ;;
+	*) version=${TENET_VERSION#v} ;;
 	esac
 	archive=$(archive_name "$version" "$os" "$arch")
 	base="https://github.com/$REPO/releases/download/v$version"
 
-	if [ "${TENETLINT_DRY_RUN:-}" = 1 ]; then
+	if [ "${TENET_DRY_RUN:-}" = 1 ]; then
 		echo "os          $os"
 		echo "arch        $arch"
 		echo "version     $version"
@@ -121,9 +119,7 @@ main() {
 		cp "$tmp/$BIN" "$INSTALL_DIR/$BIN"
 		chmod 755 "$INSTALL_DIR/$BIN"
 	}
-	ln -sf "$BIN" "$INSTALL_DIR/$ALIAS"
-
-	echo "$BIN $version installed to $INSTALL_DIR/$BIN, with $ALIAS beside it"
+	echo "$BIN $version installed to $INSTALL_DIR/$BIN"
 	if ! on_path "$INSTALL_DIR"; then
 		echo "$INSTALL_DIR is not on your PATH; add it with:"
 		echo "  export PATH=\"$INSTALL_DIR:\$PATH\""

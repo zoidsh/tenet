@@ -1,0 +1,26 @@
+{
+  "name": "@zoidsh/tenet",
+  "version": "0.0.0-dev",
+  "description": "A command-line linter for the rules you wrote in English",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zoidsh/tenet.git"
+  },
+  "homepage": "https://github.com/zoidsh/tenet",
+  "bin": {
+    "tenet": "bin/tenet"
+  },
+  "files": [
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@zoidsh/tenet-darwin-arm64": "0.0.0-dev",
+    "@zoidsh/tenet-darwin-x64": "0.0.0-dev",
+    "@zoidsh/tenet-linux-arm64": "0.0.0-dev",
+    "@zoidsh/tenet-linux-x64": "0.0.0-dev"
+  }
+}

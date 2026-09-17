@@ -1,12 +1,12 @@
 {
-  "name": "tenetlint",
+  "name": "zoidsh",
   "owner": {
     "name": "zoid",
-    "url": "https://github.com/zoidsh/tenetlint"
+    "url": "https://github.com/zoidsh/tenet"
   },
   "plugins": [
     {
-      "name": "tenetlint",
+      "name": "tenet",
       "source": "./plugin",
       "description": "Lints the changed lines against the repository's tenets before every commit, and says what to do with a finding."
     }

@@ -100,7 +100,7 @@ func TestPluginManifest(t *testing.T) {
 		} `json:"author"`
 	}
 	readJSON(t, filepath.Join(repoDir, "plugin", ".claude-plugin", "plugin.json"), &manifest)
-	if manifest.Name != "tenetlint" || manifest.Version != "0.0.0" {
+	if manifest.Name != "tenet" || manifest.Version != "0.0.0" {
 		t.Errorf("manifest is %#v", manifest)
 	}
 	if manifest.Description == "" || manifest.Author.Name == "" {

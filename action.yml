@@ -1,4 +1,4 @@
-name: tenetlint
+name: tenet
 description: Lint a pull request against the tenets in its tenets.yml
 branding:
   icon: check-square
@@ -6,7 +6,7 @@ branding:
 
 inputs:
   version:
-    description: The tenetlint release to run, or latest
+    description: The tenet release to run, or latest
     default: latest
   base:
     description: >
@@ -30,42 +30,42 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install tenetlint
+    - name: Install tenet
       shell: bash
       env:
-        TENETLINT_VERSION: ${{ inputs.version }}
-        TENETLINT_INSTALL_DIR: ${{ runner.temp }}/tenetlint
+        TENET_VERSION: ${{ inputs.version }}
+        TENET_INSTALL_DIR: ${{ runner.temp }}/tenet
       run: |
         sh "${{ github.action_path }}/install.sh"
-        echo "$TENETLINT_INSTALL_DIR" >> "$GITHUB_PATH"
+        echo "$TENET_INSTALL_DIR" >> "$GITHUB_PATH"
 
     - name: Lint the branch
       shell: bash
       env:
         TYPESAFE_API_KEY: ${{ inputs.api-key }}
-        TENETLINT_BASE: ${{ inputs.base }}
-        TENETLINT_ARGS: ${{ inputs.args }}
-        TENETLINT_ANNOTATE: ${{ inputs.annotate }}
+        TENET_BASE: ${{ inputs.base }}
+        TENET_ARGS: ${{ inputs.args }}
+        TENET_ANNOTATE: ${{ inputs.annotate }}
         PR_TITLE: ${{ github.event.pull_request.title }}
         PR_BODY: ${{ github.event.pull_request.body }}
       # The inputs arrive as environment variables rather than as expansions in
       # the script, so that what a caller writes cannot become shell syntax.
       # The title and the description are written by whoever opened the pull
       # request, so they are held to the same rule.
-      # $TENETLINT_ARGS is deliberately unquoted: it is a list of flags.
+      # $TENET_ARGS is deliberately unquoted: it is a list of flags.
       run: |
         format=json
-        if [ "$TENETLINT_ANNOTATE" = "true" ]; then
+        if [ "$TENET_ANNOTATE" = "true" ]; then
           format=github
         fi
         code=0
-        tenet --base "$TENETLINT_BASE" --format "$format" $TENETLINT_ARGS || code=$?
+        tenet --base "$TENET_BASE" --format "$format" $TENET_ARGS || code=$?
         if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
           printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > "$RUNNER_TEMP/pr.txt"
           # Both lints are one verdict, so the worse of the two codes is the
           # step's, and a finding in either is still reported before it exits.
           text=0
-          tenet --pr-text "$RUNNER_TEMP/pr.txt" --format "$format" $TENETLINT_ARGS || text=$?
+          tenet --pr-text "$RUNNER_TEMP/pr.txt" --format "$format" $TENET_ARGS || text=$?
           if [ "$text" -gt "$code" ]; then
             code=$text
           fi

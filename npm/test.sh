@@ -3,9 +3,11 @@
 # tarballs, so the whole npm path is exercised without a release or a registry.
 set -eu
 
-NAME=tenetlint
+NAME=tenet
 BIN=tenet
-ALIAS=tenetlint
+# npm pack flattens a scoped name into this stem, which is what the tarballs
+# installed below are called.
+TARBALL=zoidsh-tenet
 PLATFORMS="darwin-arm64 darwin-x64 linux-arm64 linux-x64"
 
 repo=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -49,29 +51,26 @@ done
 # host, so only the host's own tarball is installed beside the entry package;
 # --omit=optional keeps npm from reaching for the other three in a registry.
 npm install --prefix "$tmp" --omit=optional --no-audit --no-fund \
-	"$tmp/$NAME-$version.tgz" \
-	"$tmp/$NAME-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
+	"$tmp/$TARBALL-$version.tgz" \
+	"$tmp/$TARBALL-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
 
 direct=$("$host_binary" version)
 
-# Both names are bins of the entry package, and both have to reach the binary.
-for command in "$BIN" "$ALIAS"; do
-	shim="$tmp/node_modules/.bin/$command"
-	out=$("$shim" version)
-	echo "$command version -> $out"
-	if [ "$out" != "$direct" ]; then
-		echo "npm/test.sh: $command printed '$out', the binary itself '$direct'" >&2
-		exit 1
-	fi
-	if ! "$shim" --help >/dev/null; then
-		echo "npm/test.sh: --help failed through $command" >&2
-		exit 1
-	fi
-done
+shim="$tmp/node_modules/.bin/$BIN"
+out=$("$shim" version)
+echo "$BIN version -> $out"
+if [ "$out" != "$direct" ]; then
+	echo "npm/test.sh: $BIN printed '$out', the binary itself '$direct'" >&2
+	exit 1
+fi
+if ! "$shim" --help >/dev/null; then
+	echo "npm/test.sh: --help failed through $BIN" >&2
+	exit 1
+fi
 
-override_out=$(TENETLINT_BINARY="$host_binary" "$tmp/node_modules/.bin/$BIN" version)
+override_out=$(TENET_BINARY="$host_binary" "$shim" version)
 if [ "$override_out" != "$direct" ]; then
-	echo "npm/test.sh: TENETLINT_BINARY gave '$override_out', not '$direct'" >&2
+	echo "npm/test.sh: TENET_BINARY gave '$override_out', not '$direct'" >&2
 	exit 1
 fi
 

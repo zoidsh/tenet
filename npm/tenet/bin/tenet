@@ -5,10 +5,10 @@ const { spawnSync } = require("child_process");
 const os = require("os");
 
 // The published names, in one place: BIN is the command and the file the
-// platform packages carry, SCOPE is where those packages live.
+// platform packages carry, PREFIX is what their names are built from.
 const BIN = "tenet";
-const SCOPE = "@tenetlint";
-const OVERRIDE = "TENETLINT_BINARY";
+const PREFIX = "@zoidsh/tenet";
+const OVERRIDE = "TENET_BINARY";
 
 const PLATFORMS = new Set([
   "darwin-arm64",
@@ -27,7 +27,7 @@ function binaryPath() {
     console.error(`${BIN}: there is no ${BIN} build for ${platform}`);
     process.exit(1);
   }
-  const pkg = `${SCOPE}/${platform}`;
+  const pkg = `${PREFIX}-${platform}`;
   try {
     return require.resolve(`${pkg}/${BIN}`);
   } catch {
