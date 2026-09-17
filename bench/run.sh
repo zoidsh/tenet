@@ -35,9 +35,12 @@ if [ -z "${TENET_BIN:-}" ] && ! command -v mise >/dev/null 2>&1; then
 	exit 2
 fi
 
-if [ -n "$(git status --porcelain)" ]; then
+# bench/results.md is this script's own output, so a modified or untracked one
+# is not the kind of change that would make the measurement mean something
+# else. Anything else still refuses.
+if [ -n "$(git status --porcelain -- ':!bench/results.md')" ]; then
 	echo "bench/run.sh measures a fixed commit, so it refuses to run with uncommitted changes" >&2
-	echo "commit or stash them, including a previous bench/results.md" >&2
+	echo "commit or stash them; bench/results.md itself is the one exception" >&2
 	exit 2
 fi
 
