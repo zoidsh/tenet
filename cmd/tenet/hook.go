@@ -71,11 +71,7 @@ func newHookInstallCmd() *cobra.Command {
 		Short: "Write the pre-commit and commit-msg hooks that run tenet",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir, err := hooksDir(cmd.Context())
-			if err != nil {
-				return fail(err)
-			}
-			root, err := repoRoot(cmd.Context())
+			dir, root, err := hookPaths(cmd.Context())
 			if err != nil {
 				return fail(err)
 			}
@@ -124,7 +120,7 @@ func newHookUninstallCmd() *cobra.Command {
 		Short: "Remove the tenet pre-commit and commit-msg hooks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir, err := hooksDir(cmd.Context())
+			dir, _, err := hookPaths(cmd.Context())
 			if err != nil {
 				return fail(err)
 			}
@@ -153,15 +149,6 @@ func newHookUninstallCmd() *cobra.Command {
 	}
 }
 
-// repoRoot is what the installed paths are printed relative to.
-func repoRoot(ctx context.Context) (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	return source.RepoRoot(ctx, dir)
-}
-
 // inRepo names a hook the way the repository does. A hooks directory outside
 // the repository, which core.hooksPath allows, keeps its absolute path: a
 // trail of ".." is no easier to read than the path itself.
@@ -173,12 +160,22 @@ func inRepo(root, path string) string {
 	return filepath.ToSlash(rel)
 }
 
-// hooksDir asks git where hooks live, which honours core.hooksPath.
-func hooksDir(ctx context.Context) (string, error) {
+// hookPaths is where the hooks live and the repository their paths are
+// printed relative to, both read from the directory tenet was run in.
+func hookPaths(ctx context.Context) (hooks, root string, err error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
+	if hooks, err = hooksDir(ctx, dir); err != nil {
+		return "", "", err
+	}
+	root, err = source.RepoRoot(ctx, dir)
+	return hooks, root, err
+}
+
+// hooksDir asks git where hooks live, which honours core.hooksPath.
+func hooksDir(ctx context.Context, dir string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--path-format=absolute", "--git-path", "hooks")
 	out, err := cmd.Output()
 	if err != nil {
