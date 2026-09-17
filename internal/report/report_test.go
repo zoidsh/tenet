@@ -127,6 +127,7 @@ const wantJSON = `{
   ],
   "next": "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again",
   "stats": {
+    "baselined": 0,
     "files": 2,
     "windows": 3,
     "calls": 4,

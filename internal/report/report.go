@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/zoidsh/tenetlint/internal/judge"
@@ -72,6 +73,12 @@ type Report struct {
 	Stats    judge.Stats
 	Skipped  []source.Skip
 
+	// Baselined are the findings an accepted baseline took out of Findings.
+	// They are counted, and printed only when ShowBaselined, but they never
+	// fail a run: the point of accepting them was to stop them blocking.
+	Baselined     []judge.Finding
+	ShowBaselined bool
+
 	// Quiet drops the summary line, leaving only the findings themselves.
 	Quiet bool
 
@@ -123,16 +130,21 @@ func (p painter) paint(color, text string) string {
 // what each tenet that fired says, then what the run cost.
 func (r Report) Text(w io.Writer, color bool) error {
 	p := painter(color)
+	listed := r.listed()
 	var b strings.Builder
-	for _, f := range r.Findings {
-		fmt.Fprintf(&b, "%s:%d: %s %s\n",
-			f.File, f.Line, p.paint(red, f.Tenet), p.paint(dim, fmt.Sprintf("(p=%.2f)", f.Probability)))
+	for _, l := range listed {
+		fmt.Fprintf(&b, "%s:%d: %s %s",
+			l.File, l.Line, p.paint(red, l.Tenet), p.paint(dim, fmt.Sprintf("(p=%.2f)", l.Probability)))
+		if l.baselined {
+			b.WriteString(" " + p.paint(dim, "[baselined]"))
+		}
+		b.WriteString("\n")
 	}
 	if legend := r.legend(); legend != "" {
 		b.WriteString("\n" + legend)
 	}
 	if !r.Quiet {
-		if len(r.Findings) > 0 {
+		if len(listed) > 0 {
 			b.WriteString("\n")
 		}
 		b.WriteString(p.paint(dim, r.summary()) + "\n")
@@ -144,12 +156,33 @@ func (r Report) Text(w io.Writer, color bool) error {
 	return err
 }
 
+// listed are the findings the text report prints, in the one order it prints
+// them in whether or not the baselined ones are among them.
+func (r Report) listed() []listing {
+	out := make([]listing, 0, len(r.Findings)+len(r.Baselined))
+	for _, f := range r.Findings {
+		out = append(out, listing{Finding: f})
+	}
+	if r.ShowBaselined {
+		for _, f := range r.Baselined {
+			out = append(out, listing{Finding: f, baselined: true})
+		}
+		sort.Slice(out, func(a, b int) bool { return judge.Less(out[a].Finding, out[b].Finding) })
+	}
+	return out
+}
+
+type listing struct {
+	judge.Finding
+	baselined bool
+}
+
 // legend says once what each tenet that fired asks for, so that the findings
 // themselves stay one short line each however long the tenet is.
 func (r Report) legend() string {
 	var ids []string
 	said := map[string]string{}
-	for _, f := range r.Findings {
+	for _, f := range r.listed() {
 		if _, ok := said[f.Tenet]; ok {
 			continue
 		}
@@ -169,8 +202,12 @@ func (r Report) legend() string {
 
 func (r Report) summary() string {
 	s := r.Stats
-	return fmt.Sprintf("%d findings · %d windows, %d calls, %d cached · $%.4f · %.1fs",
-		len(r.Findings), s.Windows, s.Calls, s.CacheHits, s.CostUSD, s.Duration.Seconds())
+	var baselined string
+	if len(r.Baselined) > 0 {
+		baselined = fmt.Sprintf(", %d baselined", len(r.Baselined))
+	}
+	return fmt.Sprintf("%d findings%s · %d windows, %d calls, %d cached · $%.4f · %.1fs",
+		len(r.Findings), baselined, s.Windows, s.Calls, s.CacheHits, s.CostUSD, s.Duration.Seconds())
 }
 
 type jsonReport struct {
@@ -182,6 +219,7 @@ type jsonReport struct {
 }
 
 type jsonStats struct {
+	Baselined   int     `json:"baselined"`
 	Files       int     `json:"files"`
 	Windows     int     `json:"windows"`
 	Calls       int     `json:"calls"`
@@ -197,6 +235,7 @@ func (r Report) JSON(w io.Writer) error {
 		Version:  1,
 		Findings: r.Findings,
 		Stats: jsonStats{
+			Baselined:   len(r.Baselined),
 			Files:       r.Stats.Files,
 			Windows:     r.Stats.Windows,
 			Calls:       r.Stats.Calls,

@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/spf13/cobra"
 
+	"github.com/zoidsh/tenetlint/internal/baseline"
 	"github.com/zoidsh/tenetlint/internal/cache"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/judge"
@@ -43,14 +46,17 @@ func missingKeyError() error {
 }
 
 type lintOptions struct {
-	base      string
-	commitMsg string
-	config    string
-	format    string
-	model     string
-	noCache   bool
-	verbose   bool
-	quiet     bool
+	base          string
+	commitMsg     string
+	config        string
+	format        string
+	model         string
+	noCache       bool
+	verbose       bool
+	quiet         bool
+	baseline      string
+	noBaseline    bool
+	showBaselined bool
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
@@ -59,6 +65,9 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
+	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" in the repository root")
+	f.BoolVar(&o.noBaseline, "no-baseline", false, "report every finding, whatever the baseline accepts")
+	f.BoolVar(&o.showBaselined, "show-baselined", false, "list the findings the baseline accepts as well, marked and still passing")
 }
 
 // addRunFlags are the flags that choose what is judged and how, which baseline
@@ -80,6 +89,9 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 		case o.base != "":
 			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be combined with --base")
 		}
+	}
+	if o.baseline != "" && o.noBaseline {
+		return fmt.Errorf("--no-baseline ignores the baseline, so there is no file for --baseline to name")
 	}
 	if o.format == "" {
 		o.format = report.DefaultFormat(out)
@@ -168,11 +180,19 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	}
 	set, dir, near := run.set, run.dir, run.outcome.NearMisses
 
+	accepted, err := o.accepted(set.Root)
+	if err != nil {
+		return fail(err)
+	}
+	findings, baselined := accepted.Split(run.outcome.Findings)
+
 	r := report.Report{
-		Findings: run.outcome.Findings,
-		Stats:    run.outcome.Stats,
-		Skipped:  set.Skipped,
-		Quiet:    o.quiet,
+		Findings:      findings,
+		Baselined:     baselined,
+		ShowBaselined: o.showBaselined,
+		Stats:         run.outcome.Stats,
+		Skipped:       set.Skipped,
+		Quiet:         o.quiet,
 	}
 	if o.commitMsg != "" {
 		r.Next = report.NextCommitMsg
@@ -197,6 +217,23 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	return nil
 }
 
+// accepted is the baseline this run honours, nil when there is none. The
+// default file being absent is how most repositories run, so it is no error,
+// while a named one being absent is a typo worth stopping for.
+func (o *lintOptions) accepted(root string) (*baseline.File, error) {
+	if o.noBaseline {
+		return nil, nil
+	}
+	if o.baseline != "" {
+		return baseline.Load(o.baseline)
+	}
+	f, err := baseline.Load(filepath.Join(root, baseline.Name))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	return f, err
+}
+
 func applies(cfg *tenets.Config, path string) bool {
 	for _, t := range cfg.Tenets {
 		if t.Applies(path) {
@@ -212,6 +249,9 @@ func applies(cfg *tenets.Config, path string) bool {
 func relocate(r *report.Report, root, dir string) {
 	for i := range r.Findings {
 		r.Findings[i].File = displayPath(root, dir, r.Findings[i].File)
+	}
+	for i := range r.Baselined {
+		r.Baselined[i].File = displayPath(root, dir, r.Baselined[i].File)
 	}
 	for i := range r.Skipped {
 		r.Skipped[i].File = displayPath(root, dir, r.Skipped[i].File)

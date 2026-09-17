@@ -92,6 +92,7 @@ type jsonReport struct {
 	Findings []judge.Finding `json:"findings"`
 	Next     string          `json:"next"`
 	Stats    struct {
+		Baselined   int     `json:"baselined"`
 		Files       int     `json:"files"`
 		Windows     int     `json:"windows"`
 		Calls       int     `json:"calls"`
