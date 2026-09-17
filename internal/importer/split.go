@@ -158,10 +158,15 @@ func (s *splitter) emit(line int, text string) {
 	s.out = append(s.out, Candidate{File: s.file, Line: line, Heading: s.chain(), Text: text})
 }
 
-// clean strips the emphasis a rule file puts on part of a rule: the markers
-// are markdown for the eye, and a tenet is read as a sentence.
+// clean takes off what a rule file puts around a rule to lay it out: the
+// blockquote markers and the emphasis are markdown for the eye, and a tenet is
+// read as a sentence.
 func clean(text string) string {
-	return strings.TrimSpace(outsideCode(strings.TrimSpace(text), stripEmphasis))
+	text = strings.TrimSpace(text)
+	for after, ok := strings.CutPrefix(text, ">"); ok; after, ok = strings.CutPrefix(text, ">") {
+		text = strings.TrimSpace(after)
+	}
+	return strings.TrimSpace(outsideCode(text, stripEmphasis))
 }
 
 // codeMask stands in for a backticked span while the emphasis around it is

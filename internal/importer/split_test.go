@@ -81,6 +81,23 @@ func TestSplitNumberedItems(t *testing.T) {
 	}
 }
 
+func TestSplitStripsBlockquoteMarkers(t *testing.T) {
+	cases := []struct {
+		source string
+		want   string
+	}{
+		{"> A comment says why, not what.\n", "A comment says why, not what."},
+		{"> > Nested quotes are still one rule.\n", "Nested quotes are still one rule."},
+		{"- > A quoted rule inside an item.\n", "A quoted rule inside an item."},
+	}
+	for _, c := range cases {
+		got := importer.Split("f.md", []byte(c.source))
+		if len(got) != 1 || got[0].Text != c.want {
+			t.Errorf("Split(%q) = %#v, want %q", c.source, got, c.want)
+		}
+	}
+}
+
 func TestSplitKeepsAbbreviationsWhole(t *testing.T) {
 	source := "Name the narrow case, e.g. When a window is empty, in the criteria. Everything else is prose.\n"
 	got := importer.Split("f.md", []byte(source))
