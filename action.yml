@@ -16,7 +16,7 @@ inputs:
       yourself on a workflow that has to cover one.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
   args:
-    description: Extra flags passed to tenetlint
+    description: Extra flags passed to tenet
     default: ""
   api-key:
     description: A TypeSafe API key, which the lint needs to reach jev
@@ -43,4 +43,4 @@ runs:
       # The inputs arrive as environment variables rather than as expansions in
       # the script, so that what a caller writes cannot become shell syntax.
       # $TENETLINT_ARGS is deliberately unquoted: it is a list of flags.
-      run: tenetlint --base "$TENETLINT_BASE" --format json $TENETLINT_ARGS
+      run: tenet --base "$TENETLINT_BASE" --format json $TENETLINT_ARGS
