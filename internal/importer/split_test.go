@@ -19,7 +19,7 @@ func TestSplitFixture(t *testing.T) {
 		{File: "rules.md", Line: 15, Heading: comments, Text: "Never what the code does; a name or a smaller function says that."},
 		{File: "rules.md", Line: 15, Heading: comments, Text: "Call `pkg.Func()` when you need the parsed form."},
 		{File: "rules.md", Line: 17, Heading: comments, Text: "Strip narrating comments from any code you touch."},
-		{File: "rules.md", Line: 18, Heading: comments, Text: "**Do not** leave a commented-out block behind. It costs nothing to delete and git remembers it."},
+		{File: "rules.md", Line: 18, Heading: comments, Text: "Do not leave a commented-out block behind. It costs nothing to delete and git remembers it."},
 		{File: "rules.md", Line: 20, Heading: comments, Text: "A doc comment on an exported identifier states what callers can rely on."},
 		{File: "rules.md", Line: 25, Heading: "Project rules > Setup", Text: "Run the installer before anything else:"},
 	}
@@ -51,10 +51,21 @@ func TestSplitDropsShortLongAndLinks(t *testing.T) {
 	}
 }
 
-func TestSplitBoldWholeItem(t *testing.T) {
-	got := importer.Split("f.md", []byte("- **Never mock anything in tests.**\n"))
-	if len(got) != 1 || got[0].Text != "Never mock anything in tests." {
-		t.Errorf("got %#v", got)
+func TestSplitStripsBoldAnywhere(t *testing.T) {
+	cases := []struct {
+		source string
+		want   string
+	}{
+		{"- **Never mock anything in tests.**\n", "Never mock anything in tests."},
+		{"- **Do not** leave a commented-out block behind.\n", "Do not leave a commented-out block behind."},
+		{"- __Never__ print the key, and __never__ commit it.\n", "Never print the key, and never commit it."},
+		{"- Strip **bold** and __underlined__ emphasis from a rule.\n", "Strip bold and underlined emphasis from a rule."},
+	}
+	for _, c := range cases {
+		got := importer.Split("f.md", []byte(c.source))
+		if len(got) != 1 || got[0].Text != c.want {
+			t.Errorf("Split(%q) = %#v, want %q", c.source, got, c.want)
+		}
 	}
 }
 

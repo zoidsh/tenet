@@ -29,7 +29,7 @@ var (
 	fenceLine   = regexp.MustCompile("^\\s*(```|~~~)")
 	headingLine = regexp.MustCompile(`^(#{1,6})\s+(.*)$`)
 	itemLine    = regexp.MustCompile(`^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$`)
-	boldWhole   = regexp.MustCompile(`^\*\*(.+)\*\*$`)
+	bold        = regexp.MustCompile(`(\*\*|__)(.+?)(\*\*|__)`)
 	linkOnly    = regexp.MustCompile(`^<?\[[^\]]*\]\([^)]*\)>?$`)
 )
 
@@ -156,12 +156,10 @@ func (s *splitter) emit(line int, text string) {
 	s.out = append(s.out, Candidate{File: s.file, Line: line, Heading: s.chain(), Text: text})
 }
 
+// clean strips the emphasis a rule file puts on part of a rule: the markers
+// are markdown for the eye, and a tenet is read as a sentence.
 func clean(text string) string {
-	text = strings.TrimSpace(text)
-	if m := boldWhole.FindStringSubmatch(text); m != nil {
-		text = strings.TrimSpace(m[1])
-	}
-	return text
+	return strings.TrimSpace(bold.ReplaceAllString(strings.TrimSpace(text), "$2"))
 }
 
 func keep(text string) bool {
