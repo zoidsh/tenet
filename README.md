@@ -32,6 +32,40 @@ A tenet is judged by its sentence alone unless you give it criteria: a `true` de
       false: The comment gives a reason, a constraint, a contract, or a warning about ordering that the code does not show.
 ```
 
+## Checking a tenet
+
+`tenetlint check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok`, the `code` it is about, and on a violation the `line` a finding should land on; keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
+
+```yaml
+    examples:
+      - label: violation
+        line: 2
+        code: |
+          func add(a, b int) int {
+              // add a and b
+              return a + b
+          }
+      - label: ok
+        code: |
+          // snappy v0.0.4 panics on a zero-length block, so short-circuit here.
+          if size == 0 {
+              return &Frame{Kind: head[0]}, nil
+          }
+```
+
+Then run `tenetlint check`, which judges every example of every tenet that has any, or `tenetlint check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed.
+
+```
+comment-why: sharp
+  examples          8 (4 violation, 4 ok)
+  auc               1.00
+  accuracy          1.00 at threshold 0.50, 0.88 at confident 0.70
+  mean probability  violation 0.84, ok 0.14, gap 0.69
+  location          4 of 4 lines named (1.00)
+```
+
+The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all; the accuracies say whether your `threshold` and `confident` are the right places to cut. A tenet is `sharp` when nothing lands on the wrong side of its threshold, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at, and one line of advice names what usually moves the numbers: a `false` criterion when the innocent examples score high, a `true` criterion when the violations score low, and a rewrite of the sentence itself when both sit in the middle. `check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again.
+
 Set `TYPESAFE_API_KEY` to your key. `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in, and `TENETLINT_SKIP=1` makes the installed pre-commit hook exit without linting.
 
 Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.
