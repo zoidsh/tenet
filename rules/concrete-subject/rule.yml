@@ -1,8 +1,8 @@
 id: concrete-subject
 tenet: 'Every sentence needs a human subject doing something. No passive constructions. No inanimate objects performing human actions ("the complaint becomes a fix").'
 criteria:
-  true: "A sentence's subject is an abstraction — a quality, an ideal, a trend, a nominalised process — and its verb is one only an agent can perform, so something that cannot want, decide or believe is made to do it. The same fault wears a possessive, where a team's philosophy or an architecture's opinion does the acting in place of the people who hold it."
-  false: "The subject really performs the verb, whether that subject is a person, the reader addressed in an imperative, or a named part of the system doing what such a thing does. An abstraction as subject is fine where the verb is not an agent's, because nothing is then attributed to it that it cannot do."
+  true: "A sentence's subject is an abstraction, a quality or an ideal or a trend or a nominalised process, and its verb is one only an agent can perform, so something that cannot want, decide or believe is made to do it."
+  false: "The subject really performs the verb, whether that subject is a person, the reader addressed in an imperative, or a named part of the system doing what such a thing does. An abstraction as subject is fine where the verb is not an agent's, because nothing is then attributed to it that it cannot do. A passive construction with no subject to speak of is active-voice's business rather than this rule's, however plainly it hides its actor."
 source: hardikpandya/stop-slop SKILL.md #3
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
