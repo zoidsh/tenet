@@ -17,14 +17,25 @@ const marker = "# tenetlint hook"
 // SkipEnv lets someone commit without a key, or without the lint, at all.
 const SkipEnv = "TENETLINT_SKIP"
 
+// hooks are the git hooks tenetlint installs. args are shell words, not
+// arguments to quote: "$1" is the message file git passes a commit-msg hook,
+// and quoting it here would make it a literal.
+var hooks = []struct {
+	name string
+	args string
+}{
+	{name: "pre-commit"},
+	{name: "commit-msg", args: ` --commit-msg "$1"`},
+}
+
 // hookScript names the binary by its absolute path, because a hook runs with
 // whatever PATH the committing program happens to have, which for a GUI git
 // client is rarely the shell's.
-func hookScript(binary string) string {
+func hookScript(binary, args string) string {
 	return "#!/bin/sh\n" +
 		marker + "\n" +
 		"[ -n \"$" + SkipEnv + "\" ] && exit 0\n" +
-		"exec " + shellQuote(binary) + "\n"
+		"exec " + shellQuote(binary) + args + "\n"
 }
 
 func shellQuote(s string) string {
@@ -34,7 +45,7 @@ func shellQuote(s string) string {
 func newHookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "hook",
-		Short: "Manage the pre-commit hook",
+		Short: "Manage the pre-commit and commit-msg hooks",
 		Args:  cobra.NoArgs,
 		RunE:  func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
 	}
@@ -42,80 +53,101 @@ func newHookCmd() *cobra.Command {
 	return cmd
 }
 
+// plan is one hook about to be written, with whatever is at its path now.
+type plan struct {
+	name     string
+	path     string
+	script   string
+	existing []byte
+}
+
 func newHookInstallCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Write a pre-commit hook that runs tenetlint",
+		Short: "Write the pre-commit and commit-msg hooks that run tenetlint",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := hookPath(cmd.Context())
+			dir, err := hooksDir(cmd.Context())
 			if err != nil {
-				return fail(err)
-			}
-			existing, err := os.ReadFile(path)
-			switch {
-			case err == nil && !strings.Contains(string(existing), marker) && !force:
-				return fail(fmt.Errorf("%s already exists and was not written by tenetlint; pass --force to replace it", path))
-			case err != nil && !os.IsNotExist(err):
 				return fail(err)
 			}
 			binary, err := os.Executable()
 			if err != nil {
 				return fail(err)
 			}
-			if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			// Every hook is read before any is written, so that a refusal over
+			// one of them does not leave half of a pair installed.
+			var plans []plan
+			for _, h := range hooks {
+				p := plan{name: h.name, path: filepath.Join(dir, h.name), script: hookScript(binary, h.args)}
+				existing, err := os.ReadFile(p.path)
+				switch {
+				case err == nil && !strings.Contains(string(existing), marker) && !force:
+					return fail(fmt.Errorf("%s already exists and was not written by tenetlint; pass --force to replace it", p.path))
+				case err != nil && !os.IsNotExist(err):
+					return fail(err)
+				}
+				p.existing = existing
+				plans = append(plans, p)
+			}
+			if err := os.MkdirAll(dir, 0o750); err != nil {
 				return fail(err)
 			}
-			if err := os.WriteFile(path, []byte(hookScript(binary)), 0o700); err != nil {
-				return fail(err)
+			for _, p := range plans {
+				if err := os.WriteFile(p.path, []byte(p.script), 0o700); err != nil {
+					return fail(err)
+				}
+				verb := "installed"
+				if p.existing != nil {
+					verb = "replaced"
+				}
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s the %s hook at %s\n", verb, p.name, p.path)
 			}
-			verb := "installed"
-			if existing != nil {
-				verb = "replaced"
-			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s the pre-commit hook at %s\n", verb, path)
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&force, "force", false, "replace a pre-commit hook tenetlint did not write")
+	cmd.Flags().BoolVar(&force, "force", false, "replace a hook tenetlint did not write")
 	return cmd
 }
 
 func newHookUninstallCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "uninstall",
-		Short: "Remove the tenetlint pre-commit hook",
+		Short: "Remove the tenetlint pre-commit and commit-msg hooks",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := hookPath(cmd.Context())
+			dir, err := hooksDir(cmd.Context())
 			if err != nil {
 				return fail(err)
 			}
 			out := cmd.OutOrStdout()
-			existing, err := os.ReadFile(path)
-			if os.IsNotExist(err) {
-				_, _ = fmt.Fprintf(out, "no pre-commit hook at %s\n", path)
-				return nil
+			for _, h := range hooks {
+				path := filepath.Join(dir, h.name)
+				existing, err := os.ReadFile(path)
+				if os.IsNotExist(err) {
+					_, _ = fmt.Fprintf(out, "no %s hook at %s\n", h.name, path)
+					continue
+				}
+				if err != nil {
+					return fail(err)
+				}
+				if !strings.Contains(string(existing), marker) {
+					_, _ = fmt.Fprintf(out, "left %s alone, tenetlint did not write it\n", path)
+					continue
+				}
+				if err := os.Remove(path); err != nil {
+					return fail(err)
+				}
+				_, _ = fmt.Fprintf(out, "removed the %s hook at %s\n", h.name, path)
 			}
-			if err != nil {
-				return fail(err)
-			}
-			if !strings.Contains(string(existing), marker) {
-				_, _ = fmt.Fprintf(out, "left %s alone, tenetlint did not write it\n", path)
-				return nil
-			}
-			if err := os.Remove(path); err != nil {
-				return fail(err)
-			}
-			_, _ = fmt.Fprintf(out, "removed the pre-commit hook at %s\n", path)
 			return nil
 		},
 	}
 }
 
-// hookPath asks git where hooks live, which honours core.hooksPath.
-func hookPath(ctx context.Context) (string, error) {
+// hooksDir asks git where hooks live, which honours core.hooksPath.
+func hooksDir(ctx context.Context) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -125,5 +157,5 @@ func hookPath(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("not inside a git repository")
 	}
-	return filepath.Join(strings.TrimSpace(string(out)), "pre-commit"), nil
+	return strings.TrimSpace(string(out)), nil
 }

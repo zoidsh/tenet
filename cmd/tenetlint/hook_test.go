@@ -81,6 +81,96 @@ func TestHookInstallAndUninstall(t *testing.T) {
 	}
 }
 
+func TestHookInstallsBothHooks(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	t.Chdir(dir)
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if code, _, errOut := runCmd(t, "hook", "install"); code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	paths := map[string]string{}
+	for _, name := range []string{"pre-commit", "commit-msg"} {
+		path := filepath.Join(dir, ".git", "hooks", name)
+		paths[name] = path
+		script, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for _, want := range []string{marker, SkipEnv, binary} {
+			if !strings.Contains(string(script), want) {
+				t.Errorf("the %s hook does not mention %s: %q", name, want, script)
+			}
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode()&0o100 == 0 {
+			t.Errorf("the %s hook is not executable: %s", name, info.Mode())
+		}
+	}
+	script, err := os.ReadFile(paths["commit-msg"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), `--commit-msg "$1"`) {
+		t.Errorf("the commit-msg hook does not lint the message git hands it: %q", script)
+	}
+
+	if code, _, errOut := runCmd(t, "hook", "uninstall"); code != 0 {
+		t.Fatalf("uninstall exited %d: %s", code, errOut)
+	}
+	for name, path := range paths {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("the %s hook survived: %v", name, err)
+		}
+	}
+}
+
+// A commit-msg hook somebody else wrote is refused on its own terms, and the
+// pre-commit hook is not written either: half a pair is worse than none.
+func TestHookRefusesAForeignCommitMsgHook(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	t.Chdir(dir)
+	foreign := "#!/bin/sh\necho mine\n"
+	if err := os.WriteFile(filepath.Join(dir, ".git", "hooks", "commit-msg"), []byte(foreign), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	code, _, errOut := runCmd(t, "hook", "install")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(errOut, "--force") || !strings.Contains(errOut, "commit-msg") {
+		t.Errorf("stderr is %q", errOut)
+	}
+	if kept, _ := os.ReadFile(filepath.Join(dir, ".git", "hooks", "commit-msg")); string(kept) != foreign {
+		t.Errorf("the foreign hook was touched: %q", kept)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git", "hooks", "pre-commit")); !os.IsNotExist(err) {
+		t.Errorf("the pre-commit hook was installed anyway: %v", err)
+	}
+
+	if code, _, errOut = runCmd(t, "hook", "install", "--force"); code != 0 {
+		t.Fatalf("forced install exited %d: %s", code, errOut)
+	}
+	for _, name := range []string{"pre-commit", "commit-msg"} {
+		script, err := os.ReadFile(filepath.Join(dir, ".git", "hooks", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(script), marker) {
+			t.Errorf("the %s hook is %q", name, script)
+		}
+	}
+}
+
 func TestHookRefusesAForeignHook(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
