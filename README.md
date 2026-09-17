@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/zoidsh/tenet/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenet/actions/workflows/ci.yml)
 
-*Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.*
+*Pre-release: the tenet format, the flags and the output are not stable, and any release can change them, so pin the version you install with `TENET_VERSION`.*
 
 tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each rule once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
 
@@ -59,7 +59,7 @@ From the root of your repository:
 
    Type the key at the prompt; it is kept in `~/.config/tenet/credentials`.
 
-2. Draft a `tenet.yml` from the instruction files your agents already read.
+2. Draft a `tenet.yml` from the instruction files your agents already read, or turn on a preset from Built-in rules below.
 
    ```sh
    tenet init
@@ -110,6 +110,49 @@ CLAUDE.md
 12 candidates, 3 tenets, nothing written (--dry-run) · 1 calls, 0 cached · $0.0002 · 0.7s
 ```
 
+## Built-in rules
+
+Twenty-five rules ship inside the binary, each with the criteria that say what a violation looks like and a labelled corpus measured by `tenet check --builtin --no-cache --runs 3`. A preset is a named list of them, and one line of `tenet.yml` turns the list on.
+
+```console
+$ tenet presets
+agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
+  comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified, no-fallback
+
+pr  The title and description a pull request arrives with when only the diff was thought about.
+  subject-says-what-changed, body-says-why, body-states-door, body-few-visuals
+
+unslop-prose  The prose an LLM writes into a README when nobody rewrites the draft.
+  project-specific, no-generic-conclusion, no-metaphor-noun, no-false-contrast
+```
+
+`agent-hygiene`, the habits a coding agent slips into when nobody reads the diff:
+
+- `comment-why`, a comment says why rather than what the code does
+- `no-mocking`, tests use the real dependency
+- `no-transcript-comment`, no comment about the request that prompted the change
+- `no-placeholder-phrase`, nothing ships marked temporary or simplified
+- `assertion-justified`, a cast names the invariant that makes it safe
+- `no-fallback`, an actionable error rather than a silent degradation path
+
+`unslop-prose`, the prose an LLM writes into a README when nobody rewrites the draft:
+
+- `project-specific`, a claim names the mechanism or a number
+- `no-generic-conclusion`, no "the future looks bright" ending
+- `no-metaphor-noun`, the plain word rather than substrate or flywheel
+- `no-false-contrast`, no "not just X, but Y"
+
+`pr`, the title and description a pull request arrives with when only the diff was thought about:
+
+- `subject-says-what-changed`, the title says what is different, not which files were touched
+- `body-says-why`, the description gives a reason the diff does not show
+- `body-states-door`, it says how far the change can be walked back
+- `body-few-visuals`, one or two visuals, each beside the text it supports
+
+Eleven of the twenty-five are standalone. They ship in the binary, and `tenet rules` lists every rule with its tags and the preset that includes it. They are in no preset because their corpus does not read sharp at the 0.8 cutoff. The comment at the top of each preset file says what each one is short of, example by example, so you can decide whether it is short of anything you care about. `rules: [no-defensive-nil]` turns one on.
+
+`tenet init` names agent-hygiene when it finds no instruction file to read, and Configuration below says how presets, rules and your own tenets compose.
+
 ## Pass or fail
 
 Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
@@ -154,15 +197,7 @@ In Markdown, YAML and other prose and data files a directive counts at the start
 
 A rule ships in the binary; a tenet is one you write in `tenet.yml`; both run the same way, and a tenet that carries a rule's id replaces it.
 
-A `tenet.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets, and a rule in none is named under `rules:`.
-
-```
-agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
-  comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase, assertion-justified, no-fallback
-
-unslop-prose  The prose an LLM writes into a README when nobody rewrites the draft.
-  project-specific, no-generic-conclusion, no-metaphor-noun, no-false-contrast
-```
+A `tenet.yml` composes what will run out of the rules that ship inside the binary, listed under Built-in rules above, and the ones you write yourself. `tenet rules comment-why` prints one built-in rule in full, criteria and all, and a rule may sit in several presets.
 
 ```yaml
 version: 1
