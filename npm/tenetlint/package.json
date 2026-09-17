@@ -9,7 +9,8 @@
   },
   "homepage": "https://github.com/zoidsh/tenetlint",
   "bin": {
-    "tenetlint": "bin/tenetlint"
+    "tenet": "bin/tenet",
+    "tenetlint": "bin/tenet"
   },
   "files": [
     "bin"

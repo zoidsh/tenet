@@ -4,9 +4,9 @@
 const { spawnSync } = require("child_process");
 const os = require("os");
 
-// The published name, in one place: the scope of the platform packages, the
-// binary inside them, the override variable and what an error calls itself.
-const NAME = "tenetlint";
+// The published names, in one place: BIN is the command and the file the
+// platform packages carry, SCOPE is where those packages live.
+const BIN = "tenet";
 const SCOPE = "@tenetlint";
 const OVERRIDE = "TENETLINT_BINARY";
 
@@ -24,15 +24,15 @@ function binaryPath() {
     return process.env[OVERRIDE];
   }
   if (!PLATFORMS.has(platform)) {
-    console.error(`${NAME}: there is no ${NAME} build for ${platform}`);
+    console.error(`${BIN}: there is no ${BIN} build for ${platform}`);
     process.exit(1);
   }
   const pkg = `${SCOPE}/${platform}`;
   try {
-    return require.resolve(`${pkg}/${NAME}`);
+    return require.resolve(`${pkg}/${BIN}`);
   } catch {
     console.error(
-      `${NAME}: no binary installed for ${platform}; install ${pkg} or set ${OVERRIDE}`
+      `${BIN}: no binary installed for ${platform}; install ${pkg} or set ${OVERRIDE}`
     );
     process.exit(1);
   }
@@ -43,7 +43,7 @@ const result = spawnSync(binaryPath(), process.argv.slice(2), {
 });
 
 if (result.error) {
-  console.error(`${NAME}: ${result.error.message}`);
+  console.error(`${BIN}: ${result.error.message}`);
   process.exit(1);
 }
 

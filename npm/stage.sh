@@ -2,9 +2,10 @@
 # Usage: npm/stage.sh <dist-dir> <version>
 set -eu
 
-# The published name, in one place: the entry package, the scope of the four
-# platform packages and the binary inside them all carry it.
+# The published names, in one place: NAME is the entry package and the scope of
+# the four platform packages, BIN is the command the platform packages carry.
 NAME=tenetlint
+BIN=tenet
 SCOPE=@tenetlint
 REPO=zoidsh/tenetlint
 
@@ -32,7 +33,7 @@ platform_manifest() {
 {
   "name": "$SCOPE/$platform",
   "version": "$version",
-  "description": "The $NAME binary for $os_name on $cpu",
+  "description": "The $BIN binary for $os_name on $cpu",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -46,7 +47,7 @@ platform_manifest() {
     "$cpu"
   ],
   "files": [
-    "$NAME"
+    "$BIN"
   ],
   "engines": {
     "node": ">=18"
@@ -81,14 +82,14 @@ for platform in $PLATFORMS; do
 	# goreleaser suffixes the build directory with the microarchitecture level
 	# it targeted (_v1, _v8.0), which is not part of anything we name.
 	built=$(ls -d "$dist/${NAME}_${os}_${goarch}"* 2>/dev/null | head -n 1)
-	if [ -z "$built" ] || [ ! -f "$built/$NAME" ]; then
+	if [ -z "$built" ] || [ ! -f "$built/$BIN" ]; then
 		echo "stage.sh: no binary for $platform under $dist" >&2
 		exit 1
 	fi
 
 	mkdir -p "$npm_dir/platforms/$platform"
 	platform_manifest "$platform"
-	cp "$built/$NAME" "$npm_dir/platforms/$platform/$NAME"
-	chmod 755 "$npm_dir/platforms/$platform/$NAME"
+	cp "$built/$BIN" "$npm_dir/platforms/$platform/$BIN"
+	chmod 755 "$npm_dir/platforms/$platform/$BIN"
 	echo "staged $SCOPE/$platform $version from $built"
 done

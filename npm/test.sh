@@ -4,6 +4,8 @@
 set -eu
 
 NAME=tenetlint
+BIN=tenet
+ALIAS=tenetlint
 PLATFORMS="darwin-arm64 darwin-x64 linux-arm64 linux-x64"
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -36,7 +38,7 @@ trap 'rm -rf "$tmp"' EXIT
 cp -R "$repo/npm" "$tmp/npm"
 sh "$tmp/npm/stage.sh" "$repo/dist" "$version"
 
-host_binary="$tmp/npm/platforms/$host_os-$host_arch/$NAME"
+host_binary="$tmp/npm/platforms/$host_os-$host_arch/$BIN"
 
 for platform in $PLATFORMS; do
 	(cd "$tmp" && npm pack "$tmp/npm/platforms/$platform" >/dev/null 2>&1)
@@ -50,25 +52,26 @@ npm install --prefix "$tmp" --omit=optional --no-audit --no-fund \
 	"$tmp/$NAME-$version.tgz" \
 	"$tmp/$NAME-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
 
-shim="$tmp/node_modules/.bin/$NAME"
-
-out=$("$shim" version)
 direct=$("$host_binary" version)
-echo "$NAME version -> $out"
 
-if [ "$out" != "$direct" ]; then
-	echo "npm/test.sh: shim printed '$out', the binary itself '$direct'" >&2
-	exit 1
-fi
+# Both names are bins of the entry package, and both have to reach the binary.
+for command in "$BIN" "$ALIAS"; do
+	shim="$tmp/node_modules/.bin/$command"
+	out=$("$shim" version)
+	echo "$command version -> $out"
+	if [ "$out" != "$direct" ]; then
+		echo "npm/test.sh: $command printed '$out', the binary itself '$direct'" >&2
+		exit 1
+	fi
+	if ! "$shim" --help >/dev/null; then
+		echo "npm/test.sh: --help failed through $command" >&2
+		exit 1
+	fi
+done
 
-override_out=$(TENETLINT_BINARY="$host_binary" "$shim" version)
-if [ "$override_out" != "$out" ]; then
-	echo "npm/test.sh: TENETLINT_BINARY gave '$override_out', not '$out'" >&2
-	exit 1
-fi
-
-if ! "$shim" --help >/dev/null; then
-	echo "npm/test.sh: --help failed through the shim" >&2
+override_out=$(TENETLINT_BINARY="$host_binary" "$tmp/node_modules/.bin/$BIN" version)
+if [ "$override_out" != "$direct" ]; then
+	echo "npm/test.sh: TENETLINT_BINARY gave '$override_out', not '$direct'" >&2
 	exit 1
 fi
 
