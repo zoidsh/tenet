@@ -355,3 +355,41 @@ func TestLintUnknownBaseRef(t *testing.T) {
 		t.Errorf("stderr is %q", got)
 	}
 }
+
+// Only a run that was about to commit tells anyone to commit again.
+func TestNextLineFitsTheRun(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"staged", []string{"--no-cache", "--format", "json"}, report.NextStaged},
+		{"paths", []string{"--no-cache", "--format", "json", "inc.go"}, report.Next},
+		{"base", []string{"--no-cache", "--format", "json", "--base", "main"}, report.Next},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			git(t, dir, "init", "-q", "-b", "main")
+			writeFile(t, dir, "tenets.yml", testConfig)
+			git(t, dir, "add", "-A")
+			git(t, dir, "commit", "-qm", "config")
+			writeFile(t, dir, "inc.go", staged)
+			git(t, dir, "add", "-A")
+			t.Chdir(dir)
+			t.Setenv(jev.APIKeyEnv, "test-key")
+			t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
+
+			code, stdout, stderr := runCmd(t, c.args...)
+			if code != 1 {
+				t.Fatalf("exit %d, want 1: %s%s", code, stdout, stderr)
+			}
+			var got jsonReport
+			if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+				t.Fatalf("%v in %s", err, stdout)
+			}
+			if got.Next != c.want {
+				t.Errorf("next is %q, want %q", got.Next, c.want)
+			}
+		})
+	}
+}

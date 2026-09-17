@@ -125,7 +125,7 @@ const wantJSON = `{
       "message": "No silent fallbacks."
     }
   ],
-  "next": "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again",
+  "next": "fix the lines above or mark one with a tenet:ignore <id> directive",
   "stats": {
     "baselined": 0,
     "files": 2,

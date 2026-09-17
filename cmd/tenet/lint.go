@@ -215,8 +215,11 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		Skipped:       set.Skipped,
 		Quiet:         o.quiet,
 	}
-	if o.commitMsg != "" {
+	switch {
+	case o.commitMsg != "":
 		r.Next = report.NextCommitMsg
+	case len(paths) == 0 && o.base == "":
+		r.Next = report.NextStaged
 	}
 
 	relocate(&r, set.Root, dir)
