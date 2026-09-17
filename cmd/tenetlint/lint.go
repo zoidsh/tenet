@@ -43,18 +43,20 @@ func missingKeyError() error {
 }
 
 type lintOptions struct {
-	base    string
-	config  string
-	format  string
-	model   string
-	noCache bool
-	verbose bool
-	quiet   bool
+	base      string
+	commitMsg string
+	config    string
+	format    string
+	model     string
+	noCache   bool
+	verbose   bool
+	quiet     bool
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
+	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
@@ -63,7 +65,15 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 }
 
-func (o *lintOptions) validate(out io.Writer) error {
+func (o *lintOptions) validate(out io.Writer, paths []string) error {
+	if o.commitMsg != "" {
+		switch {
+		case len(paths) > 0:
+			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be given paths as well")
+		case o.base != "":
+			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be combined with --base")
+		}
+	}
 	if o.format == "" {
 		o.format = report.DefaultFormat(out)
 	}
@@ -76,7 +86,7 @@ func (o *lintOptions) validate(out io.Writer) error {
 func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	ctx := cmd.Context()
 	out, errOut := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	if err := o.validate(out); err != nil {
+	if err := o.validate(out, paths); err != nil {
 		return fail(err)
 	}
 
@@ -108,14 +118,22 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	for _, t := range cfg.Tenets {
 		ids = append(ids, t.ID)
 	}
-	set, err := source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, Tenets: ids})
-	if err != nil {
-		return fail(err)
+	// A repository whose tenets say nothing about the commit message must not
+	// pay for a call on every commit, so the message is not even read.
+	set := &source.Set{Root: dir}
+	if o.commitMsg == "" || applies(cfg, source.CommitMsgPath) {
+		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, Tenets: ids})
+		if err != nil {
+			return fail(err)
+		}
 	}
 	r := report.Report{
 		Stats:   judge.Stats{Files: len(set.Files)},
 		Skipped: set.Skipped,
 		Quiet:   o.quiet,
+	}
+	if o.commitMsg != "" {
+		r.Next = report.NextCommitMsg
 	}
 	var near []judge.NearMiss
 	windows := set.Windows()
@@ -145,6 +163,15 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return &exitError{code: code}
 	}
 	return nil
+}
+
+func applies(cfg *tenets.Config, path string) bool {
+	for _, t := range cfg.Tenets {
+		if t.Applies(path) {
+			return true
+		}
+	}
+	return false
 }
 
 // relocate rewrites the repository-relative paths the tenets are matched

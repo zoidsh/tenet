@@ -34,6 +34,11 @@ const FormatEnv = "TENETLINT_FORMAT"
 // directive that silences one, so that the way out is on the screen.
 const Next = "fix the lines above or mark one with a tenet\x3aignore <id> directive, then commit again"
 
+// NextCommitMsg is what a user does about a finding in a commit message,
+// which git has already taken out of the editor by the time a commit-msg hook
+// prints this.
+const NextCommitMsg = "reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again"
+
 // DefaultFormat is text for a person at a terminal and JSON for everything
 // else, because what reads a pipe is a script or an agent.
 func DefaultFormat(w io.Writer) string {
@@ -69,6 +74,16 @@ type Report struct {
 
 	// Quiet drops the summary line, leaving only the findings themselves.
 	Quiet bool
+
+	// Next is what to do about the findings, Next above when it is empty.
+	Next string
+}
+
+func (r Report) next() string {
+	if r.Next != "" {
+		return r.Next
+	}
+	return Next
 }
 
 // ExitCode is 1 when anything was found. Every finding blocks: a tenet that
@@ -122,7 +137,7 @@ func (r Report) Text(w io.Writer, color bool) error {
 		}
 		b.WriteString(p.paint(dim, r.summary()) + "\n")
 		if len(r.Findings) > 0 {
-			b.WriteString(Next + "\n")
+			b.WriteString(r.next() + "\n")
 		}
 	}
 	_, err := io.WriteString(w, b.String())
@@ -193,7 +208,7 @@ func (r Report) JSON(w io.Writer) error {
 		Skipped: r.Skipped,
 	}
 	if len(out.Findings) > 0 {
-		out.Next = Next
+		out.Next = r.next()
 	} else {
 		out.Findings = []judge.Finding{}
 	}
