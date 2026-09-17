@@ -9,7 +9,11 @@ inputs:
     description: The tenetlint release to run, or latest
     default: latest
   base:
-    description: The commit to lint the branch against
+    description: >
+      The commit to lint the branch against. The default covers a pull request
+      and a push to an existing branch; the first push to a new branch has a
+      github.event.before of all zeroes, which is no commit, so set this
+      yourself on a workflow that has to cover one.
     default: ${{ github.event.pull_request.base.sha || github.event.before }}
   args:
     description: Extra flags passed to tenetlint
@@ -24,9 +28,7 @@ runs:
     - name: Install tenetlint
       shell: bash
       env:
-        # install.sh reads an empty TENETLINT_VERSION as "resolve the latest
-        # release", which is what the input's default means.
-        TENETLINT_VERSION: ${{ inputs.version == 'latest' && '' || inputs.version }}
+        TENETLINT_VERSION: ${{ inputs.version }}
         TENETLINT_INSTALL_DIR: ${{ runner.temp }}/tenetlint
       run: |
         sh "${{ github.action_path }}/install.sh"
@@ -36,4 +38,9 @@ runs:
       shell: bash
       env:
         TYPESAFE_API_KEY: ${{ inputs.api-key }}
-      run: tenetlint --base "${{ inputs.base }}" --format json ${{ inputs.args }}
+        TENETLINT_BASE: ${{ inputs.base }}
+        TENETLINT_ARGS: ${{ inputs.args }}
+      # The inputs arrive as environment variables rather than as expansions in
+      # the script, so that what a caller writes cannot become shell syntax.
+      # $TENETLINT_ARGS is deliberately unquoted: it is a list of flags.
+      run: tenetlint --base "$TENETLINT_BASE" --format json $TENETLINT_ARGS
