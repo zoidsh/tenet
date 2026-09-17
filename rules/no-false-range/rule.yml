@@ -1,7 +1,7 @@
 id: no-false-range
 tenet: "False ranges. 'from X to Y' where X and Y aren't on a meaningful scale. List topics directly."
 criteria:
-  true: "A from-X-to-Y or X-through-Y construction suggests breadth rather than bounding anything. Its two ends are members of an unordered set, picked because they sound far apart: neither is the extreme of any quantity, nothing lies between them to be taken in, and exchanging the ends leaves the sentence saying what it said before. The construction is standing in for such as or for and. Two things that merely happen one after the other are no more a scale, unless the sentence means every step between them and the page has said what those steps are. What the sentence claims may be perfectly true and the rest of it perfectly concrete; the fault is the span, wherever in the sentence it sits."
+  true: "A from-X-to-Y or X-through-Y construction suggests breadth rather than bounding anything. Its two ends are members of an unordered set, picked because they sound far apart: neither is the extreme of any quantity, nothing lies between them to be taken in, and exchanging the ends leaves the sentence saying what it said before. The construction is standing in for such as or for and. What the sentence claims may be perfectly true and the rest of it perfectly concrete; the fault is the span, wherever in the sentence it sits."
   false: "The ends bound a span whose middle exists and could be pointed at: numbers, versions, sizes, counts, codes, dates or times. A list of examples given as such as or including, or items simply joined by and, is not a range at all and is not this rule's business."
 source: cursor/plugins pstack/skills/unslop/SKILL.md #12
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
