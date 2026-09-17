@@ -3,5 +3,6 @@ tenet: "You must never mock anything in tests."
 criteria:
   true: "The test replaces a real dependency with a mock, stub, spy, fake, or patched function, whether from a mocking library or written by hand in the test file as a small type or class that records the calls it is given, returns canned values, or raises a canned error, and the test then asserts on or relies on that substitute."
   false: "The test exercises real implementations, in-memory or temporary real resources such as a temp directory or an in-process server, fixtures, or table-driven inputs, with no substituted dependencies. A deterministic value handed in through a seam production callers use too, such as a clock or a seed the constructor always takes, is a real argument and not a substitution."
+source: vitest-dev/vitest AGENTS.md
 include: ["**/*_test.go"]
 tags: [code, tests]
