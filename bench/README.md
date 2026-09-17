@@ -29,6 +29,6 @@ The numbers a stub run writes are invented. Throw that `results.md` away and reg
 
 - `run.sh` generates `results.md`.
 - `prices.yml` is the only file here that is edited by hand: the input and output prices of the agent models the comparison names, read from the vendors' pricing pages, and their output rate and time to first token, which are third-party medians from Artificial Analysis. Each carries its source and the date it was read. A field that is still null reads `n/a` on its own, so a model with a price and no time to first token is priced and not timed rather than dropped.
-- `pr.txt` and `pr-tenets.yml` are the pull request text the fifth row lints and the config that judges it.
+- `pr.txt` and `pr-tenet.yml` are the pull request text the fifth row lints and the config that judges it.
 - `lang/comment-why.de.yml` and `lang/comment-why.ja.yml` are the translated corpora. They must stay in step with `rules/comment-why`: an example added or relabelled there belongs in both, or the language table compares different corpora.
 - `testdata/stub-tenet` is the stub for a dry run.

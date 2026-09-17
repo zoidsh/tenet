@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/zoidsh/tenet/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenet/actions/workflows/ci.yml)
 
-tenet is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.2 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
+tenet is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenet.yml`, and every commit is judged against it: the staged change measured on this repository took 1.2 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
 
 TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenet took 1.6 s and cost $0.0037. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenet is about 8x faster than the Haiku estimate and about 11x faster than the Sonnet one, dividing each of those times by its 1.6 s. It is cheaper than both, $0.0037 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
 
@@ -80,7 +80,7 @@ From the root of your repository:
 
    The key is typed at a prompt with the echo off and kept in `~/.config/tenet/credentials`, which every repository on the machine then reads. `tenet auth --project` keeps it in `.tenet/credentials` in this repository instead, and adds that file to `.gitignore`. CI saves nothing: `TYPESAFE_API_KEY` in the environment outranks both files. `tenet auth --status` says which one a run is reading, and `tenet auth typesafe` names the provider outright, which is worth doing once there is more than one.
 
-2. Draft a `tenets.yml` from the instruction files your agents already read.
+2. Draft a `tenet.yml` from the instruction files your agents already read.
 
    ```
    tenet init
@@ -106,7 +106,7 @@ From the root of your repository:
 
 `tenet init` splits each instruction file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines.
 
-Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name, and the flag is repeatable. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, `--config path` writes somewhere other than the repository root, and `--format json` gives you every candidate with its probabilities.
+Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name, and the flag is repeatable. `--dry-run` prints the table without writing anything, `--force` replaces a `tenet.yml` that is already there, `--config path` writes somewhere other than the repository root, and `--format json` gives you every candidate with its probabilities.
 
 ```
 CLAUDE.md
@@ -148,7 +148,7 @@ fix the lines above or mark one with a tenet:ignore <id> directive, then commit 
 
 ## Directives
 
-Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it; the first line is the usual place, but it is not a rule. Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. The word after the directive is always read as an id, and the list runs on through the ids a comma joins to it; the first word no comma joined ends the list, so a reason can follow it in the same comment, as in `tenet:ignore no-fallback the vendor API returns 200 on failure`. A directive that names no id exempts every tenet and has nowhere to put a reason, so write that reason in a comment of its own. A directive that names an id your `tenets.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
+Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it; the first line is the usual place, but it is not a rule. Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. The word after the directive is always read as an id, and the list runs on through the ids a comma joins to it; the first word no comma joined ends the list, so a reason can follow it in the same comment, as in `tenet:ignore no-fallback the vendor API returns 200 on failure`. A directive that names no id exempts every tenet and has nowhere to put a reason, so write that reason in a comment of its own. A directive that names an id your `tenet.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
 
 ```go
 x := fallback() // tenet:ignore no-fallback
@@ -163,7 +163,7 @@ In Markdown, YAML and other prose and data files a directive counts at the start
 
 ## Configuration
 
-A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets, and a rule in none is named under `rules:`.
+A `tenet.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets, and a rule in none is named under `rules:`.
 
 ```
 agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
@@ -196,8 +196,8 @@ The order is the order of that file: the presets in the order you list them, the
 An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenet config` prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
 ```
-$ tenet config --config tenets.yml
-tenets.yml
+$ tenet config --config tenet.yml
+tenet.yml
 
 id                     origin         kind  fail  include
 comment-why            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
