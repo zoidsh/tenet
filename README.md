@@ -301,7 +301,7 @@ The comment lines git strips itself, and everything below a `>8` scissors line, 
 
 ## For agents
 
-Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
+Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the three commands that report on a run, `tenet` itself, `check` and `init`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
 
 ```json
 {
