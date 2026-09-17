@@ -50,17 +50,20 @@ override:                       # per-id patches applied last
   no-fallback:
     fail: 0.9
     include: ["**/*.go"]
+    kind: [code]                # code, prose or data; the globs narrow further
 tenets: [...]                   # your own tenets, as before
 ```
 
-The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, cutoff and include globs of every tenet that will run.
+A tenet's `kind` is how it says what it is about. Every file is code, prose or data, read off its name: `.md`, `.rst`, `.txt` and the like, anything under `docs/`, `locales/` or `i18n/`, and a README, CHANGELOG, CONTRIBUTING or LICENSE are prose; `.json`, `.yml`, `.toml`, `.csv` and lock files are data; everything else is code. The model is told which it is looking at, so a document is judged as a document rather than as source code, and a tenet that names a kind is asked only about files of that kind, on top of its include and exclude globs. A tenet that names none is asked about everything its globs match.
+
+The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
 ```
 tenets.yml
 
-id                origin         fail  include
-comment-why       agent-hygiene  0.80  **/*.go
-no-fallback       agent-hygiene  0.80  **/*.go
+id                origin         kind  fail  include
+comment-why       agent-hygiene  code  0.80  **/*.go
+no-fallback       agent-hygiene  code  0.80  **/*.go
 ```
 
 `tenetlint init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
