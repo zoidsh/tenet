@@ -1,4 +1,4 @@
-# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see the Criteria section of the README.
+# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see Configuration in the README.
 version: 1
 presets: [agent-hygiene]
 tenets:

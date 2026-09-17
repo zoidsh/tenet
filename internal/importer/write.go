@@ -18,7 +18,7 @@ const SlugWords = 5
 // Header is the one thing a drafted file says that no tenet says, because a
 // draft without criteria is the half of the format a reader has to be told
 // about.
-const Header = "# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see the Criteria section of the README.\n"
+const Header = "# Criteria under a tenet, a true and a false description of what a violation looks like, sharpen its verdicts; see Configuration in the README.\n"
 
 // DefaultPreset is what a repository that has written nothing down starts
 // from, the same preset this repository judges itself by.
