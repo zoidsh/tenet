@@ -3,6 +3,9 @@
 # tarballs, so the whole npm path is exercised without a release or a registry.
 set -eu
 
+NAME=tenetlint
+PLATFORMS="darwin-arm64 darwin-x64 linux-arm64 linux-x64"
+
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 version=0.0.0-test
 
@@ -33,25 +36,25 @@ trap 'rm -rf "$tmp"' EXIT
 cp -R "$repo/npm" "$tmp/npm"
 sh "$tmp/npm/stage.sh" "$repo/dist" "$version"
 
-host_binary="$tmp/npm/platforms/$host_os-$host_arch/tenetlint"
+host_binary="$tmp/npm/platforms/$host_os-$host_arch/$NAME"
 
-for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
+for platform in $PLATFORMS; do
 	(cd "$tmp" && npm pack "$tmp/npm/platforms/$platform" >/dev/null 2>&1)
 done
-(cd "$tmp" && npm pack "$tmp/npm/tenetlint" >/dev/null 2>&1)
+(cd "$tmp" && npm pack "$tmp/npm/$NAME" >/dev/null 2>&1)
 
 # The three foreign platform packages would fail npm's os/cpu check on this
 # host, so only the host's own tarball is installed beside the entry package;
 # --no-optional keeps npm from reaching for the other three in a registry.
 npm install --prefix "$tmp" --no-optional --no-audit --no-fund \
-	"$tmp/tenetlint-$version.tgz" \
-	"$tmp/tenetlint-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
+	"$tmp/$NAME-$version.tgz" \
+	"$tmp/$NAME-$host_os-$host_arch-$version.tgz" >/dev/null 2>&1
 
-shim="$tmp/node_modules/.bin/tenetlint"
+shim="$tmp/node_modules/.bin/$NAME"
 
 out=$("$shim" version)
 direct=$("$host_binary" version)
-echo "tenetlint version -> $out"
+echo "$NAME version -> $out"
 
 if [ "$out" != "$direct" ]; then
 	echo "npm/test.sh: shim printed '$out', the binary itself '$direct'" >&2

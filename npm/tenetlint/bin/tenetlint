@@ -3,19 +3,26 @@
 
 const { spawnSync } = require("child_process");
 
-const pkg = `@tenetlint/${process.platform}-${
+// The published name, in one place: the scope of the platform packages, the
+// binary inside them, the override variable and what an error calls itself.
+const NAME = "tenetlint";
+const SCOPE = "@tenetlint";
+const OVERRIDE = "TENETLINT_BINARY";
+
+const platform = `${process.platform}-${
   process.arch === "x64" ? "x64" : "arm64"
 }`;
+const pkg = `${SCOPE}/${platform}`;
 
 function binaryPath() {
-  if (process.env.TENETLINT_BINARY) {
-    return process.env.TENETLINT_BINARY;
+  if (process.env[OVERRIDE]) {
+    return process.env[OVERRIDE];
   }
   try {
-    return require.resolve(`${pkg}/tenetlint`);
+    return require.resolve(`${pkg}/${NAME}`);
   } catch {
     console.error(
-      `tenetlint: no binary for ${process.platform}-${process.arch}; install ${pkg} or set TENETLINT_BINARY`
+      `${NAME}: no binary for ${platform}; install ${pkg} or set ${OVERRIDE}`
     );
     process.exit(1);
   }
@@ -26,7 +33,7 @@ const result = spawnSync(binaryPath(), process.argv.slice(2), {
 });
 
 if (result.error) {
-  console.error(`tenetlint: ${result.error.message}`);
+  console.error(`${NAME}: ${result.error.message}`);
   process.exit(1);
 }
 

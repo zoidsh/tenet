@@ -2,11 +2,14 @@
 # curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
 set -eu
 
+# The published name, in one place: the repository, the archive, the binary and
+# what a message calls itself all carry it.
+NAME=tenetlint
 REPO=zoidsh/tenetlint
 INSTALL_DIR=${TENETLINT_INSTALL_DIR:-$HOME/.local/bin}
 
 die() {
-	echo "tenetlint: $1" >&2
+	echo "$NAME: $1" >&2
 	exit 1
 }
 
@@ -40,7 +43,7 @@ latest_version() {
 }
 
 archive_name() {
-	echo "tenetlint_$1_$2_$3.tar.gz"
+	echo "${NAME}_$1_$2_$3.tar.gz"
 }
 
 checksum() {
@@ -102,14 +105,14 @@ main() {
 	got=$(checksum "$tmp/$archive")
 	[ "$want" = "$got" ] || die "checksum mismatch for $archive: expected $want, got $got"
 
-	tar -xzf "$tmp/$archive" -C "$tmp" tenetlint
+	tar -xzf "$tmp/$archive" -C "$tmp" "$NAME"
 	mkdir -p "$INSTALL_DIR"
-	install -m 755 "$tmp/tenetlint" "$INSTALL_DIR/tenetlint" 2>/dev/null || {
-		cp "$tmp/tenetlint" "$INSTALL_DIR/tenetlint"
-		chmod 755 "$INSTALL_DIR/tenetlint"
+	install -m 755 "$tmp/$NAME" "$INSTALL_DIR/$NAME" 2>/dev/null || {
+		cp "$tmp/$NAME" "$INSTALL_DIR/$NAME"
+		chmod 755 "$INSTALL_DIR/$NAME"
 	}
 
-	echo "tenetlint $version installed to $INSTALL_DIR/tenetlint"
+	echo "$NAME $version installed to $INSTALL_DIR/$NAME"
 	if ! on_path "$INSTALL_DIR"; then
 		echo "$INSTALL_DIR is not on your PATH; add it with:"
 		echo "  export PATH=\"$INSTALL_DIR:\$PATH\""
