@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/judge"
 	"github.com/zoidsh/tenetlint/internal/source"
 )
@@ -250,7 +251,7 @@ func (r Report) JSON(w io.Writer) error {
 			Calls:       r.Stats.Calls,
 			CacheHits:   r.Stats.CacheHits,
 			InputTokens: r.Stats.InputTokens,
-			CostUSD:     r.Stats.CostUSD,
+			CostUSD:     jev.RoundCost(r.Stats.CostUSD),
 			DurationMS:  r.Stats.Duration.Milliseconds(),
 		},
 		Skipped: r.Skipped,

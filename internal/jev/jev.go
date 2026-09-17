@@ -2,6 +2,8 @@
 // about a piece of text as calibrated probabilities rather than prose.
 package jev
 
+import "math"
+
 // Kind is the shape of a question and of its matching answer.
 type Kind string
 
@@ -26,4 +28,11 @@ type Usage struct {
 // Cost reports what a request cost in US dollars.
 func Cost(u Usage) float64 {
 	return float64(u.InputTokens) * usdPerInputToken
+}
+
+// RoundCost is a cost as a report states it. A sum of costs carries the
+// float's last bits, and a millionth of a dollar is already finer than any
+// decision made from the number.
+func RoundCost(usd float64) float64 {
+	return math.Round(usd*1e6) / 1e6
 }

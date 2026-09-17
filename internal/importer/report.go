@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/zoidsh/tenetlint/internal/jev"
 )
 
 // SentenceWidth is how much of a candidate the table shows before it is cut,
@@ -113,7 +115,7 @@ func (r Report) JSON(w io.Writer) error {
 			Calls:       r.Stats.Calls,
 			CacheHits:   r.Stats.CacheHits,
 			InputTokens: r.Stats.InputTokens,
-			CostUSD:     r.Stats.CostUSD,
+			CostUSD:     jev.RoundCost(r.Stats.CostUSD),
 			DurationMS:  r.Stats.Duration.Milliseconds(),
 		},
 	}

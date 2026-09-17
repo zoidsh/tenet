@@ -324,7 +324,7 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
     "calls": 2,
     "cache_hits": 0,
     "input_tokens": 2169,
-    "cost_usd": 0.00009109799999999999,
+    "cost_usd": 0.000091,
     "duration_ms": 760
   },
   "skipped": []
