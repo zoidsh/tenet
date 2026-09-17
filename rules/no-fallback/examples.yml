@@ -55,6 +55,86 @@
     	}
     	return Price{}, lastErr
     }
+- label: violation
+  lines: 18
+  code: |
+    func (s *Service) Transfer(ctx context.Context, from, to string, cents int64) error {
+    	if cents <= 0 {
+    		return ErrNonPositiveAmount
+    	}
+    	tx, err := s.db.BeginTx(ctx, nil)
+    	if err != nil {
+    		return fmt.Errorf("begin transfer tx: %w", err)
+    	}
+    	if err := s.ledger.Debit(ctx, tx, from, cents); err != nil {
+    		return fmt.Errorf("debit %s: %w", from, err)
+    	}
+    	if err := s.ledger.Credit(ctx, tx, to, cents); err != nil {
+    		return fmt.Errorf("credit %s: %w", to, err)
+    	}
+    	if err := tx.Commit(); err != nil {
+    		return fmt.Errorf("commit transfer: %w", err)
+    	}
+    	_ = s.audit.Record(ctx, newAuditEntry(from, to, cents, s.clock.Now()))
+    	return nil
+    }
+- label: violation
+  lines: 5
+  lang: python
+  code: |
+    def build_invoice(customer, lines):
+        if not lines:
+            raise ValueError(f"invoice for {customer.id} has no lines")
+        subtotal = sum(line.amount_cents for line in lines)
+        tax_rate = TAX_RATES.get(customer.billing["region"], Decimal("0"))
+        return Invoice(
+            customer_id=customer.id,
+            email=customer.billing["email"],
+            currency=customer.billing["currency"],
+            lines=list(lines),
+            subtotal_cents=subtotal,
+            tax_cents=int(subtotal * tax_rate),
+            total_cents=subtotal + int(subtotal * tax_rate),
+        )
+- label: violation
+  lines: [11, 12]
+  lang: python
+  code: |
+    def publish_release(repo, tag, artifacts, notifier):
+        commit = repo.rev_parse(tag)
+        if repo.has_release(tag):
+            raise ReleaseExistsError(tag)
+        checksums = {}
+        for artifact in artifacts:
+            digest = sha256_file(artifact)
+            checksums[artifact.name] = digest
+            repo.upload_asset(tag, artifact, digest=digest)
+        release = repo.create_release(tag=tag, commit=commit, checksums=checksums)
+        with contextlib.suppress(Exception):
+            notifier.announce(release.url, channel="#releases")
+        repo.set_latest(tag)
+        return release
+- label: violation
+  lines: [14, 16]
+  lang: typescript
+  code: |
+    const DEFAULT_SETTINGS: Settings = {
+      theme: "system",
+      fontSize: 14,
+      autosave: true,
+    };
+
+    export function readSettings(storage: Storage): Settings {
+      const raw = storage.getItem("settings");
+      if (raw === null) {
+        throw new MissingSettingsError();
+      }
+      try {
+        return settingsSchema.parse(JSON.parse(raw));
+      } catch {
+        return DEFAULT_SETTINGS;
+      }
+    }
 - label: ok
   code: |
     func LoadServer(ctx context.Context, path string) (*Server, error) {
@@ -117,4 +197,82 @@
     		opt(c)
     	}
     	return c, nil
+    }
+- label: ok
+  code: |
+    func fetchWithRetry(ctx context.Context, c *http.Client, req *http.Request, attempts int) (*http.Response, error) {
+    	var last error
+    	for i := 0; i < attempts; i++ {
+    		res, err := c.Do(req.Clone(ctx))
+    		if err == nil && res.StatusCode < 500 {
+    			return res, nil
+    		}
+    		if err == nil {
+    			res.Body.Close()
+    			err = fmt.Errorf("upstream status %d", res.StatusCode)
+    		}
+    		last = err
+    		select {
+    		case <-ctx.Done():
+    			return nil, ctx.Err()
+    		case <-time.After(backoff(i)):
+    		}
+    	}
+    	return nil, fmt.Errorf("after %d attempts: %w", attempts, last)
+    }
+- label: ok
+  lang: python
+  code: |
+    def render_event(event):
+        summary = {
+            "id": event["id"],
+            "type": event["type"],
+            "actor": event["actor"]["login"],
+            "labels": event.get("labels", []),
+            "occurred_at": datetime.fromisoformat(event["occurred_at"]),
+        }
+        if summary["type"] not in KNOWN_EVENT_TYPES:
+            raise UnknownEventType(summary["type"])
+        for label in summary["labels"]:
+            if label not in ALLOWED_LABELS:
+                raise UnknownLabel(label)
+        return summary
+- label: ok
+  lang: python
+  code: |
+    @dataclasses.dataclass(frozen=True)
+    class Settings:
+        database_url: str
+        cache_ttl_seconds: int = 300
+        worker_concurrency: int = 4
+        log_level: str = "INFO"
+
+
+    def settings_from_env(env):
+        try:
+            database_url = env["DATABASE_URL"]
+        except KeyError as err:
+            raise ConfigError("DATABASE_URL must be set") from err
+        return Settings(
+            database_url=database_url,
+            cache_ttl_seconds=int(env.get("CACHE_TTL_SECONDS", 300)),
+            worker_concurrency=int(env.get("WORKER_CONCURRENCY", 4)),
+            log_level=env.get("LOG_LEVEL", "INFO"),
+        )
+- label: ok
+  lang: typescript
+  code: |
+    export function resolveLocale(requested: string | undefined, catalog: Catalog): string {
+      if (requested === undefined) {
+        return catalog.defaultLocale;
+      }
+      if (catalog.has(requested)) {
+        return requested;
+      }
+      const base = requested.split("-")[0];
+      if (catalog.has(base)) {
+        return base;
+      }
+      // Falling back to the default locale is a product decision: a missing translation must never block rendering.
+      return catalog.defaultLocale;
     }
