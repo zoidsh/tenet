@@ -26,6 +26,10 @@ func newRootCmd() *cobra.Command {
 			return runLint(cmd, args, opts)
 		},
 	}
+	// The flag and the subcommand print the same one line, because a script
+	// reading either should not have to know which one it asked.
+	root.Version = buildinfo.Version()
+	root.SetVersionTemplate("{{.Version}}\n")
 	addLintFlags(root, opts)
 	root.AddCommand(newVersionCmd(), newInitCmd(), newHookCmd(), newCheckCmd(), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd())
 	return root

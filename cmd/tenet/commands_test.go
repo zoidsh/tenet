@@ -151,6 +151,20 @@ func TestCheckBuiltinRefusesAConfig(t *testing.T) {
 	}
 }
 
+func TestVersionFlagMatchesTheSubcommand(t *testing.T) {
+	code, flagged, stderr := runCmd(t, "--version")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	code, sub, stderr := runCmd(t, "version")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if flagged != sub || strings.TrimSpace(flagged) == "" {
+		t.Errorf("--version printed %q and version printed %q", flagged, sub)
+	}
+}
+
 // Every subcommand answers --help with its own help rather than the root's.
 func TestSubcommandHelpIsItsOwn(t *testing.T) {
 	for _, c := range []struct{ args, want []string }{
