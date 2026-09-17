@@ -9,9 +9,11 @@ Every path tenetlint prints, including the `file` field of `--format json`, is r
 Start with `tenetlint init`, which drafts a `tenets.yml` from the instruction files your agents already read. It splits each file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, and `--format json` gives you every candidate with its probabilities.
 
 ```
+CLAUDE.md
   line  kind       kind p  checkable p  tenet                          sentence
-  19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller functio…
-  7     process    0.98    0.17         -                              Setup: `mise install`. Every `go`, `golangci-lint` an…
+  7     process    0.98    0.17         -                              Setup: `mise install`. Every `go`, `golangci-lint` and `gor…
+  15    process    0.80    0.75         never-print-key-commit         Never print the key or commit it.
+  19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
 ```
 
 Then read what it drafted, delete the rules you did not mean, and run `tenetlint`, which lints your staged changes. `tenetlint --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. A finding at or above `--fail-on`, `warn` by default, exits 1; a broken run exits 2.
