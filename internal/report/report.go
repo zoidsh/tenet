@@ -24,8 +24,9 @@ const (
 
 // Formats a report can be printed in.
 const (
-	FormatText = "text"
-	FormatJSON = "json"
+	FormatText   = "text"
+	FormatJSON   = "json"
+	FormatGitHub = "github"
 )
 
 // FormatEnv names the format whatever the terminal says, for a caller that
@@ -279,10 +280,41 @@ func (r Report) JSON(w io.Writer) error {
 	return encoder.Encode(out)
 }
 
+// GitHub writes the findings as workflow commands, which GitHub reads off a
+// step's output and turns into annotations on the lines they name. Baselined
+// findings are left out: accepting one was the decision not to put it in
+// front of anyone again.
+func (r Report) GitHub(w io.Writer) error {
+	var b strings.Builder
+	for _, f := range r.Findings {
+		fmt.Fprintf(&b, "::error file=%s,line=%d,title=%s::%s\n",
+			escapeProperty(f.File), f.Line, escapeProperty(f.Tenet), escapeData(f.Message))
+	}
+	if !r.Quiet {
+		b.WriteString(r.summary() + "\n")
+	}
+	_, err := io.WriteString(w, b.String())
+	return err
+}
+
+// The escapes a workflow command needs: a raw newline would end the command
+// early, and an unescaped separator inside a property would start another one.
+var (
+	dataEscapes     = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A")
+	propertyEscapes = strings.NewReplacer("%", "%25", "\r", "%0D", "\n", "%0A", ":", "%3A", ",", "%2C")
+)
+
+func escapeData(s string) string { return dataEscapes.Replace(s) }
+
+func escapeProperty(s string) string { return propertyEscapes.Replace(s) }
+
 // Write prints the report in the named format.
 func (r Report) Write(w io.Writer, format string, color bool) error {
-	if format == FormatJSON {
+	switch format {
+	case FormatJSON:
 		return r.JSON(w)
+	case FormatGitHub:
+		return r.GitHub(w)
 	}
 	return r.Text(w, color)
 }

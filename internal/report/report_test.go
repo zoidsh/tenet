@@ -168,6 +168,63 @@ func TestJSONEmptyListsStayLists(t *testing.T) {
 	}
 }
 
+const wantGitHub = `::error file=internal/a.go,line=12,title=comment-why::A comment says why.
+::error file=internal/b.go,line=4,title=no-fallback::No silent fallbacks.
+2 findings · 3 windows, 4 calls, 1 cached · $0.0012 · 0.8s
+`
+
+func TestGitHub(t *testing.T) {
+	var b strings.Builder
+	if err := sample().GitHub(&b); err != nil {
+		t.Fatal(err)
+	}
+	if b.String() != wantGitHub {
+		t.Errorf("got:\n%s\nwant:\n%s", b.String(), wantGitHub)
+	}
+}
+
+func TestGitHubEscapes(t *testing.T) {
+	r := sample()
+	r.Findings = []judge.Finding{{
+		File: "src/a,b:c%d.go", Line: 3, Tenet: "odd:id",
+		Message: "100% of the time,\r\nsay why: not what.",
+	}}
+	var b strings.Builder
+	if err := r.GitHub(&b); err != nil {
+		t.Fatal(err)
+	}
+	want := "::error file=src/a%2Cb%3Ac%25d.go,line=3,title=odd%3Aid::100%25 of the time,%0D%0Asay why: not what.\n"
+	if !strings.HasPrefix(b.String(), want) {
+		t.Errorf("got:\n%s\nwant:\n%s", b.String(), want)
+	}
+}
+
+// A baselined finding fails nothing, so annotating the diff with it would put
+// a line in front of a reviewer that nobody is being asked to act on.
+func TestGitHubLeavesOutBaselinedFindings(t *testing.T) {
+	r := sample()
+	r.Baselined, r.Findings = r.Findings, nil
+	r.ShowBaselined = true
+	var b strings.Builder
+	if err := r.GitHub(&b); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), "::error") {
+		t.Errorf("a baselined finding was annotated:\n%s", b.String())
+	}
+}
+
+func TestGitHubWithoutFindings(t *testing.T) {
+	var b strings.Builder
+	if err := (report.Report{}).GitHub(&b); err != nil {
+		t.Fatal(err)
+	}
+	want := "0 findings · 0 windows, 0 calls, 0 cached · $0.0000 · 0.0s\n"
+	if b.String() != want {
+		t.Errorf("got %q, want %q", b.String(), want)
+	}
+}
+
 func TestExitCode(t *testing.T) {
 	if got := (report.Report{}).ExitCode(); got != report.ExitOK {
 		t.Errorf("a clean run exits %d", got)

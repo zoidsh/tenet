@@ -247,6 +247,61 @@ func TestLintFromASubdirectory(t *testing.T) {
 	}
 }
 
+// An annotation is resolved against the checkout root whatever directory the
+// step ran in, which is the one path a lint prints that is not relative to the
+// terminal.
+func TestLintGitHubFormatFromASubdirectory(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	if err := os.Mkdir(filepath.Join(dir, "pkg"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, dir, filepath.Join("pkg", "inc.go"), staged)
+	git(t, dir, "add", "-A")
+	t.Chdir(filepath.Join(dir, "pkg"))
+	t.Setenv(jev.APIKeyEnv, "test-key")
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"--no-cache", "--format", "github"})
+
+	if code := execute(root); code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
+	}
+	want := "::error file=pkg/inc.go,line=3,title=comment-why::A comment says why.\n"
+	if !strings.HasPrefix(stdout.String(), want) {
+		t.Errorf("stdout is %q, want it to start with %q", stdout.String(), want)
+	}
+	if !strings.Contains(stdout.String(), "1 findings") {
+		t.Errorf("stdout has no summary: %q", stdout.String())
+	}
+}
+
+func TestLintRejectsAnUnknownFormat(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+
+	var stdout, stderr bytes.Buffer
+	root := newRootCmd()
+	root.SetOut(&stdout)
+	root.SetErr(&stderr)
+	root.SetArgs([]string{"--format", "gitlab"})
+
+	if code := execute(root); code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), report.FormatGitHub) {
+		t.Errorf("stderr %q does not name the formats", stderr.String())
+	}
+}
+
 func TestLintRejectsAnUnknownTenetInADirective(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")

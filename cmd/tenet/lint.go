@@ -77,7 +77,7 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	addRunFlags(cmd, o)
 	f := cmd.Flags()
 	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
-	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
+	f.StringVar(&o.format, "format", "", "output format: text, json or github (default text on a terminal, json otherwise)")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" in the repository root")
 	f.BoolVar(&o.noBaseline, "no-baseline", false, "report every finding, whatever the baseline accepts")
@@ -110,8 +110,11 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 	if o.format == "" {
 		o.format = report.DefaultFormat(out)
 	}
-	if o.format != report.FormatText && o.format != report.FormatJSON {
-		return fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format)
+	switch o.format {
+	case report.FormatText, report.FormatJSON, report.FormatGitHub:
+	default:
+		return fmt.Errorf("--format must be %s, %s or %s, got %q",
+			report.FormatText, report.FormatJSON, report.FormatGitHub, o.format)
 	}
 	return nil
 }
@@ -236,7 +239,12 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		r.Next = report.NextStaged
 	}
 
-	relocate(&r, set.Root, dir)
+	// GitHub resolves an annotation's path against the checkout root rather
+	// than the directory the step ran in, so that report keeps the paths the
+	// tenets were matched against.
+	if o.format != report.FormatGitHub {
+		relocate(&r, set.Root, dir)
+	}
 	if o.verbose {
 		for _, s := range r.Skipped {
 			_, _ = fmt.Fprintf(errOut, "skipped %s: %s\n", s.File, s.Reason)
