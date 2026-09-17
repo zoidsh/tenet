@@ -448,3 +448,25 @@ func TestBaselinePruneRefusesAnotherMode(t *testing.T) {
 		t.Errorf("stderr is %q", stderr)
 	}
 }
+
+// The baseline is committed and reviewed, so it is written whole and readable
+// to everyone.
+func TestBaselineIsWrittenWholeAndReadable(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+
+	info, err := os.Stat(filepath.Join(dir, baseline.Name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Errorf("mode is %v", info.Mode().Perm())
+	}
+	left, err := filepath.Glob(filepath.Join(dir, baseline.Name+".*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("temporary files left behind: %v", left)
+	}
+}

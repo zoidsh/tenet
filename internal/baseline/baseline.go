@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -157,7 +158,30 @@ func Save(path string, scope Scope, entries []Entry, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0o600)
+	return replace(path, append(data, '\n'))
+}
+
+// replace writes the file in one step, through a temporary file beside it, so
+// that an interrupted run leaves the baseline a repository is committing as it
+// was rather than half written. It is a file to read and review, so it is
+// readable to everyone, as the config it sits next to is.
+func replace(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 // Split separates the findings a run should act on from the ones the baseline
