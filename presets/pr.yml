@@ -1,3 +1,54 @@
+# The title and description a pull request arrives with when the diff was the
+# only thing anybody thought about: a title naming the files that were open,
+# the change written out again in prose, no reason a reader could not have got
+# from the diff, and nothing about what taking it might cost.
+#
+# subject-says-what-changed carries `kind: [commit, pr]`, so it judges a commit
+# subject and a pull request title on the same wording. This preset runs it on
+# pull request text; a config that wants it on commit messages names it under
+# `rules:`. There is no commits preset.
+#
+# Measured by `tenet check --builtin --no-cache --runs 3`, every rule at the
+# 0.8 cutoff, over the corpus in this tree.
+#
+#   subject-says-what-changed  sharp, 1.00, max sd 0.035
+#   body-says-why              sharp, 1.00, max sd 0.010
+#   body-states-door           sharp, 1.00, max sd 0.012
+#   body-few-visuals           sharp, 1.00, max sd 0.032
+#
+# Three rules ship in the binary under the standalone tag and are not listed
+# below; a config that wants one names it under `rules:`. The AUC is 1.00 for
+# all three, so each wording ranks its cases correctly and what is missing is
+# confidence. Each is short of it on one example.
+#
+#   subject-is-a-statement   usable, 0.93. The -ing subject sits between
+#                            0.65 and 0.82 across wordings and runs, so the
+#                            rule reads usable on most runs and sharp on the
+#                            occasional one, which is a verdict the preset
+#                            cannot promise either way. An earlier wording had it at 0.90 by
+#                            naming that subject's own opening word in the
+#                            criteria, which is fitting the rule to its
+#                            corpus rather than writing it, so the number
+#                            went back rather than the wording staying.
+#   body-names-blast-radius  usable, 0.93. A field removal whose only named
+#                            outsider is the team the change is for sits at
+#                            0.75 to 0.77: the model keeps reading the beneficiary as
+#                            the reach named.
+#   body-shows-evidence      usable, 0.93. Both of its one-sided cases, a
+#                            response quoted as it now comes back and a screen
+#                            captured as it now looks, sit at 0.77 to 0.82,
+#                            with one or the other under the cutoff each run.
+#
+# Left out on purpose, because a regex decides them and a model should not be
+# paid to: subject length caps, conventional-commit prefixes, and ticket-id
+# formats. Those belong in a `grep -nE` in a pre-commit hook.
+#
+# Two things the skill this comes from asks for that a lint cannot check.
+# Whether the door and blast-radius claims are true: a description can call a
+# change a two-way door and be wrong, and only the code says otherwise. And
+# whether the evidence ran: a pasted test run and an invented one read the
+# same, so the rule can ask that steps and outcomes are there, never that
+# they happened.
 version: 1
 name: pr
 description: The title and description a pull request arrives with when only the diff was thought about.
@@ -5,3 +56,4 @@ rules:
   - subject-says-what-changed
   - body-says-why
   - body-states-door
+  - body-few-visuals

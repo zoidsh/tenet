@@ -1,0 +1,287 @@
+# Labelled cases for the body-few-visuals tenet, measured by `tenet check`.
+# Each example is a pull request text: the title on the first line, a blank
+# line, then the description.
+- label: violation
+  lines: [7, 10]
+  lang: text
+  code: |
+    Redesign the billing settings page
+
+    The page had grown to four cards with no order to them, and the
+    plan card, which is the one people come for, was the third one
+    down.
+
+    ![the plan card](docs/img/billing-plan.png)
+    ![the payment method card](docs/img/billing-payment.png)
+    ![the invoice history card](docs/img/billing-invoices.png)
+    ![the tax details card](docs/img/billing-tax.png)
+- label: violation
+  lines: [11, 16]
+  lang: text
+  code: |
+    Split the notification service out of the monolith
+
+    Notifications were the noisiest neighbour in the monolith: a slow
+    SMS provider took request threads with it, and the on-call could
+    not restart notifications without restarting checkout.
+
+    The service is its own deployment behind a queue.
+
+    ## Diagrams
+
+    ![the monolith today](docs/img/notif-before.png)
+    ![the service and its queue](docs/img/notif-after.png)
+    ![the deployment topology](docs/img/notif-deploy.png)
+    ![the retry state machine](docs/img/notif-retry.png)
+    ![the database split](docs/img/notif-db.png)
+    ![the rollout sequence](docs/img/notif-rollout.png)
+- label: violation
+  lines: [3, 5]
+  lang: text
+  code: |
+    Add a keyboard shortcut palette
+
+    ![the palette open](docs/img/palette-open.png)
+    ![the palette filtered](docs/img/palette-filter.png)
+    ![the palette empty state](docs/img/palette-empty.png)
+
+    Power users have been asking for a way to reach the actions
+    without the mouse, and the three we hear about most are buried two
+    menus deep.
+
+    The palette opens on Cmd-K and searches the action registry.
+- label: violation
+  lines: [10, 13]
+  lang: text
+  code: |
+    Rework the onboarding checklist
+
+    People were finishing the first two steps and never coming back,
+    and we could not tell from the funnel whether they were stuck or
+    done.
+
+    Each step now reports its own completion and the list shows
+    progress.
+
+    ![step one](docs/img/onboard-1.png)
+    ![step two](docs/img/onboard-2.png)
+    ![step three](docs/img/onboard-3.png)
+    ![the finished list](docs/img/onboard-done.png)
+- label: violation
+  lines: [10, 20]
+  lang: text
+  code: |
+    Introduce a read replica for the reporting queries
+
+    Reporting queries were running against the primary and their locks
+    showed up as write latency on the checkout path twice last month.
+
+    Reports now go to a replica through a separate connection pool.
+
+    ## Architecture
+
+    ![the pools before](docs/img/replica-before.png)
+
+    ```mermaid
+    graph LR
+      app --> primary
+      app --> replica
+    ```
+
+    | query        | primary | replica |
+    | ------------ | ------- | ------- |
+    | daily report | 1200ms  | 1180ms  |
+- label: violation
+  lines: [12, 16]
+  lang: text
+  code: |
+    Give the mobile nav a bottom bar
+
+    The hamburger menu put every destination two taps away, and the
+    two people use most, search and inbox, were the two furthest down
+    it.
+
+    Search, inbox and profile move to a bottom bar under 768px; the
+    rest stay in the menu.
+
+    ## Screenshots
+
+    ![home](docs/img/nav-home.png)
+    ![search](docs/img/nav-search.png)
+    ![inbox](docs/img/nav-inbox.png)
+    ![profile](docs/img/nav-profile.png)
+    ![the menu with what is left](docs/img/nav-menu.png)
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Show a diff view on the document history page
+
+    Readers could open an old revision but not see what had changed
+    between two of them, so they were opening both in tabs and reading
+    across.
+
+    The history page gains a two-up diff.
+
+    ## Screenshots
+
+    ![the history list](docs/img/history-list.png)
+    ![the diff view](docs/img/history-diff.png)
+  note: >-
+    Only two, and the count is within the cap. They are still parked in a
+    gallery at the end, which is the half of the tenet about placement.
+- label: violation
+  lines: [3, 4]
+  lang: text
+  code: |
+    Give the empty inbox something to say
+
+    ![the inbox with no threads](docs/img/inbox-empty.png)
+    ![the inbox after the first thread](docs/img/inbox-first.png)
+
+    The empty inbox drew the same table header as a full one with
+    nothing under it, and support has fielded three tickets from
+    people who thought the page had failed to load.
+
+    It now carries a line saying where threads come from and a link
+    to the connection settings.
+  note: >-
+    Two, which is within the cap. They are stacked above the prose, so the
+    reader meets both before there is any text for either to support.
+- label: ok
+  lang: text
+  code: |
+    Route webhook deliveries through a queue
+
+    A slow customer endpoint held a request thread for its full
+    timeout, and thirty of them at once was enough to starve the pool.
+
+    Deliveries are enqueued and a pool of four workers drains them.
+
+    ```mermaid
+    graph LR
+      handler --> queue --> workers --> endpoint
+    ```
+
+    The handler returns as soon as the event is enqueued, so a slow
+    endpoint costs a worker and not a request.
+- label: ok
+  lang: text
+  code: |
+    Wrap long file names in the attachment list
+
+    A file name without spaces ran under the download button and made
+    it unclickable.
+
+    ![before, the name under the button](docs/img/attach-before.png)
+
+    The name now wraps and the button holds its own column.
+
+    ![after, the name on three lines](docs/img/attach-after.png)
+- label: ok
+  lang: text
+  code: |
+    Collapse the sidebar under 900px
+
+    At 1000px the sidebar was still taking its full 260px and the
+    tables in the content column were scrolling sideways.
+
+    ![the rail at 880px, tables no longer scrolling](docs/img/rail.png)
+
+    Above 900px nothing changes.
+- label: ok
+  lang: text
+  code: |
+    Return cursors instead of page numbers
+
+    Page numbers reshuffled under insertion, so a client paging
+    through a busy list saw rows twice and missed others.
+
+    The list endpoint takes and returns an opaque cursor:
+
+    ```json
+    { "items": [], "next": "eyJpZCI6MTIzfQ" }
+    ```
+
+    Page numbers are accepted for one more release and answered with
+    a deprecation header.
+- label: ok
+  lang: text
+  code: |
+    Cap the export worker's batch size
+
+    The worker read a whole result set into memory and was OOM killed
+    on the two largest accounts nightly.
+
+    Rows are read in batches of 5000. Peak RSS on the largest export
+    is 180M against 3.1G before, for the same 2.4 million rows.
+  note: >-
+    No visual at all. The tenet caps how many there are and says where they
+    go; it does not ask for one, so a description with none does not fail it.
+- label: ok
+  lang: text
+  code: |
+    Move the plan picker above the fold
+
+    Only a third of people reaching the pricing page scrolled far
+    enough to see the plans at all.
+
+    ![the picker in the first screen](docs/img/pricing-fold.png)
+
+    The comparison table keeps its place below, and the picker links
+    down to it.
+
+    Nothing about the plans themselves changes here; this is the
+    order things appear in.
+- label: ok
+  lang: text
+  code: |
+    Show which teammate holds a record open
+
+    Two people editing the same record were silently overwriting one
+    another, and support has three reports of it this quarter.
+
+    A presence indicator shows who else has the record open:
+
+    ![two avatars in the record header](docs/img/presence.png)
+
+    Presence is best effort over the existing socket, so a dropped
+    connection clears the indicator after fifteen seconds rather than
+    holding a stale one.
+- label: ok
+  lang: text
+  code: |
+    Retry a webhook delivery when the endpoint returns 503
+
+    A customer's endpoint was down for ninety seconds and we dropped
+    every event in the window, because delivery treated a 503 the same
+    as a 400 and gave up.
+
+    Only a 4xx is final now, and a 5xx or a timeout is retried four
+    times with backoff. The dead-letter queue is unchanged.
+  note: >-
+    No visual at all, and none is wanted: the change is a branch in a
+    delivery path with nothing to look at.
+- label: ok
+  lang: text
+  code: |
+    Move the plan comparison behind a tab
+
+    The pricing page put the three plans and the forty-row comparison
+    table on one screen, and the plans were what people came for.
+
+    ![the plans with the comparison tab beside them](docs/img/plans-tab.png)
+
+    The comparison keeps every row it had and opens on the second tab.
+
+    The same tab strip is now on the enterprise page, which had grown
+    its own half-width version of the table:
+
+    ```
+    Plans | Compare | FAQ
+    ```
+
+    Nothing about the plans themselves changes here.
+  note: >-
+    Two visuals of different things, pages apart, each beside the paragraph
+    it belongs to. The cap is on the number, not on how far apart they sit.

@@ -1,0 +1,8 @@
+id: body-few-visuals
+tenet: "Place each visual next to the short text it supports. Use one, occasionally two; never all of them."
+criteria:
+  true: "Count the visuals: the images, the screenshots, the diagrams, the rendered tables and the fenced blocks standing as illustration rather than as a line of evidence. Three or more is the fault on its own, and it is no less the fault when each is captioned or when together they cover every state of the change. Two or fewer is the fault when they are gathered away from the prose instead of placed in it, stacked in a row or collected under a heading of their own, at the top before the reader knows what they are looking at or at the bottom once the text that needed them has gone by. A visual that arrives before any prose has nothing yet to support, and one that arrives after it all has been left behind by the thing it was for; either way the reader carries each one back to whichever paragraph it belonged to, which is the work the tenet asks the writer to do instead."
+  false: "One or two visuals, each sitting against the passage it illustrates, so that the sentence and the thing it points at are read together. None at all is not this fault, since the tenet caps the number rather than asking for one. Two count whether they are a pair showing one thing either side of the change or two unrelated views, and whether they sit close together or pages apart, so long as each is beside the text it supports."
+source: mattpocock/skills pr SKILL.md line 145, the first and third sentences
+kind: [pr]
+tags: [pr, prose]
