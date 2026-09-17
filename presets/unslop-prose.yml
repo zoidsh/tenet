@@ -1,8 +1,11 @@
 # The sentences an LLM writes into a README, a docs page or a changelog when
-# nobody rewrites the draft: praise that names nothing, an opener that clears
-# its throat before the first fact or a closing section that restates the one
-# above it, a hedge stacked on a hedge, a conclusion about the future that
+# nobody rewrites the draft: praise that names nothing, a closing that
 # promises nothing, and a metaphor noun standing where a literal word exists.
+#
+# These rules overlap by design, and one paragraph can draw two findings. A
+# hero sentence that rates the project and calls it the substrate everything
+# builds on answers to two of them, and a roadmap that closes on a flywheel
+# answers to two more. Fix the sentence and both go.
 #
 # Left out on purpose, because a regex decides them and a model should not be
 # paid to: em dashes, emoji, curly quotes, buzzword lists (comprehensive,
@@ -11,36 +14,45 @@
 # sentences. Those belong in a `grep -nE` in a pre-commit hook or in a Vale
 # style, which answer instantly and never cost a call.
 #
-# Six more prose rules ship in the binary and are not listed here, because
-# every rule runs at 0.8 and these do not yet hold every violation in their
-# corpus above it. They carry the `standalone` tag, and a config that wants
-# one names it under `rules:`. What each is waiting on, measured over 14
-# labelled examples with the AUC at 1.00 in every case, so the ranking is
-# right and only the confidence is short:
+# Measured by `tenetlint check --builtin --no-cache --runs 3`, every rule at
+# the 0.8 cutoff, over the corpus in this tree. Accuracy is the share of
+# labelled examples on the right side of 0.8, and the deviation is the largest
+# any one example moved across the three passes.
 #
-#   no-false-range         0.86 accurate at 0.8; one span whose ends are two
-#                          kinds of rule sits at 0.78.
-#   no-connector-colon     0.79; the colons that join two whole clauses score
-#                          in the fifties, and the tenet is a two-word
-#                          fragment that gives the model nothing to hold.
-#   no-false-contrast      0.71; the flat two-sentence denial, as against the
-#                          not-just-X-but-Y form, scores in the sixties.
-#   inline-header-detail   0.64; the tenet is a carve-out rather than a
-#                          prohibition, so a list whose restatement names the
-#                          object of its own verb reads as permitted.
-#   active-voice           0.50; the tenet licenses the passive whenever the
-#                          actor is unknown, and every violation sits one
-#                          sentence from that exception.
-#   concrete-subject       0.93, and the one to promote first; the sentence a
-#                          finding lands on is the barest subjectless one in
-#                          the window rather than the abstraction that earned
-#                          the verdict.
+#   project-specific       sharp, 1.00, max sd 0.026
+#   no-generic-conclusion  sharp, 1.00, max sd 0.021
+#   no-metaphor-noun       sharp, 1.00, max sd 0.021
+#
+# Eight more prose rules ship in the binary under the standalone tag and are
+# not listed below; a config that wants one names it under `rules:`. The AUC
+# is 1.00 for all but two, so the wording ranks the cases correctly and what
+# is missing is confidence.
+#
+#   no-throat-clearing     usable, 0.93. A heading restated as a paragraph
+#                          scores 0.71 and two closings straddle the cutoff.
+#   no-hedging             usable, 0.93. Hedges spread a clause apart rather
+#                          than stacked on one claim score 0.75.
+#   no-false-range         usable, 0.93. A span whose ends are two kinds of
+#                          rule sits at 0.77.
+#   concrete-subject       usable, 0.93, AUC 0.98. Its tenet bans passives
+#                          outright, which lifts every innocent page holding
+#                          one; the ok mean is 0.52.
+#   no-false-contrast      usable, 0.71. The flat two-sentence denial scores
+#                          in the sixties where the not-just-X-but-Y form
+#                          scores well.
+#   no-connector-colon     usable, 0.71. The source licenses a colon before a
+#                          list or an example, and the colons that join two
+#                          whole clauses read as close to that.
+#   inline-header-detail   usable, 0.57. The source licenses the bold lead-in
+#                          that ends in a period, and the model extends the
+#                          licence to lead-ins that restate themselves.
+#   active-voice           usable, 0.50, AUC 0.88. Every violation is one
+#                          sentence from the tenet's own exception, and it is
+#                          the weakest rule in the corpus.
 version: 1
 name: unslop-prose
 description: The prose an LLM writes into a README when nobody rewrites the draft.
 rules:
   - project-specific
-  - no-throat-clearing
-  - no-hedging
   - no-generic-conclusion
   - no-metaphor-noun
