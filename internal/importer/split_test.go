@@ -1,0 +1,78 @@
+package importer_test
+
+import (
+	"os"
+	"strings"
+	"testing"
+
+	"github.com/zoidsh/tenetlint/internal/importer"
+)
+
+func TestSplitFixture(t *testing.T) {
+	data, err := os.ReadFile("testdata/rules.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const comments = "Project rules > Comments"
+	want := []importer.Candidate{
+		{File: "rules.md", Line: 15, Heading: comments, Text: "A comment says only what the code cannot."},
+		{File: "rules.md", Line: 15, Heading: comments, Text: "Never what the code does; a name or a smaller function says that."},
+		{File: "rules.md", Line: 15, Heading: comments, Text: "Call `pkg.Func()` when you need the parsed form."},
+		{File: "rules.md", Line: 17, Heading: comments, Text: "Strip narrating comments from any code you touch."},
+		{File: "rules.md", Line: 18, Heading: comments, Text: "**Do not** leave a commented-out block behind. It costs nothing to delete and git remembers it."},
+		{File: "rules.md", Line: 20, Heading: comments, Text: "A doc comment on an exported identifier states what callers can rely on."},
+		{File: "rules.md", Line: 25, Heading: "Project rules > Setup", Text: "Run the installer before anything else:"},
+	}
+
+	got := importer.Split("rules.md", data)
+	if len(got) != len(want) {
+		t.Fatalf("got %d candidates, want %d:\n%s", len(got), len(want), show(got))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("candidate %d is %#v, want %#v", i, got[i], want[i])
+		}
+	}
+}
+
+func show(candidates []importer.Candidate) string {
+	var b strings.Builder
+	for _, c := range candidates {
+		b.WriteString(c.Heading + " | " + c.Text + "\n")
+	}
+	return b.String()
+}
+
+func TestSplitDropsShortLongAndLinks(t *testing.T) {
+	long := "word " + strings.Repeat("filler ", importer.MaxWords)
+	source := "Too short here.\n\n" + long + "\n\n[the plan](docs/plan.md)\n\n~/projects/tenetlint\n"
+	if got := importer.Split("f.md", []byte(source)); len(got) != 0 {
+		t.Errorf("kept %#v", got)
+	}
+}
+
+func TestSplitBoldWholeItem(t *testing.T) {
+	got := importer.Split("f.md", []byte("- **Never mock anything in tests.**\n"))
+	if len(got) != 1 || got[0].Text != "Never mock anything in tests." {
+		t.Errorf("got %#v", got)
+	}
+}
+
+func TestSplitNumberedItems(t *testing.T) {
+	source := "1. Run the setup step first.\n2) Then run the tests.\n"
+	got := importer.Split("f.md", []byte(source))
+	if len(got) != 2 || got[0].Text != "Run the setup step first." || got[1].Line != 2 {
+		t.Errorf("got %#v", got)
+	}
+}
+
+func TestSplitSentenceEdges(t *testing.T) {
+	source := "Use it e.g. when the cache is cold and nothing else applies. Version 1.13.0 is the default one.\n"
+	got := importer.Split("f.md", []byte(source))
+	if len(got) != 2 {
+		t.Fatalf("got %#v", got)
+	}
+	if got[0].Text != "Use it e.g. when the cache is cold and nothing else applies." {
+		t.Errorf("first sentence is %q", got[0].Text)
+	}
+}
