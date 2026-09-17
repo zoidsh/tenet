@@ -34,6 +34,7 @@ tenets:
           }
       - label: ok
         lang: python
+        note: The tenet takes no position on a constant's name.
         code: |
           # The API rejects a page size above 500.
           PAGE = 500
@@ -58,7 +59,7 @@ func TestParseInlineExamples(t *testing.T) {
 	if got[1].Lines != (tenets.LineRange{First: 1, Last: 3}) {
 		t.Errorf("second example is %#v", got[1])
 	}
-	if got[2].Label != tenets.LabelOK || got[2].Lines.Set() || got[2].Lang != "python" {
+	if got[2].Label != tenets.LabelOK || got[2].Lines.Set() || got[2].Lang != "python" || got[2].Note == "" {
 		t.Errorf("third example is %#v", got[2])
 	}
 	if lines := got[2].CodeLines(); len(lines) != 2 {
@@ -185,8 +186,8 @@ func TestExampleValidationErrors(t *testing.T) {
 		},
 		{
 			"unknown field",
-			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: ok\n        note: hi\n        code: \"y = 1\"\n",
-			"note",
+			"version: 1\ntenets:\n  - id: a\n    tenet: x\n    examples:\n      - label: ok\n        comment: hi\n        code: \"y = 1\"\n",
+			"comment",
 		},
 	}
 	for _, c := range cases {

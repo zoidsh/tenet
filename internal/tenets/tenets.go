@@ -37,11 +37,14 @@ const (
 
 // Example is a labelled snippet that check measures a tenet against. Lines is
 // where within Code a finding should land, left out when the example is not
-// about particular lines.
+// about particular lines. Note is for a label the tenet's sentence does not
+// obviously settle; nothing reads it but a person deciding whether the label
+// is still right.
 type Example struct {
 	Label Label     `yaml:"label"`
 	Lines LineRange `yaml:"lines"`
 	Lang  string    `yaml:"lang"`
+	Note  string    `yaml:"note"`
 	Code  string    `yaml:"code"`
 }
 
