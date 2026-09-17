@@ -143,7 +143,7 @@ comment-why  A comment says why the code exists or why it is written this way, n
 no-fallback  Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
 
 2 findings · 2 windows, 2 calls, 5 cached · $0.0001 · 0.8s
-fix the lines above or mark one with a tenet:ignore <id> directive, then commit again
+fix the lines above, then commit again
 ```
 
 ## Directives
@@ -337,7 +337,7 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
       "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
     }
   ],
-  "next": "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again",
+  "next": "fix the lines above, then commit again",
   "stats": {
     "baselined": 0,
     "files": 1,
@@ -352,7 +352,7 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
 }
 ```
 
-`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenet prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
+`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; it names no directive, because exempting a line is a decision for a person rather than for whatever is reading the report. Every path tenet prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
 
 A run with no key exits 2 saying `no TypeSafe API key: run tenet auth typesafe, or set TYPESAFE_API_KEY`, which is a broken run rather than a clean one; the key is the person's to enter at that prompt, never something for an agent to read, write into a file or put in a commit.
 

@@ -33,9 +33,11 @@ const (
 // pipes the output somewhere and still wants to read it.
 const FormatEnv = "TENET_FORMAT"
 
-// Next is what a user does about the findings above it. It names the
-// directive that silences one, so that the way out is on the screen.
-const Next = "fix the lines above or mark one with a tenet:ignore <id> directive"
+// Next is what a user does about the findings above it. It leaves the ignore
+// directive unnamed, because a directive is a person's decision about a
+// confirmed false positive and an agent reading this line would take it for
+// the way past a finding.
+const Next = "fix the lines above"
 
 // NextStaged is Next for a run that was about to commit what it judged. A
 // lint of paths or of a base ref commits nothing, so it says nothing about

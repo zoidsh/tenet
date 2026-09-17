@@ -32,7 +32,7 @@ A worked example. The report, less its `stats` and `skipped`:
       "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
     }
   ],
-  "next": "fix the lines above or mark one with a tenet:ignore <id> directive, then commit again"
+  "next": "fix the lines above, then commit again"
 }
 ```
 
