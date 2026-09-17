@@ -1,3 +1,7 @@
+// The recording sleeper and the fixed random source are how every retry test
+// below asserts on backoff without waiting out the real delays: the seams are
+// the subject of those tests, not a way around a real dependency.
+// tenet:ignore-file no-mocking
 package jev
 
 import (
