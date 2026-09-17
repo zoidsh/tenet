@@ -18,6 +18,8 @@ import (
 
 	"github.com/zoidsh/tenetlint/internal/baseline"
 	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/judge"
+	"github.com/zoidsh/tenetlint/internal/tenets"
 )
 
 // marked is a file whose one violation is on a line the answer server finds by
@@ -523,5 +525,50 @@ func TestBaselinePruneDropsADeletedFile(t *testing.T) {
 	}
 	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 0 {
 		t.Errorf("findings are %#v", got.Findings)
+	}
+}
+
+func TestLintListsBaselinedFindingsInJSON(t *testing.T) {
+	baselineRepo(t)
+	writeBaseline(t)
+
+	code, stdout, stderr := runCmd(t, "--no-cache", "--format", "json", "--show-baselined", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	var got struct {
+		Findings  []judge.Finding `json:"findings"`
+		Baselined []judge.Finding `json:"baselined"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &got); err != nil {
+		t.Fatalf("%v in %s", err, stdout)
+	}
+	if len(got.Findings) != 0 {
+		t.Errorf("findings are %#v", got.Findings)
+	}
+	if len(got.Baselined) != 1 {
+		t.Fatalf("baselined are %#v", got.Baselined)
+	}
+	want := judge.Finding{
+		File: "inc.go", Line: violationLine, Tenet: "comment-why",
+		Probability: 0.91, Fail: tenets.DefaultFail, Message: "A comment says why.",
+	}
+	if got.Baselined[0] != want {
+		t.Errorf("baselined finding is %#v, want %#v", got.Baselined[0], want)
+	}
+}
+
+// Without the flag there is no array at all, so that a reader can tell an
+// empty one from a run that never looked.
+func TestJSONHoldsNoBaselinedArrayByDefault(t *testing.T) {
+	baselineRepo(t)
+	writeBaseline(t)
+
+	code, stdout, stderr := runCmd(t, "--no-cache", "--format", "json", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, `"baselined": [`) {
+		t.Errorf("stdout holds a baselined array:\n%s", stdout)
 	}
 }

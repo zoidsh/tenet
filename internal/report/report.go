@@ -216,6 +216,10 @@ type jsonReport struct {
 	Next     string          `json:"next"`
 	Stats    jsonStats       `json:"stats"`
 	Skipped  []source.Skip   `json:"skipped"`
+
+	// Baselined is written only when it was asked for, so that a reader can
+	// tell an empty list from a run that never looked.
+	Baselined *[]judge.Finding `json:"baselined,omitempty"`
 }
 
 type jsonStats struct {
@@ -253,6 +257,13 @@ func (r Report) JSON(w io.Writer) error {
 	}
 	if out.Skipped == nil {
 		out.Skipped = []source.Skip{}
+	}
+	if r.ShowBaselined {
+		baselined := r.Baselined
+		if baselined == nil {
+			baselined = []judge.Finding{}
+		}
+		out.Baselined = &baselined
 	}
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
