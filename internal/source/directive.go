@@ -126,24 +126,33 @@ func stripDirectives(path string, lines []string, known map[string]bool) ([]stri
 }
 
 // directiveCounts reports, for a zero-based line and the byte offset a
-// directive was found at, whether that mention is a directive at all.
+// directive was found at, whether that mention is a directive at all. The
+// spans are scanned on the first mention rather than up front, because most
+// files hold none and the scan walks the whole file.
 func directiveCounts(path string, lines []string) func(line, col int) bool {
 	anywhere := func(int, int) bool { return true }
+	var syn commentSyntax
+	prose := false
 	switch Kind(path) {
 	case KindCommit:
 		return anywhere
 	case KindProse, KindData:
-		spans := commentSpans(lines, htmlStyle)
-		return func(line, col int) bool {
-			return linePrefixPattern.MatchString(lines[line][:col]) || inSpans(spans[line], col)
-		}
+		syn, prose = htmlStyle, true
 	default:
-		syn, ok := commentSyntaxes[LanguageForPath(path)]
-		if !ok {
+		known := false
+		if syn, known = commentSyntaxes[LanguageForPath(path)]; !known {
 			return anywhere
 		}
-		spans := commentSpans(lines, syn)
-		return func(line, col int) bool { return inSpans(spans[line], col) }
+	}
+	var spans [][]span
+	return func(line, col int) bool {
+		if spans == nil {
+			spans = commentSpans(lines, syn)
+		}
+		if prose && linePrefixPattern.MatchString(lines[line][:col]) {
+			return true
+		}
+		return inSpans(spans[line], col)
 	}
 }
 
