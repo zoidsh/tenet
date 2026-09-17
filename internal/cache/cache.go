@@ -1,5 +1,9 @@
 // Package cache remembers what the model answered about a window, so that an
 // unchanged window is never paid for twice.
+//
+// tenet:ignore-file no-fallback a miss here is the contract rather than a degraded
+// read: every question the cache holds an answer to can be asked again, and
+// --no-cache asks for exactly that.
 package cache
 
 import (
