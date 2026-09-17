@@ -43,7 +43,7 @@ func (f *fake) Ask(_ context.Context, state string, questions map[string]jev.Que
 		if name == f.drop {
 			continue
 		}
-		a, ok := f.byText[sentenceOf(q.Instructions)]
+		a, ok := f.answerFor(q.Instructions)
 		if !ok {
 			return nil, fmt.Errorf("no answer prepared for %q", q.Instructions)
 		}
@@ -56,10 +56,15 @@ func (f *fake) Ask(_ context.Context, state string, questions map[string]jev.Que
 	return &jev.Response{Model: "jev-1.13.0", Answers: out, Usage: jev.Usage{InputTokens: 50}}, nil
 }
 
-func sentenceOf(instructions string) string {
-	rest := strings.TrimPrefix(instructions, `Sentence: "`)
-	sentence, _, _ := strings.Cut(rest, `" `)
-	return sentence
+// answerFor finds the prepared answer by looking for its sentence inside the
+// instructions, which holds however the sentence is punctuated.
+func (f *fake) answerFor(instructions string) (answers, bool) {
+	for text, a := range f.byText {
+		if strings.Contains(instructions, text) {
+			return a, true
+		}
+	}
+	return answers{}, false
 }
 
 func candidates(texts ...string) []importer.Candidate {
@@ -132,6 +137,20 @@ func names(questions map[string]jev.Question) []string {
 		out = append(out, name)
 	}
 	return out
+}
+
+func TestSortQuotesTheSentenceAsWritten(t *testing.T) {
+	const text = "Say \"no\" to a `fallback\\default` path."
+	asker := &fake{byText: map[string]answers{
+		text: {kind: map[string]float64{importer.KindCodeRule: 0.9}, checkable: 0.8},
+	}}
+	if _, _, err := (&importer.Sorter{Asker: asker}).Sort(context.Background(), candidates(text)); err != nil {
+		t.Fatal(err)
+	}
+	want := `Sentence: "` + text + `" What kind`
+	if got := asker.calls[0].questions["kind:C001"].Instructions; !strings.HasPrefix(got, want) {
+		t.Errorf("instructions are %q, want them to start %q", got, want)
+	}
 }
 
 func TestSortAcceptsAtExactlyTheThreshold(t *testing.T) {

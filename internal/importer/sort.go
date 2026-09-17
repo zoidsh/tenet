@@ -61,13 +61,17 @@ func kindLabels() map[string]any {
 // because the state names every candidate at once and the model is told which
 // one this question is about nowhere else.
 func KindInstructions(text string) string {
-	return fmt.Sprintf("Sentence: %q What kind of instruction is this?", text)
+	return quoted(text) + " What kind of instruction is this?"
 }
 
 // CheckableInstructions asks whether a diff alone settles the rule.
 func CheckableInstructions(text string) string {
-	return fmt.Sprintf("Sentence: %q A reviewer reading only a diff of source files, with no ability to run anything and no knowledge of the rest of the repository, could decide whether a change violates this.", text)
+	return quoted(text) + " A reviewer reading only a diff of source files, with no ability to run anything and no knowledge of the rest of the repository, could decide whether a change violates this."
 }
+
+// quoted puts the sentence in plain quotes rather than Go's quoting, so that
+// the model is shown the backticks and the punctuation the rule file wrote.
+func quoted(text string) string { return `Sentence: "` + text + `"` }
 
 // Asker is the part of the jev client the sort needs, so that tests can answer
 // without the network.
