@@ -17,13 +17,18 @@
 # 0.81 and made it fire on innocent code. A false criterion saying what a
 # selection is dropped the resolver to 0.30.
 #
-# assertion-justified is the one rule here that straddles the cutoff, and it
-# straddles on a single example: its weakest violation, a header parse that
-# scores 0.78 to 0.81 and so decides on its own whether a run reads sharp or
-# usable. It crossed in one of the three runs that covered it. A violation
-# under the cutoff is a rule that misses, which is the milder of the two
-# failures; an acceptable example over it would be a rule firing on innocent
-# code.
+# assertion-justified no longer straddles the cutoff. It used to straddle on
+# a single example, a header parse that scored 0.78 to 0.81 and crossed in one
+# of the three runs that covered it. On 2026-09-17 its true criterion gained a
+# clause for the shape that example has: a guard on the size or the count
+# above the conversion, and a test of fields read through the value after it,
+# settle how much data there is and what it holds, never its type, and a
+# buffer address reinterpreted as a structure pointer or a value routed
+# through an unconstrained intermediate type is a conversion of that kind
+# however carefully the surrounding code measures the data. Two runs of
+# `--runs 3` then both read sharp with 0 examples crossing the cutoff, max sd
+# 0.029 and 0.026, and every violation above 0.90; the acceptable examples did
+# not move, at a mean of 0.14.
 #
 # no-defensive-nil stays out, under the standalone tag, so a config that
 # wants it names it under `rules:`. Naming the TypeScript and Python
