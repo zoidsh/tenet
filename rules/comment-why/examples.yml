@@ -73,6 +73,70 @@
     	}
     	return &Report{Month: month, Lines: lines}, rows.Err()
     }
+- label: violation
+  lines: 5
+  lang: python
+  code: |
+    def normalize_phone(raw, default_region="US"):
+        digits = re.sub(r"\D", "", raw or "")
+        if not digits:
+            raise ValueError("empty phone number")
+        # returns a string
+        if digits.startswith("00"):
+            return "+" + digits[2:]
+        if len(digits) == 10 and default_region == "US":
+            return "+1" + digits
+        if digits.startswith("1") and len(digits) == 11:
+            return "+" + digits
+        return "+" + digits
+- label: violation
+  lines: 7
+  lang: python
+  code: |
+    def build_query(filters, limit=100):
+        clauses = []
+        params = []
+        for field, value in sorted(filters.items()):
+            clauses.append(f"{field} = ?")
+            params.append(value)
+        # Refactored to use a parameter list
+        where = " AND ".join(clauses) if clauses else "1=1"
+        sql = f"SELECT * FROM events WHERE {where} ORDER BY ts DESC LIMIT ?"
+        params.append(limit)
+        return sql, params
+- label: violation
+  lines: 4
+  lang: typescript
+  code: |
+    export async function loadConfig(path: string): Promise<Config> {
+      const raw = await fs.readFile(path, "utf8");
+      const parsed = JSON.parse(raw) as Partial<Config>;
+      // if port is undefined, use 8080
+      const port = parsed.port ?? 8080;
+      const host = parsed.host ?? "0.0.0.0";
+      return {
+        port,
+        host,
+        logLevel: parsed.logLevel ?? "info",
+        features: parsed.features ?? [],
+      };
+    }
+- label: ok
+  note: "A TODO restates nothing: it names work that is missing, which the code cannot say for itself. The tenet is about comments that repeat the code, and takes no position on TODOs, so this one passes."
+  code: |
+    func RenderProfile(w io.Writer, u *User) error {
+    	// TODO: handle nil
+    	tmpl, err := template.New("profile").Parse(profileTemplate)
+    	if err != nil {
+    		return err
+    	}
+    	data := map[string]any{
+    		"Name":  u.DisplayName,
+    		"Email": u.Email,
+    		"Since": u.CreatedAt.Format(time.RFC3339),
+    	}
+    	return tmpl.Execute(w, data)
+    }
 - label: ok
   code: |
     func (c *Client) FetchQuote(ctx context.Context, sym string) (Quote, error) {
@@ -141,4 +205,37 @@
     		return nil, err
     	}
     	return &Frame{Kind: head[0], Body: out}, nil
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export class Uploader {
+      private parts: Part[] = [];
+
+      add(part: Part): void {
+        this.parts.push(part);
+      }
+
+      // Callers must not add parts after finish; the ETag list is frozen here.
+      async finish(): Promise<string> {
+        const etags = this.parts.map((p) => p.etag);
+        const res = await this.client.completeMultipart(this.uploadId, etags);
+        this.parts.length = 0;
+        return res.location;
+      }
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function applyPatch(state: State, patch: Patch): State {
+      if (patch.baseVersion !== state.version) {
+        throw new ConflictError(patch.baseVersion, state.version);
+      }
+      const next = structuredClone(state);
+      for (const op of patch.ops) {
+        applyOp(next, op);
+      }
+      // Bump last; applyOp above reads next.version to stamp op provenance.
+      next.version = patch.baseVersion + 1;
+      return next;
     }
