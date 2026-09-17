@@ -240,3 +240,12 @@
         # lowered here; two addresses differing in the local part are two
         # mailboxes.
         return f"{local}@{domain.lower()}"
+
+
+    def recipients(contacts):
+        seen = {}
+        for contact in contacts:
+            address = normalize_email(contact.email)
+            if address not in seen:
+                seen[address] = contact.display_name
+        return [Recipient(address=a, name=n) for a, n in seen.items()]

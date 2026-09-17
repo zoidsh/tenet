@@ -2,7 +2,7 @@ id: no-transcript-comment
 tenet: "Do not add comments that reference context from the transcript."
 criteria:
   true: "A comment whose subject is the change rather than the code: it addresses the reader as the person who asked for it, cites a request, an instruction or a discussion, or describes what an earlier version or an earlier attempt did and how this one differs. A reader who has only the file in front of them learns nothing about the code from it. One clause is as much a violation as a paragraph, and naming a real defect in what came before does not redeem it: the sentence is still about the edit rather than about the code."
-  false: "The comment tells a reader of the code as it stands something the code does not show: a reason, a constraint, a contract, a workaround for an external system, a reference to a specification, or a fact about data or clients written in the past that still binds this code today."
+  false: "The comment tells a reader of the code as it stands something the code does not show: a reason, a constraint, a contract, a workaround for an external system, a reference to a specification, or a fact about the past that still binds this code today."
 source: oven-sh/bun src/CLAUDE.md
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
 kind: [code]
