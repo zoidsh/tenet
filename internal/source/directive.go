@@ -23,6 +23,11 @@ var directivePattern = regexp.MustCompile(`\btenet:(ignore[a-z-]*)\b((?:[ \t]+[a
 // written the way the format's own comments are.
 var linePrefixPattern = regexp.MustCompile(`^[ \t]*(?:(?:[-*+>]|[0-9]+[.)])[ \t]+)*(?:(?:#+|//|--|;)[ \t]*)?$`)
 
+// A fence around a code block in prose. The marker is not matched against the
+// one that opened the block, because a mention inside a block whose fences do
+// not pair up is still an example rather than a directive.
+var fencePattern = regexp.MustCompile("^[ \t]*(?:```|~~~)")
+
 // AllTenets is the key under which a directive that names no tenet is
 // recorded.
 const AllTenets = ""
@@ -132,11 +137,13 @@ func stripDirectives(path string, lines []string, known map[string]bool) ([]stri
 func directiveCounts(path string, lines []string) func(line, col int) bool {
 	anywhere := func(int, int) bool { return true }
 	var syn commentSyntax
-	prose := false
+	prose, fences := false, false
 	switch Kind(path) {
 	case KindCommit:
 		return anywhere
-	case KindProse, KindData:
+	case KindProse:
+		syn, prose, fences = htmlStyle, true, true
+	case KindData:
 		syn, prose = htmlStyle, true
 	default:
 		known := false
@@ -145,7 +152,16 @@ func directiveCounts(path string, lines []string) func(line, col int) bool {
 		}
 	}
 	var spans [][]span
+	var fenced []bool
 	return func(line, col int) bool {
+		if fences {
+			if fenced == nil {
+				fenced = fencedLines(lines)
+			}
+			if fenced[line] {
+				return false
+			}
+		}
 		if prose && linePrefixPattern.MatchString(lines[line][:col]) {
 			return true
 		}
@@ -154,6 +170,22 @@ func directiveCounts(path string, lines []string) func(line, col int) bool {
 		}
 		return inSpans(spans[line], col)
 	}
+}
+
+// fencedLines marks the lines of a prose file that a code block holds, the
+// fences themselves included. A fence that is never closed runs to the end of
+// the file, which is how the rest of the file reads to anyone looking at it.
+func fencedLines(lines []string) []bool {
+	out := make([]bool, len(lines))
+	in := false
+	for i, line := range lines {
+		if fencePattern.MatchString(line) {
+			out[i], in = true, !in
+			continue
+		}
+		out[i] = in
+	}
+	return out
 }
 
 func check(path string, line int, keyword string, ids []string, known map[string]bool) error {

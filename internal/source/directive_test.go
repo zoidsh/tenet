@@ -129,6 +129,53 @@ func TestStripDirectivesOnTheLastLineWithoutANewline(t *testing.T) {
 	}
 }
 
+func TestStripDirectivesSkipsFencedBlocksInProse(t *testing.T) {
+	lines := []string{
+		"An example of a directive:",
+		"```go",
+		"// tenet\x3aignore no-such-rule",
+		"```",
+	}
+	stripped, sup, err := stripDirectives("README.md", lines, knownTenets)
+	if err != nil {
+		t.Fatalf("a fenced example was validated: %v", err)
+	}
+	if !reflect.DeepEqual(stripped, lines) {
+		t.Errorf("stripped:\n%q\nwant:\n%q", stripped, lines)
+	}
+	if sup.Line(3, "comment-why") {
+		t.Error("a fenced example suppressed a tenet")
+	}
+}
+
+func TestStripDirectivesCountsTheSameLineOutsideAFence(t *testing.T) {
+	lines := []string{"An example of a directive:", "// tenet\x3aignore comment-why"}
+	stripped, sup, err := stripDirectives("README.md", lines, knownTenets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stripped[1] != "// " {
+		t.Errorf("stripped %q", stripped[1])
+	}
+	if !sup.Line(2, "comment-why") {
+		t.Error("a line-start directive outside a fence was not recorded")
+	}
+}
+
+func TestStripDirectivesFenceRunsToEndOfFile(t *testing.T) {
+	lines := []string{"~~~", "<!-- tenet\x3aignore-file no-such-rule -->", "// tenet\x3aignore-foo"}
+	stripped, sup, err := stripDirectives("README.md", lines, knownTenets)
+	if err != nil {
+		t.Fatalf("an unclosed fence stopped holding: %v", err)
+	}
+	if !reflect.DeepEqual(stripped, lines) {
+		t.Errorf("stripped:\n%q\nwant:\n%q", stripped, lines)
+	}
+	if sup.File("comment-why") || sup.Line(3, "comment-why") {
+		t.Error("a line after an unclosed fence suppressed a tenet")
+	}
+}
+
 func TestStripDirectivesKeepsLineNumbers(t *testing.T) {
 	lines := []string{"a", "// tenet\x3aignore-next-line", "b"}
 	stripped, _, err := stripDirectives("a.go", lines, knownTenets)
