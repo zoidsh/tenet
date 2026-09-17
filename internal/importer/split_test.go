@@ -133,3 +133,36 @@ func TestSplitSentenceEdges(t *testing.T) {
 		t.Errorf("first sentence is %q", got[0].Text)
 	}
 }
+
+// The section --agent claude writes says how to run the lint, so a later init
+// must not draft its sentences back as tenets.
+func TestSplitSkipsTheAgentSection(t *testing.T) {
+	doc := "## Comments\n\nA comment says why the code is here.\n\n" +
+		importer.AgentHeading + "\n\n" + importer.AgentSkill + "\n\n" +
+		"## Tests\n\nEvery bug fix arrives with a failing test first.\n"
+	got := importer.Split("CLAUDE.md", []byte(doc))
+	if len(got) != 2 {
+		t.Fatalf("got %d candidates:\n%s", len(got), show(got))
+	}
+	if got[0].Heading != "Comments" || got[1].Heading != "Tests" {
+		t.Errorf("candidates are %#v", got)
+	}
+}
+
+// A deeper heading inside the section is part of it; the next one at its own
+// level ends it.
+func TestSplitSkipsToTheNextHeadingOfTheSameLevel(t *testing.T) {
+	doc := importer.AgentHeading + "\n\n### Reading the report\n\n" +
+		"Read the report with the json format flag.\n\n" +
+		"## Tests\n\nEvery bug fix arrives with a failing test first.\n"
+	got := importer.Split("AGENTS.md", []byte(doc))
+	if len(got) != 1 || got[0].Heading != "Tests" {
+		t.Errorf("got %d candidates:\n%s", len(got), show(got))
+	}
+}
+
+func TestSplitSkipsTheCursorRule(t *testing.T) {
+	if got := importer.Split(importer.CursorRulePath, []byte(importer.AgentSkill)); got != nil {
+		t.Errorf("drafted %d candidates from its own rule file", len(got))
+	}
+}

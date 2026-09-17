@@ -3,6 +3,7 @@
 package importer
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -40,7 +41,13 @@ var (
 )
 
 // Split turns one rule file into the candidates the sort will be asked about.
+// What tenetlint itself wrote into a rule file is left out: those sentences
+// say how to run the lint, and drafting them as tenets would have the lint
+// judge code against its own instructions.
 func Split(file string, data []byte) []Candidate {
+	if strings.HasSuffix(filepath.ToSlash(file), CursorRulePath) {
+		return nil
+	}
 	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	text = blankComments(text)
 	s := &splitter{file: file}
@@ -68,8 +75,17 @@ type splitter struct {
 	headings []string
 	out      []Candidate
 
+	// skipLevel is the level of the AgentHeading section being skipped, zero
+	// when nothing is.
+	skipLevel int
+
 	item *piece
 	para []piece
+}
+
+// agentSection reports whether a heading opens the section --agent writes.
+func agentSection(level int, text string) bool {
+	return strings.Repeat("#", level)+" "+text == AgentHeading
 }
 
 func (s *splitter) run(lines []string) {
@@ -96,17 +112,27 @@ func (s *splitter) run(lines []string) {
 		if inFence {
 			continue
 		}
+		if m := headingLine.FindStringSubmatch(line); m != nil {
+			s.flush()
+			level, text := len(m[1]), strings.TrimSpace(strings.TrimRight(m[2], " #"))
+			s.heading(level, text)
+			switch {
+			case agentSection(level, text):
+				s.skipLevel = level
+			case s.skipLevel > 0 && level <= s.skipLevel:
+				s.skipLevel = 0
+			}
+			continue
+		}
+		if s.skipLevel > 0 {
+			continue
+		}
 		// A blank line closes the open item, so the second paragraph of a loose
 		// list item is judged on its own rather than joined to the bullet: it
 		// is usually an example or an aside, and folding it in would bury what
 		// the rule says and push the candidate past the word limit.
 		if strings.TrimSpace(line) == "" {
 			s.flush()
-			continue
-		}
-		if m := headingLine.FindStringSubmatch(line); m != nil {
-			s.flush()
-			s.heading(len(m[1]), strings.TrimSpace(strings.TrimRight(m[2], " #")))
 			continue
 		}
 		if m := itemLine.FindStringSubmatch(line); m != nil {

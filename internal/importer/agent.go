@@ -30,8 +30,12 @@ type AgentTarget struct {
 	Content func(existing []byte) (data []byte, replaced bool)
 }
 
+// CursorRulePath is where --agent cursor writes, which the split skips for
+// the same reason it skips the AgentHeading section elsewhere.
+const CursorRulePath = ".cursor/rules/tenet.mdc"
+
 var agentTargets = []AgentTarget{
-	{Name: "cursor", Path: ".cursor/rules/tenet.mdc", Content: cursorRule},
+	{Name: "cursor", Path: CursorRulePath, Content: cursorRule},
 	{Name: "agents", Path: "AGENTS.md", Content: upsertSection},
 	{Name: "claude", Path: "CLAUDE.md", Content: upsertSection},
 }
