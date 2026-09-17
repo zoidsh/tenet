@@ -1,0 +1,233 @@
+# Labelled cases for the body-shows-evidence tenet, measured by
+# `tenet check`. Each example is a pull request text: the title on the first
+# line, a blank line, then the description.
+- label: violation
+  lines: [3, 9]
+  lang: text
+  code: |
+    Retry the webhook delivery on a 503
+
+    A customer's endpoint went down for ninety seconds last week and we
+    dropped every event in that window, because delivery treated a 503
+    the same as a 400 and gave up.
+
+    Delivery now retries 5xx and timeouts four times with exponential
+    backoff, and only a 4xx is treated as final. The dead-letter queue
+    is unchanged.
+- label: violation
+  lines: 11
+  lang: text
+  code: |
+    Fix the off-by-one in the pagination cursor
+
+    The cursor was encoding the last row's id as exclusive and the
+    query read it as inclusive, so the first row of every page after
+    the first was skipped.
+
+    The query now uses a strict comparison.
+
+    ## Evidence
+
+    Tested locally, works as expected.
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Parse RFC 3339 timestamps with an offset
+
+    The importer rejected timestamps ending in `+01:00`, which is what
+    one partner's feed has always sent, so their nightly file failed
+    at the first row.
+
+    The parser now accepts an offset and normalises to UTC.
+
+    ## Evidence
+
+    All CI checks pass and the branch has been running in staging
+    since Tuesday.
+- label: violation
+  lines: [11, 13]
+  lang: text
+  code: |
+    Reject uploads over the size limit before reading them
+
+    The handler read the whole body into memory and then checked its
+    length, so a large upload cost the memory whether or not it was
+    going to be accepted.
+
+    The limit is enforced with a `MaxBytesReader` on the request body.
+
+    ## Evidence
+
+    Added unit tests for the over-limit and at-limit cases, and
+    updated the existing handler tests. Coverage on the package is up
+    from 71% to 84%.
+- label: violation
+  lines: [10, 11]
+  lang: text
+  code: |
+    Serve a deleted document as not found
+
+    A request for a deleted document hit a nil dereference in the
+    renderer, and the on-call has been paged for it twice this month.
+
+    The handler checks for the not-found error and returns a 404.
+
+    ## Evidence
+
+    `GET /docs/deadbeef` now returns 404 with an empty body, which is
+    what the API contract says it should.
+  note: >-
+    Only the after, and a concrete one, which is what makes it the hard case:
+    the same line would be as true of a route that had always returned 404.
+- label: violation
+  lines: 11
+  lang: text
+  code: |
+    Collapse the sidebar under 900px
+
+    The sidebar held its 260px at every width, so on a laptop at 1000px
+    the content column was down to about 500px and the tables in it
+    scrolled sideways.
+
+    Under 900px the sidebar collapses to a rail with icons only.
+
+    ## Evidence
+
+    ![the sidebar collapsed to a rail](docs/img/sidebar-rail.png)
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Deduplicate the nightly reconciliation report
+
+    A payment settling twice within the window appeared twice in the
+    report, and finance has been striking the duplicates out by hand
+    each morning.
+
+    The report groups by payment id and takes the latest settlement.
+
+    ## Evidence
+
+    Manually verified against last night's data. The numbers look
+    right now.
+- label: ok
+  lang: text
+  code: |
+    Index `events(tenant_id, occurred_at)`
+
+    The activity feed query was doing a sequential scan on a table that
+    has grown past 40 million rows, and it is the first query on the
+    dashboard.
+
+    ## Evidence
+
+    `EXPLAIN ANALYZE` on the feed query for our largest tenant, against
+    a copy of production:
+
+        before: Seq Scan on events, 4180ms
+        after:  Index Scan using events_tenant_occurred, 12ms
+- label: ok
+  lang: text
+  code: |
+    Trim whitespace from pasted coupon codes
+
+    Support has three tickets this month from people who pasted a code
+    with a trailing space and were told it was invalid.
+
+    `Redeem` trims the code before the lookup.
+
+    ## Evidence
+
+        $ curl -d 'code=SAVE20 ' localhost:8080/redeem
+        before: {"error":"unknown coupon"}
+        after:  {"discount":2000,"applied":true}
+
+    A code that really is unknown still comes back with the same
+    error, which the existing test covers.
+- label: ok
+  lang: text
+  code: |
+    Wrap long file names in the attachment list
+
+    A file name without spaces ran past the card and under the
+    download button, which made the button unclickable for anyone with
+    a long export name.
+
+    The name gets `overflow-wrap: anywhere` and the button a fixed
+    column.
+
+    ## Evidence
+
+    Two shots of the same card at 375px with a 60-character file name.
+
+    ![before, the name running under the button](docs/img/attach-before.png)
+    ![after, the name wrapping to three lines](docs/img/attach-after.png)
+- label: ok
+  lang: text
+  code: |
+    Release the advisory lock when the import fails
+
+    An import that panicked left the advisory lock held, and every
+    import after it queued behind a lock nobody owned until the
+    connection was reaped an hour later.
+
+    The lock is released in a deferred call.
+
+    ## Evidence
+
+    Steps: start an import with `IMPORT_FAIL_AT=rows=100`, wait for the
+    panic, then start a second import.
+
+    On main the second import hangs and `pg_locks` shows the advisory
+    lock still held. On this branch the second import starts within a
+    second and `pg_locks` shows nothing held.
+- label: ok
+  lang: text
+  code: |
+    Cap the export worker's batch size at 5000 rows
+
+    The worker read the whole result set for an export and was OOM
+    killed on the two largest accounts every night this week.
+
+    Rows are read in batches of 5000.
+
+    Peak RSS on the largest account's export: 3.1G before, 180M after,
+    with the same 2.4 million rows written either way.
+  note: >-
+    One line, no Evidence heading, and both sides of the number are there
+    with the thing held constant beside them.
+- label: ok
+  lang: text
+  code: |
+    Send the digest at the subscriber's local 8am
+
+    The digest went out at 08:00 UTC for everybody, so subscribers in
+    Sydney got it at seven in the evening.
+
+    The scheduler buckets subscribers by zone and sends per bucket.
+
+    ## Evidence
+
+    Ran the scheduler against a fixture of 200 subscribers across 14
+    zones with the clock pinned to 2026-03-01.
+
+    Before: all 200 sends stamped 08:00 UTC. After: 14 send batches,
+    each stamped 08:00 in its own zone, and the same 200 subscribers
+    across them with none sent twice.
+- label: ok
+  lang: text
+  code: |
+    Escape the search term before highlighting it
+
+    A search for `<b>` rendered as markup in the results list rather
+    than as the text somebody typed.
+
+    The term is escaped before the highlight span is inserted.
+
+    ## Evidence
+
+    Searching for `<b>hi</b>` on main renders a bold `hi` in the
+    snippet and the rest of the row shifts; on this branch the snippet
+    shows the literal `<b>hi</b>` with the match highlighted. Same
+    query, same document, and the existing highlight tests still pass.
