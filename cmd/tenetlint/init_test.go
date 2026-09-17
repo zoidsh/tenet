@@ -138,6 +138,7 @@ type jsonImport struct {
 		KindP      float64 `json:"kind_p"`
 		CheckableP float64 `json:"checkable_p"`
 		Accepted   bool    `json:"accepted"`
+		Tenet      string  `json:"tenet"`
 	} `json:"candidates"`
 	Written *string `json:"written"`
 	Stats   struct {
@@ -172,7 +173,10 @@ func TestInitJSON(t *testing.T) {
 	if first.Kind != importer.KindCodeRule || first.KindP != 0.93 || first.CheckableP != 0.88 || !first.Accepted {
 		t.Errorf("first candidate sorted as %#v", first)
 	}
-	if second := got.Candidates[1]; second.Kind != importer.KindProcess || second.Accepted {
+	if first.Tenet != "comment-says-why-code-exists" {
+		t.Errorf("the accepted candidate carries no id: %#v", first)
+	}
+	if second := got.Candidates[1]; second.Kind != importer.KindProcess || second.Accepted || second.Tenet != "" {
 		t.Errorf("second candidate is %#v", second)
 	}
 	if got.Written == nil || *got.Written != "tenets.yml" {
