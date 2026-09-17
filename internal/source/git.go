@@ -33,7 +33,10 @@ func git(ctx context.Context, dir string, args ...string) ([]byte, error) {
 func RepoRoot(ctx context.Context, dir string) (string, error) {
 	out, err := git(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
-		return "", ErrNotARepository
+		// The sentinel is what the modes switch on, but git's own words stay:
+		// rev-parse also fails when git is missing or the repository is
+		// broken, and "not a repository" would be a lie about those.
+		return "", fmt.Errorf("%w: %w", ErrNotARepository, err)
 	}
 	return strings.TrimSpace(string(out)), nil
 }
