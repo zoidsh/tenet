@@ -1,0 +1,5 @@
+version: 1
+name: pr
+description: The title and description a pull request arrives with when only the diff was thought about.
+rules:
+  - subject-says-what-changed

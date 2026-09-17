@@ -1,0 +1,175 @@
+# Labelled cases for the subject-says-what-changed tenet, measured by
+# `tenet check`. Half the corpus is framed as a commit message and half as
+# pull request text, which is what the lang on each example chooses; in both
+# the subject or title is the first line, then a blank line, then the body.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    Update handlers.go and router.go
+
+    The signup handler was registered on the router twice, once under
+    the old path and once under the new one, and the old registration
+    won because it was first.
+
+    The old route is gone and the handler takes the new path only.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    Change DEFAULT_TIMEOUT in config.go
+
+    Ten seconds was not enough for the reporting endpoint on a large
+    account, and the client gave up on a request the server went on to
+    finish.
+
+    The timeout is thirty seconds.
+- label: violation
+  lines: 1
+  lang: commit
+  code: |
+    Add a field to the Invoice struct
+
+    Finance could not tell a credit note from an invoice without
+    reading the line items, so the export had a heuristic in it that
+    was wrong for annual plans.
+
+    Invoices carry their own document type now, and the export reads
+    that instead of guessing.
+  note: >-
+    The field is a real change and the line names it exactly. It is still the
+    shape of the code, and a reader of the log learns nothing about credit
+    notes from it.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Refactor `UserService.getById` and `UserService.getMany`
+
+    Both methods built the same query and diverged when the seats
+    change added a join to one of them.
+
+    They share a builder now, and the join is in it once.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Edits across internal/billing
+
+    Four files in the package had drifted from the plan limits work:
+    two were reading limits from the maps that no longer exist, one
+    still imported the deleted helper, and the last had a test pinned
+    to the old shape.
+
+    They all read from `plans.LimitFor` now.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Modify the webhook handler, its tests and the fixtures
+
+    A customer endpoint returning 503 was treated as a permanent
+    failure, so ninety seconds of downtime cost them every event in
+    the window.
+
+    A 5xx is retried four times with backoff; a 4xx is still final.
+- label: violation
+  lines: 1
+  lang: pr
+  code: |
+    Bump the constant in limits.go
+
+    Support has raised the same request four times this quarter: the
+    per-workspace seat cap is lower than what the largest plan is sold
+    with, so the biggest customers hit it on their first import.
+
+    The cap matches what the plan says it is.
+- label: ok
+  lang: commit
+  code: |
+    Retry a webhook delivery when the endpoint returns 503
+
+    A customer's endpoint was down for ninety seconds and we dropped
+    every event in the window, because delivery treated a 503 the same
+    as a 400.
+
+    Only a 4xx is final now.
+- label: ok
+  lang: commit
+  code: |
+    Show the invoice total in the customer's currency
+
+    Totals were rendered in the account's billing currency whoever was
+    looking, so a reseller reading a customer's invoice saw a number
+    they had to convert by hand.
+
+    The renderer takes the currency from the invoice.
+- label: ok
+  lang: commit
+  code: |
+    Reject an upload over the size limit before reading it
+
+    The handler read the whole body into memory and checked its length
+    afterwards, so a large upload cost the memory whether or not it
+    was going to be kept.
+
+    The limit is enforced on the request body as it is read.
+- label: ok
+  lang: commit
+  code: |
+    Serve a deleted document as not found rather than a server error
+
+    A request for a deleted document dereferenced a nil in the
+    renderer, and the on-call has been paged for it twice this month.
+
+    The handler answers a missing document with a 404.
+- label: ok
+  lang: pr
+  code: |
+    Stop dropping events while a customer's endpoint is down
+
+    Deliveries went out from the request thread and gave up on the
+    first failure, so an endpoint that was down for a minute lost
+    everything sent in that minute.
+
+    Events are queued and drained by workers that retry, and the
+    dead-letter queue is unchanged.
+- label: ok
+  lang: pr
+  code: |
+    Let a workspace pin its formatter version
+
+    A formatter release changes output, and today a whole repository
+    reformats on the next save with no warning. Support has heard
+    about it four times this quarter.
+
+    A workspace can set `formatter.version`, honoured by the language
+    server and the CLI. Unset keeps today's behaviour.
+- label: ok
+  lang: pr
+  code: |
+    Read the plan limits from `plan_limits` rather than from the code
+
+    Limits were three maps in `billing/plans.go`, so changing one for a
+    single customer meant a deploy, and support has asked for that four
+    times this quarter.
+
+    `plans.LimitFor` reads the table through a ten-second cache.
+  note: >-
+    The title names a table and a file's worth of work, and still says what
+    is different: limits come from the database now. Naming where is not the
+    fault when the line says what.
+- label: ok
+  lang: pr
+  code: |
+    Take a context on `store.Put` so a shutdown can cancel a write
+
+    `Put` could not be cancelled, so a shutdown waited on whatever
+    write was in flight and the pod was killed rather than drained.
+
+    The signature gains a leading `context.Context`, and every caller
+    in this repo passes the request's.
+  note: >-
+    The title names the function and its signature, which is the shape the
+    tenet warns about, and it still says what is different: a shutdown can
+    now cancel. Naming where is not the fault when the line says what.
