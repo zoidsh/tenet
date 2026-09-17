@@ -1,0 +1,257 @@
+# The comment-why rule translated into Japanese for the language table in
+# bench/results.md. Every example here is the English one from
+# rules/comment-why/examples.yml with only its prose translated, so the two
+# files must stay in step: an example added or relabelled there belongs here
+# too, or the table compares two different corpora.
+version: 1
+tenets:
+  - id: comment-why
+    tenet: "コメントは、そのコードがなぜ存在するのか、なぜそう書かれているのかを述べるものであって、コードが何をしているか、以前は何をしていたか、宣言がすでに示していることを述べるものではない。"
+    criteria:
+      true: "関数本体の中にある、または宣言に付けられたコメントのうち、コードを読む人が何も新しく知ることのないもの。すぐ下の手順をなぞる、操作の名前を言い直す、条件や演算子を日本語で読み上げ直す、宣言の名前・引数・戻り値の型を繰り返す、過去の変更で何が変わったかを記録する、あるいは節の見出しになっている。"
+      false: "コメントが、理由、制約、契約、外部システムに対する回避策、その選択を説明する参照先、またはコードが示していない順序や不変条件についての警告を与えている。あるいは、関数が何を保証するか、いつ失敗するか、どう呼び出さなければならないかなど、宣言が示していないことを呼び出し側に伝えるドキュメンテーションコメントである。"
+    source: tim/CLAUDE.md
+    include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
+    kind: [code]
+    tags: [code, comments]
+    examples:
+      - label: violation
+        lines: 7
+        code: |
+          func (c *Counter) Record(event string) {
+          	c.mu.Lock()
+          	defer c.mu.Unlock()
+          	if c.counts == nil {
+          		c.counts = make(map[string]int)
+          	}
+          	// カウンタを増やす
+          	c.counts[event]++
+          	c.total++
+          	if c.total > c.limit {
+          		c.flush()
+          	}
+          }
+      - label: violation
+        lines: 10
+        code: |
+          func normalizeHost(raw string) string {
+          	raw = strings.TrimSpace(strings.ToLower(raw))
+          	raw = strings.TrimSuffix(raw, ".")
+          	if h, _, err := net.SplitHostPort(raw); err == nil {
+          		return h
+          	}
+          	return raw
+          }
+
+          // ヘルパー
+
+          func joinPath(base, rel string) string {
+          	if strings.HasPrefix(rel, "/") {
+          		return rel
+          	}
+          	return strings.TrimSuffix(base, "/") + "/" + rel
+          }
+      - label: violation
+        lines: 1
+        code: |
+          // ParseDuration は文字列を受け取り、time.Duration とエラーを返す。
+          func ParseDuration(s string) (time.Duration, error) {
+          	s = strings.TrimSpace(s)
+          	if s == "" {
+          		return 0, errEmptyDuration
+          	}
+          	if d, err := time.ParseDuration(s); err == nil {
+          		return d, nil
+          	}
+          	n, err := strconv.Atoi(s)
+          	if err != nil {
+          		return 0, fmt.Errorf("parse duration %q: %w", s, err)
+          	}
+          	return time.Duration(n) * time.Second, nil
+          }
+      - label: violation
+        lines: 7
+        code: |
+          func BuildReport(ctx context.Context, db *sql.DB, month time.Time) (*Report, error) {
+          	rows, err := db.QueryContext(ctx, reportQuery, month)
+          	if err != nil {
+          		return nil, err
+          	}
+          	defer rows.Close()
+          	// 行を順に回し、それぞれを Line にスキャンしてスライスに追加する。
+          	var lines []Line
+          	for rows.Next() {
+          		var l Line
+          		if err := rows.Scan(&l.SKU, &l.Units, &l.Revenue); err != nil {
+          			return nil, err
+          		}
+          		lines = append(lines, l)
+          	}
+          	return &Report{Month: month, Lines: lines}, rows.Err()
+          }
+      - label: violation
+        lines: 5
+        lang: python
+        code: |
+          def normalize_phone(raw, default_region="US"):
+              digits = re.sub(r"\D", "", raw or "")
+              if not digits:
+                  raise ValueError("電話番号が空です")
+              # 文字列を返す
+              if digits.startswith("00"):
+                  return "+" + digits[2:]
+              if len(digits) == 10 and default_region == "US":
+                  return "+1" + digits
+              if digits.startswith("1") and len(digits) == 11:
+                  return "+" + digits
+              return "+" + digits
+      - label: violation
+        lines: 7
+        lang: python
+        code: |
+          def build_query(filters, limit=100):
+              clauses = []
+              params = []
+              for field, value in sorted(filters.items()):
+                  clauses.append(f"{field} = ?")
+                  params.append(value)
+              # パラメータリストを使うようにリファクタリングした
+              where = " AND ".join(clauses) if clauses else "1=1"
+              sql = f"SELECT * FROM events WHERE {where} ORDER BY ts DESC LIMIT ?"
+              params.append(limit)
+              return sql, params
+      - label: violation
+        lines: 4
+        lang: typescript
+        code: |
+          export async function loadConfig(path: string): Promise<Config> {
+            const raw = await fs.readFile(path, "utf8");
+            const parsed = JSON.parse(raw) as Partial<Config>;
+            // port が undefined なら 8080 を使う
+            const port = parsed.port ?? 8080;
+            const host = parsed.host ?? "0.0.0.0";
+            return {
+              port,
+              host,
+              logLevel: parsed.logLevel ?? "info",
+              features: parsed.features ?? [],
+            };
+          }
+      - label: ok
+        note: "TODO は何も言い直していない。コード自身では言えない、足りていない作業を名指している。この規範はコードを繰り返すコメントについてのものであり、TODO については何も言わないので、これは通る。"
+        code: |
+          func RenderProfile(w io.Writer, u *User) error {
+          	// TODO: nil を処理する
+          	tmpl, err := template.New("profile").Parse(profileTemplate)
+          	if err != nil {
+          		return err
+          	}
+          	data := map[string]any{
+          		"Name":  u.DisplayName,
+          		"Email": u.Email,
+          		"Since": u.CreatedAt.Format(time.RFC3339),
+          	}
+          	return tmpl.Execute(w, data)
+          }
+      - label: ok
+        code: |
+          func (c *Client) FetchQuote(ctx context.Context, sym string) (Quote, error) {
+          	var q Quote
+          	var err error
+          	// API が最初の呼び出しを取りこぼすので再試行する
+          	for attempt := 0; attempt < 2; attempt++ {
+          		q, err = c.fetchOnce(ctx, sym)
+          		if err == nil {
+          			return q, nil
+          		}
+          	}
+          	return Quote{}, fmt.Errorf("fetch quote %s: %w", sym, err)
+          }
+      - label: ok
+        code: |
+          // ロックは呼び出し側が保持している。
+          func (c *Cache) evictLocked(now time.Time) int {
+          	removed := 0
+          	for key, entry := range c.entries {
+          		if entry.expiresAt.After(now) {
+          			continue
+          		}
+          		delete(c.entries, key)
+          		c.bytes -= entry.size
+          		removed++
+          	}
+          	return removed
+          }
+      - label: ok
+        code: |
+          func FirstAfter(deadlines []time.Time, t time.Time) (time.Time, bool) {
+          	if len(deadlines) == 0 {
+          		return time.Time{}, false
+          	}
+          	// 先にソートする。下の二分探索は順序を前提にしている
+          	sort.Slice(deadlines, func(i, j int) bool {
+          		return deadlines[i].Before(deadlines[j])
+          	})
+          	i := sort.Search(len(deadlines), func(i int) bool {
+          		return deadlines[i].After(t)
+          	})
+          	if i == len(deadlines) {
+          		return time.Time{}, false
+          	}
+          	return deadlines[i], true
+          }
+      - label: ok
+        code: |
+          func decodeFrame(r io.Reader) (*Frame, error) {
+          	head := make([]byte, 8)
+          	if _, err := io.ReadFull(r, head); err != nil {
+          		return nil, err
+          	}
+          	size := binary.BigEndian.Uint32(head[4:])
+          	// snappy v0.0.4 は長さ 0 のブロックでパニックするので、Decode の前で切り上げる。
+          	if size == 0 {
+          		return &Frame{Kind: head[0]}, nil
+          	}
+          	body := make([]byte, size)
+          	if _, err := io.ReadFull(r, body); err != nil {
+          		return nil, err
+          	}
+          	out, err := snappy.Decode(nil, body)
+          	if err != nil {
+          		return nil, err
+          	}
+          	return &Frame{Kind: head[0], Body: out}, nil
+          }
+      - label: ok
+        lang: typescript
+        code: |
+          export class Uploader {
+            private parts: Part[] = [];
+
+            add(part: Part): void {
+              this.parts.push(part);
+            }
+
+            // finish の後に part を追加してはならない。ETag のリストはここで確定する。
+            async finish(): Promise<string> {
+              const etags = this.parts.map((p) => p.etag);
+              const res = await this.client.completeMultipart(this.uploadId, etags);
+              this.parts.length = 0;
+              return res.location;
+            }
+          }
+      - label: ok
+        lang: typescript
+        code: |
+          export function applyPatch(state: State, patch: Patch): State {
+            if (patch.baseVersion !== state.version) {
+              throw new ConflictError(patch.baseVersion, state.version);
+            }
+            const next = structuredClone(state);
+            for (const op of patch.ops) {
+              applyOp(next, op);
+            }
+            // 最後に上げる。上の applyOp が next.version を読んで操作の由来を刻む。
+            next.version = patch.baseVersion + 1;
+            return next;
+          }

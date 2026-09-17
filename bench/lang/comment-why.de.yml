@@ -1,0 +1,257 @@
+# The comment-why rule translated into German for the language table in
+# bench/results.md. Every example here is the English one from
+# rules/comment-why/examples.yml with only its prose translated, so the two
+# files must stay in step: an example added or relabelled there belongs here
+# too, or the table compares two different corpora.
+version: 1
+tenets:
+  - id: comment-why
+    tenet: "Ein Kommentar sagt, warum der Code existiert oder warum er so geschrieben ist, und nicht, was der Code tut, was er früher tat oder was seine Deklaration bereits aussagt."
+    criteria:
+      true: "Ein Kommentar, der in einem Funktionskörper steht oder an einer Deklaration hängt und aus dem ein Leser des Codes nichts Neues erfährt: er erzählt die Schritte darunter nach, benennt die Operation, liest eine Bedingung oder einen Operator auf Deutsch zurück, wiederholt den Namen der Deklaration, ihre Parameter oder ihren Rückgabetyp, hält fest, was eine frühere Änderung geändert hat, oder ist eine Abschnittsüberschrift."
+      false: "Der Kommentar nennt einen Grund, eine Einschränkung, einen Vertrag, einen Workaround für ein externes System, einen Verweis, der die Entscheidung erklärt, oder eine Warnung zu Reihenfolge oder Invarianten, die der Code nicht zeigt; oder er ist ein Doc-Kommentar, der Aufrufern etwas sagt, was die Deklaration nicht aussagt, etwa was die Funktion garantiert, wann sie fehlschlägt oder wie sie aufgerufen werden muss."
+    source: tim/CLAUDE.md
+    include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
+    kind: [code]
+    tags: [code, comments]
+    examples:
+      - label: violation
+        lines: 7
+        code: |
+          func (c *Counter) Record(event string) {
+          	c.mu.Lock()
+          	defer c.mu.Unlock()
+          	if c.counts == nil {
+          		c.counts = make(map[string]int)
+          	}
+          	// Zähler erhöhen
+          	c.counts[event]++
+          	c.total++
+          	if c.total > c.limit {
+          		c.flush()
+          	}
+          }
+      - label: violation
+        lines: 10
+        code: |
+          func normalizeHost(raw string) string {
+          	raw = strings.TrimSpace(strings.ToLower(raw))
+          	raw = strings.TrimSuffix(raw, ".")
+          	if h, _, err := net.SplitHostPort(raw); err == nil {
+          		return h
+          	}
+          	return raw
+          }
+
+          // Hilfsfunktionen
+
+          func joinPath(base, rel string) string {
+          	if strings.HasPrefix(rel, "/") {
+          		return rel
+          	}
+          	return strings.TrimSuffix(base, "/") + "/" + rel
+          }
+      - label: violation
+        lines: 1
+        code: |
+          // ParseDuration nimmt einen String und gibt eine time.Duration und einen Fehler zurück.
+          func ParseDuration(s string) (time.Duration, error) {
+          	s = strings.TrimSpace(s)
+          	if s == "" {
+          		return 0, errEmptyDuration
+          	}
+          	if d, err := time.ParseDuration(s); err == nil {
+          		return d, nil
+          	}
+          	n, err := strconv.Atoi(s)
+          	if err != nil {
+          		return 0, fmt.Errorf("parse duration %q: %w", s, err)
+          	}
+          	return time.Duration(n) * time.Second, nil
+          }
+      - label: violation
+        lines: 7
+        code: |
+          func BuildReport(ctx context.Context, db *sql.DB, month time.Time) (*Report, error) {
+          	rows, err := db.QueryContext(ctx, reportQuery, month)
+          	if err != nil {
+          		return nil, err
+          	}
+          	defer rows.Close()
+          	// Über die Zeilen iterieren, jede in eine Line scannen und an den Slice anhängen.
+          	var lines []Line
+          	for rows.Next() {
+          		var l Line
+          		if err := rows.Scan(&l.SKU, &l.Units, &l.Revenue); err != nil {
+          			return nil, err
+          		}
+          		lines = append(lines, l)
+          	}
+          	return &Report{Month: month, Lines: lines}, rows.Err()
+          }
+      - label: violation
+        lines: 5
+        lang: python
+        code: |
+          def normalize_phone(raw, default_region="US"):
+              digits = re.sub(r"\D", "", raw or "")
+              if not digits:
+                  raise ValueError("leere Telefonnummer")
+              # gibt einen String zurück
+              if digits.startswith("00"):
+                  return "+" + digits[2:]
+              if len(digits) == 10 and default_region == "US":
+                  return "+1" + digits
+              if digits.startswith("1") and len(digits) == 11:
+                  return "+" + digits
+              return "+" + digits
+      - label: violation
+        lines: 7
+        lang: python
+        code: |
+          def build_query(filters, limit=100):
+              clauses = []
+              params = []
+              for field, value in sorted(filters.items()):
+                  clauses.append(f"{field} = ?")
+                  params.append(value)
+              # Auf eine Parameterliste umgebaut
+              where = " AND ".join(clauses) if clauses else "1=1"
+              sql = f"SELECT * FROM events WHERE {where} ORDER BY ts DESC LIMIT ?"
+              params.append(limit)
+              return sql, params
+      - label: violation
+        lines: 4
+        lang: typescript
+        code: |
+          export async function loadConfig(path: string): Promise<Config> {
+            const raw = await fs.readFile(path, "utf8");
+            const parsed = JSON.parse(raw) as Partial<Config>;
+            // wenn port undefined ist, 8080 verwenden
+            const port = parsed.port ?? 8080;
+            const host = parsed.host ?? "0.0.0.0";
+            return {
+              port,
+              host,
+              logLevel: parsed.logLevel ?? "info",
+              features: parsed.features ?? [],
+            };
+          }
+      - label: ok
+        note: "Ein TODO wiederholt nichts: es benennt fehlende Arbeit, die der Code nicht selbst aussprechen kann. Der Grundsatz handelt von Kommentaren, die den Code wiederholen, und sagt über TODOs nichts, also besteht dieser hier."
+        code: |
+          func RenderProfile(w io.Writer, u *User) error {
+          	// TODO: nil behandeln
+          	tmpl, err := template.New("profile").Parse(profileTemplate)
+          	if err != nil {
+          		return err
+          	}
+          	data := map[string]any{
+          		"Name":  u.DisplayName,
+          		"Email": u.Email,
+          		"Since": u.CreatedAt.Format(time.RFC3339),
+          	}
+          	return tmpl.Execute(w, data)
+          }
+      - label: ok
+        code: |
+          func (c *Client) FetchQuote(ctx context.Context, sym string) (Quote, error) {
+          	var q Quote
+          	var err error
+          	// Wiederholen, weil die API den ersten Aufruf verwirft
+          	for attempt := 0; attempt < 2; attempt++ {
+          		q, err = c.fetchOnce(ctx, sym)
+          		if err == nil {
+          			return q, nil
+          		}
+          	}
+          	return Quote{}, fmt.Errorf("fetch quote %s: %w", sym, err)
+          }
+      - label: ok
+        code: |
+          // Der Aufrufer hält das Lock.
+          func (c *Cache) evictLocked(now time.Time) int {
+          	removed := 0
+          	for key, entry := range c.entries {
+          		if entry.expiresAt.After(now) {
+          			continue
+          		}
+          		delete(c.entries, key)
+          		c.bytes -= entry.size
+          		removed++
+          	}
+          	return removed
+          }
+      - label: ok
+        code: |
+          func FirstAfter(deadlines []time.Time, t time.Time) (time.Time, bool) {
+          	if len(deadlines) == 0 {
+          		return time.Time{}, false
+          	}
+          	// Zuerst sortieren, die binäre Suche unten setzt die Sortierung voraus
+          	sort.Slice(deadlines, func(i, j int) bool {
+          		return deadlines[i].Before(deadlines[j])
+          	})
+          	i := sort.Search(len(deadlines), func(i int) bool {
+          		return deadlines[i].After(t)
+          	})
+          	if i == len(deadlines) {
+          		return time.Time{}, false
+          	}
+          	return deadlines[i], true
+          }
+      - label: ok
+        code: |
+          func decodeFrame(r io.Reader) (*Frame, error) {
+          	head := make([]byte, 8)
+          	if _, err := io.ReadFull(r, head); err != nil {
+          		return nil, err
+          	}
+          	size := binary.BigEndian.Uint32(head[4:])
+          	// snappy v0.0.4 löst bei einem Block der Länge null eine Panik aus, deshalb vor Decode abkürzen.
+          	if size == 0 {
+          		return &Frame{Kind: head[0]}, nil
+          	}
+          	body := make([]byte, size)
+          	if _, err := io.ReadFull(r, body); err != nil {
+          		return nil, err
+          	}
+          	out, err := snappy.Decode(nil, body)
+          	if err != nil {
+          		return nil, err
+          	}
+          	return &Frame{Kind: head[0], Body: out}, nil
+          }
+      - label: ok
+        lang: typescript
+        code: |
+          export class Uploader {
+            private parts: Part[] = [];
+
+            add(part: Part): void {
+              this.parts.push(part);
+            }
+
+            // Aufrufer dürfen nach finish keine Parts mehr hinzufügen; die ETag-Liste ist hier festgeschrieben.
+            async finish(): Promise<string> {
+              const etags = this.parts.map((p) => p.etag);
+              const res = await this.client.completeMultipart(this.uploadId, etags);
+              this.parts.length = 0;
+              return res.location;
+            }
+          }
+      - label: ok
+        lang: typescript
+        code: |
+          export function applyPatch(state: State, patch: Patch): State {
+            if (patch.baseVersion !== state.version) {
+              throw new ConflictError(patch.baseVersion, state.version);
+            }
+            const next = structuredClone(state);
+            for (const op of patch.ops) {
+              applyOp(next, op);
+            }
+            // Zuletzt hochzählen; applyOp oben liest next.version, um die Herkunft der Operation zu stempeln.
+            next.version = patch.baseVersion + 1;
+            return next;
+          }
