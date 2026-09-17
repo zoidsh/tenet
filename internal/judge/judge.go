@@ -67,12 +67,7 @@ type Judge struct {
 // State is what the model is shown: the window's lines, each under the id the
 // location question will answer with.
 func State(w *source.Window) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "Language: %s. File: %s. Source file excerpt:\n", w.File.Language(), w.Path())
-	for i, line := range w.Lines {
-		fmt.Fprintf(&b, "%s %s\n", lineID(i+1), line)
-	}
-	return b.String()
+	return StateOf(w.File.Language(), w.Path(), w.Lines)
 }
 
 func lineID(n int) string { return fmt.Sprintf("L%03d", n) }
@@ -272,11 +267,7 @@ func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string,
 		if p.asked {
 			continue
 		}
-		var trueDesc, falseDesc string
-		if c := p.tenet.Criteria; c != nil {
-			trueDesc, falseDesc = c.True, c.False
-		}
-		questions["verdict:"+p.tenet.ID] = jev.Noul(VerdictInstructions(p.tenet), trueDesc, falseDesc)
+		questions["verdict:"+p.tenet.ID] = VerdictQuestion(p.tenet)
 	}
 	if len(questions) == 0 {
 		return nil
@@ -297,18 +288,13 @@ func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string,
 }
 
 func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
-	labels := map[string]any{NoneLabel: "no line violates the rule"}
-	for i := range w.Lines {
-		labels[lineID(i+1)] = nil
-	}
-
 	questions := map[string]jev.Question{}
 	var asking []*pending
 	for _, p := range work {
 		if p.prob < p.tenet.ThresholdValue() || p.line != "" {
 			continue
 		}
-		q, err := jev.Choice(LocationInstructions(p.tenet), labels)
+		q, err := LocationQuestion(p.tenet, len(w.Lines))
 		if err != nil {
 			return err
 		}

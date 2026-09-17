@@ -1,0 +1,25 @@
+comment-why: usable
+  examples          6 (3 violation, 3 ok)
+  auc               0.89
+  accuracy          0.67 at threshold 0.50, 0.67 at confident 0.70
+  mean probability  violation 0.75, ok 0.31, gap 0.44
+  location          1 of 2 lines named (0.50)
+  misjudged         2 of 6
+    violation p=0.45  // step one [near the threshold]
+    ok        p=0.75  // The vendor SDK requires this order.
+
+no-fallback: usable
+  examples          6 (3 violation, 3 ok)
+  auc               0.94
+  accuracy          0.50 at threshold 0.50, 0.67 at confident 0.70
+  mean probability  violation 0.85, ok 0.70, gap 0.15
+  advice            the ok examples score high: add a false criterion naming what they have in common.
+  misjudged         3 of 6
+    ok        p=0.80  if err != nil { return err } // four
+    ok        p=0.70  if err != nil { return err } // five
+    ok        p=0.60  if err != nil { return err } // six [near the threshold]
+
+no-mocking: too few examples
+  examples          2, 6 needed
+
+3 tenets over 14 examples · 14 calls, 0 cached · $0.0001 · 0.0s

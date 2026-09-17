@@ -27,7 +27,7 @@ func newRootCmd() *cobra.Command {
 		},
 	}
 	addLintFlags(root, opts)
-	root.AddCommand(newVersionCmd(), newInitCmd(), newHookCmd())
+	root.AddCommand(newVersionCmd(), newInitCmd(), newHookCmd(), newCheckCmd())
 	return root
 }
 

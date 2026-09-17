@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "tenets": [
+    {
+      "tenet": "comment-why",
+      "verdict": "usable",
+      "examples": 6,
+      "violations": 3,
+      "oks": 3,
+      "threshold": 0.5,
+      "confident": 0.7,
+      "separated": true,
+      "auc": 0.8888888888888888,
+      "accuracy_at_threshold": 0.6666666666666666,
+      "accuracy_at_confident": 0.6666666666666666,
+      "mean_violation": 0.75,
+      "mean_ok": 0.30666666666666664,
+      "gap": 0.44333333333333336,
+      "located_examples": 2,
+      "location_hits": 1,
+      "location_rate": 0.5,
+      "misjudged": [
+        {
+          "label": "violation",
+          "probability": 0.45,
+          "code": "// step one",
+          "borderline": true
+        },
+        {
+          "label": "ok",
+          "probability": 0.75,
+          "code": "// The vendor SDK requires this order.",
+          "borderline": false
+        }
+      ],
+      "advice": ""
+    },
+    {
+      "tenet": "no-fallback",
+      "verdict": "usable",
+      "examples": 6,
+      "violations": 3,
+      "oks": 3,
+      "threshold": 0.5,
+      "confident": 0.7,
+      "separated": true,
+      "auc": 0.9444444444444444,
+      "accuracy_at_threshold": 0.5,
+      "accuracy_at_confident": 0.6666666666666666,
+      "mean_violation": 0.85,
+      "mean_ok": 0.7000000000000001,
+      "gap": 0.1499999999999999,
+      "located_examples": 0,
+      "location_hits": 0,
+      "location_rate": 0,
+      "misjudged": [
+        {
+          "label": "ok",
+          "probability": 0.8,
+          "code": "if err != nil { return err } // four",
+          "borderline": false
+        },
+        {
+          "label": "ok",
+          "probability": 0.7,
+          "code": "if err != nil { return err } // five",
+          "borderline": false
+        },
+        {
+          "label": "ok",
+          "probability": 0.6,
+          "code": "if err != nil { return err } // six",
+          "borderline": true
+        }
+      ],
+      "advice": "the ok examples score high: add a false criterion naming what they have in common."
+    },
+    {
+      "tenet": "no-mocking",
+      "verdict": "too few examples",
+      "examples": 2,
+      "violations": 0,
+      "oks": 0,
+      "threshold": 0.5,
+      "confident": 0.7,
+      "separated": false,
+      "auc": 0,
+      "accuracy_at_threshold": 0,
+      "accuracy_at_confident": 0,
+      "mean_violation": 0,
+      "mean_ok": 0,
+      "gap": 0,
+      "located_examples": 0,
+      "location_hits": 0,
+      "location_rate": 0,
+      "misjudged": [],
+      "advice": ""
+    }
+  ],
+  "stats": {
+    "examples": 14,
+    "calls": 14,
+    "cache_hits": 0,
+    "input_tokens": 1400,
+    "cost_usd": 0.0000588,
+    "duration_ms": 0
+  },
+  "min_examples": 6
+}
