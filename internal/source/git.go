@@ -41,6 +41,16 @@ func RepoRoot(ctx context.Context, dir string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+// checkRef settles that a ref exists before anything is diffed against it.
+// Git answers a name it cannot resolve with its own guess at what you meant,
+// which for a typo on the command line is noise around the one fact.
+func checkRef(ctx context.Context, root, ref string) error {
+	if _, err := git(ctx, root, "rev-parse", "--verify", "--quiet", ref+"^{commit}"); err != nil {
+		return fmt.Errorf("unknown git ref %s", ref)
+	}
+	return nil
+}
+
 func splitZ(out []byte) []string {
 	var paths []string
 	for _, p := range strings.Split(string(out), "\x00") {

@@ -335,3 +335,23 @@ func TestLintWithNothingStaged(t *testing.T) {
 		t.Errorf("stdout is %q", stdout.String())
 	}
 }
+
+// A ref that does not exist is a typo on the command line, so the message is
+// about the ref rather than about git.
+func TestLintUnknownBaseRef(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeFile(t, dir, "tenets.yml", testConfig)
+	git(t, dir, "add", "-A")
+	git(t, dir, "commit", "-qm", "config")
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+
+	code, stdout, stderr := runCmd(t, "--base", "nope")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2: %s%s", code, stdout, stderr)
+	}
+	if got := strings.TrimSpace(stderr); got != "tenet: unknown git ref nope" {
+		t.Errorf("stderr is %q", got)
+	}
+}

@@ -107,6 +107,9 @@ func Collect(ctx context.Context, opts Options) (*Set, error) {
 		if repoErr != nil {
 			return nil, repoErr
 		}
+		if err := checkRef(ctx, root, opts.Base); err != nil {
+			return nil, err
+		}
 		return collectDiff(ctx, root, []string{opts.Base}, false, known)
 	default:
 		if repoErr != nil {
