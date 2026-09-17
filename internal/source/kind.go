@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// The kinds of file tenetlint tells apart, because a rule about code and a
-// rule about prose cannot be asked of the same framing.
+// A rule about code and a rule about prose cannot be asked of the same
+// framing.
 const (
 	KindCode  = "code"
 	KindProse = "prose"
@@ -33,14 +33,25 @@ var dataExts = map[string]bool{
 	".lock": true,
 }
 
+// Lock files that carry no extension to read them by.
+var dataNames = map[string]bool{
+	"go.sum":      true,
+	"go.work.sum": true,
+}
+
+// A directory of documents, whose contents an extension may still overrule.
 var proseDirs = map[string]bool{
-	"docs":    true,
+	"docs": true,
+}
+
+// Directories that hold translated strings, which are prose whatever they are
+// serialised as.
+var translationDirs = map[string]bool{
 	"locales": true,
 	"i18n":    true,
 }
 
-// Files that are prose whatever they are written as, including with no
-// extension at all.
+// Prose whatever they are written as, including with no extension at all.
 var proseNames = map[string]bool{
 	"readme":       true,
 	"changelog":    true,
@@ -48,21 +59,28 @@ var proseNames = map[string]bool{
 	"license":      true,
 }
 
-// Kind names what a path holds. The name and extension are read before the
-// directory, so that a data file keeps its kind under docs/.
+// Kind reads a data extension before the directory, so that a data file keeps
+// its kind under docs/, and a translation directory before either, because
+// what those hold is prose however it is serialised.
 func Kind(path string) string {
 	path = filepath.ToSlash(path)
 	base := strings.ToLower(filepath.Base(path))
 	ext := strings.ToLower(filepath.Ext(base))
 	name := strings.TrimSuffix(base, ext)
+	dirs := strings.Split(filepath.ToSlash(filepath.Dir(path)), "/")
 
-	switch {
-	case proseExts[ext], proseNames[name]:
+	if proseExts[ext] || proseNames[name] {
 		return KindProse
-	case dataExts[ext]:
+	}
+	for _, dir := range dirs {
+		if translationDirs[dir] {
+			return KindProse
+		}
+	}
+	if dataExts[ext] || dataNames[base] {
 		return KindData
 	}
-	for _, dir := range strings.Split(filepath.ToSlash(filepath.Dir(path)), "/") {
+	for _, dir := range dirs {
 		if proseDirs[dir] {
 			return KindProse
 		}
@@ -70,7 +88,6 @@ func Kind(path string) string {
 	return KindCode
 }
 
-// Kind names what this file holds for the model.
 func (f *File) Kind() string { return Kind(f.Path) }
 
 // KindForLanguage is the kind of file a language is written in, which is how
