@@ -7,10 +7,11 @@ import (
 
 // Window limits, both chosen to stay inside what one call can carry: the
 // location question offers a label per line plus none, and the model takes at
-// most 255 labels.
+// most 255 labels. The byte cap also leaves the questions room within the
+// request's token budget, which the window's lines otherwise eat alone.
 const (
 	MaxWindowLines = 254
-	MaxWindowBytes = 48 * 1024
+	MaxWindowBytes = 40 * 1024
 	cutbackLines   = 40
 )
 

@@ -67,8 +67,8 @@ func TestWindowsByteCap(t *testing.T) {
 			t.Errorf("window %d is %d bytes", i, size)
 		}
 	}
-	if len(ws) < 5 {
-		t.Errorf("got %d windows, want the byte cap to have cut earlier than the line cap", len(ws))
+	if len(ws) != 5 {
+		t.Errorf("got %d windows, want the byte cap to cut every 40 of the 200 lines", len(ws))
 	}
 }
 
