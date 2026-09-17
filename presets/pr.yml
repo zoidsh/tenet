@@ -4,3 +4,4 @@ description: The title and description a pull request arrives with when only the
 rules:
   - subject-says-what-changed
   - body-says-why
+  - body-states-door

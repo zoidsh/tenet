@@ -1,0 +1,227 @@
+# Labelled cases for the body-states-door tenet, measured by `tenet check`.
+# Each example is a pull request text: the title on the first line, a blank
+# line, then the description.
+- label: violation
+  lines: [3, 10]
+  lang: text
+  code: |
+    Collapse the two audit tables into one
+
+    The `audit_read` and `audit_write` tables held the same columns and
+    were queried together every time. This merges them into `audit`
+    with an `op` column, which takes a join out of the four hottest
+    audit queries.
+
+    The backfill runs as a migration. Benchmarks on a copy of
+    production put the slowest of those queries at 40ms, down from
+    310ms.
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Send the welcome email from the worker, not the request
+
+    New signups were waiting on SES before the response came back, and
+    a slow send showed up as a slow signup.
+
+    `signup.Create` now enqueues a `welcome_email` job. The worker
+    sends it and retries three times with backoff.
+
+    ## Merge Danger
+
+    Low risk. The change is well covered by tests and has been running
+    on staging for two days without an error.
+  note: >-
+    Safety and test coverage are not the door. Nothing here tells a reader
+    what walking the change back would take.
+- label: violation
+  lines: 12
+  lang: text
+  code: |
+    Drop the legacy `v1` webhook payload
+
+    Every customer on the webhook endpoint has been reading the `v2`
+    payload since March; the `v1` branch is now dead code that the
+    payload builder still has to keep in shape.
+
+    The builder loses the `v1` branch and the shape tests that went
+    with it.
+
+    ## Merge Danger
+
+    One-way door.
+- label: violation
+  lines: 12
+  lang: text
+  code: |
+    Store uploaded avatars in S3 instead of the database
+
+    Avatar blobs were the largest thing in the `users` table and made
+    every full backup an hour longer than it needed to be.
+
+    Uploads now go to the `avatars` bucket and `users.avatar_url`
+    holds the key. The migration copies existing blobs out and drops
+    the `avatar_blob` column.
+
+    ## Merge Danger
+
+    Two-way door.
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Switch the search index to the new analyzer
+
+    Stemming was splitting hyphenated part numbers, so a search for
+    `AB-1200` missed every document that spelled it that way.
+
+    The index is rebuilt with the `part_number` analyzer, which keeps
+    hyphenated tokens whole.
+
+    ## Merge Danger
+
+    This is a two-way door, because if it turns out to be wrong we can
+    walk it back.
+- label: violation
+  lines: [11, 12]
+  lang: text
+  code: |
+    Rotate the signing key used for download URLs
+
+    The current key has been in place since 2021 and predates our own
+    rule that signing keys are rotated yearly.
+
+    The new key is in the secret store, and both the signer and the
+    verifier read it from there.
+
+    ## Merge Danger
+
+    One-way door, since it is not something we can reverse once it has
+    gone out.
+- label: violation
+  lines: [3, 9]
+  lang: text
+  code: |
+    Move plan limits out of the code and into the database
+
+    Plan limits were three maps in `billing/plans.go`, and changing one
+    for a single customer meant a deploy. Support has asked for that
+    four times this quarter.
+
+    Limits now live in `plan_limits`, seeded from those maps by a
+    migration. `plans.LimitFor` reads through a ten-second cache, so
+    the hot path costs the same as the map lookup did.
+
+    Tested with the seed data against the existing plan test suite.
+- label: ok
+  lang: text
+  code: |
+    Rank search results by recency as well as score
+
+    Support kept hearing that the top hit for a policy name was a
+    three-year-old revision of it.
+
+    Scores are multiplied by a decay on the document's updated date.
+
+    ## Merge Danger
+
+    Two-way door. The ranking is read from `search.ranking`, which is
+    still set to `score` everywhere but staging, so turning this back
+    is a config change and not a deploy.
+- label: ok
+  lang: text
+  code: |
+    Drop the `legacy_notes` column
+
+    The column has been written by nothing since the notes migration
+    two years ago, and it is the last thing keeping the old notes
+    serializer alive.
+
+    The migration drops it and the serializer goes with it.
+
+    ## Merge Danger
+
+    One-way door. The data goes with the column, and while the nightly
+    backup would have it for thirty days, restoring from there is a
+    manual job, not a revert.
+- label: ok
+  lang: text
+  code: |
+    Cache the compiled templates at startup
+
+    Template compilation was showing up on every request profile at
+    around 4ms, and templates do not change while the process runs.
+
+    `Render` now looks the compiled template up in a map filled by
+    `LoadAll` at boot.
+
+    Nothing outside the process changes and no data is touched, so a
+    revert is the whole of walking this back.
+  note: >-
+    The door is stated, with the ground for it, and neither of the skill's
+    terms appears. On the tenet's own words that is describing the door.
+- label: ok
+  lang: text
+  code: |
+    Publish the SDK as 2.0.0
+
+    The breaking changes have been on `next` since January and the two
+    design partners have both moved over.
+
+    This tags 2.0.0 and publishes to npm.
+
+    ## Merge Danger
+
+    One-way door. A published version number cannot be taken back, and
+    a deprecate-and-republish leaves 2.0.0 resolvable for anyone who
+    has already pinned it.
+- label: ok
+  lang: text
+  code: |
+    Write both the old and new receipt formats
+
+    The new format is what the finance import expects from April, but
+    the current importer still reads the old one and will until they
+    cut over.
+
+    Receipts are written in both shapes for now.
+
+    ## Merge Danger
+
+    Two-way door. Nothing reads the new file yet, so reverting stops
+    it being written and leaves the old path exactly as it is.
+- label: ok
+  lang: text
+  code: |
+    Backfill the `slug` column and start serving slugs
+
+    Article URLs were ids, which told a reader nothing and read badly
+    in search results.
+
+    The migration fills `slug` from the title, and the router accepts
+    both `/a/1234` and `/a/the-title`.
+
+    ## Merge Danger
+
+    Mostly a two-way door: the router change reverts cleanly and the
+    id URLs keep working either way. The part that does not come back
+    is the slugs we hand out from today, which people will bookmark
+    and which we would then have to keep resolving.
+  note: >-
+    Two doors in one change, each with its ground. Naming the part that does
+    not come back is what the tenet asks for, not a failure to pick a label.
+- label: ok
+  lang: text
+  code: |
+    Delete the unused `reports` service
+
+    Nothing has called it since the dashboard rewrite; the load
+    balancer shows no traffic on it over ninety days.
+
+    The service, its chart and its CI job go.
+
+    ## Merge Danger
+
+    Two-way door in practice. The code comes back with a revert and
+    the chart with it; the one thing that does not is the DNS name, on
+    a 24-hour TTL, so bringing it back is a wait rather than a deploy.
