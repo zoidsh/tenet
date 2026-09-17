@@ -138,7 +138,7 @@ func Load(path string) (*File, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if f.Version != Version {
-		return nil, fmt.Errorf("%s: baseline version %d, want %d; write it again with tenetlint baseline", path, f.Version, Version)
+		return nil, fmt.Errorf("%s: baseline version %d, want %d; write it again with tenet baseline", path, f.Version, Version)
 	}
 	return &f, nil
 }

@@ -80,7 +80,7 @@ func (o *baselineOptions) loadForPrune(run *run, path string, scope baseline.Sco
 		return nil, err
 	}
 	if accepted.Scope.Mode == "" {
-		return nil, fmt.Errorf("%s records no scope, so there is no telling what a prune would drop; write it again with tenetlint baseline", relativeTo(run.dir, path))
+		return nil, fmt.Errorf("%s records no scope, so there is no telling what a prune would drop; write it again with tenet baseline", relativeTo(run.dir, path))
 	}
 	if !scope.Covers(accepted.Scope) {
 		return nil, fmt.Errorf("%s was written over %s and this run covers %s, which would drop what it never looked at; prune over the same scope or a wider one",
