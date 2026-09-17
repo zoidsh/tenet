@@ -36,7 +36,7 @@ Change `criteria.true` and `criteria.false`, not the examples. The cutoff is 0.8
 
 Name the concrete shape the misjudged examples share: "an error value assigned to the blank identifier", "a comment that is a section header", "a value the function just produced with a `New...` constructor". Add an exclusion to `criteria.false` for the shape the acceptable examples share, which is what stops a criterion that lifts the violations from dragging the innocent cases up with them. Do not paste examples into the criteria as text; the spike measured that and it changes nothing at a cost of about 130 tokens a call.
 
-Rerun after each edit and keep the numbers. Four attempts is enough to find out whether the wording is the problem: if the misses are still there with the AUC at 1.00, the remaining gap is the model's, not the sentence's, and the honest thing is to ship the rule as `usable` and say so.
+Rerun after each edit and keep the numbers. Four attempts is enough to find out whether the wording is the problem: if the misses are still there with the AUC at 1.00, the remaining gap is the model's, not the sentence's. The honest thing then is the `standalone` tag: the rule ships, it stays out of every preset, and the preset file says what it is short of. A rule that is `usable` does not go into a preset and wait to be noticed.
 
 ## 5. Add it to a preset
 

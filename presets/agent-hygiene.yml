@@ -8,29 +8,31 @@
 #   no-transcript-comment  sharp, 1.00
 #   no-placeholder-phrase  sharp, 1.00
 #   assertion-justified    sharp, 1.00, max sd 0.02
-#   no-fallback            usable, 0.93, max sd 0.03
-#
-# no-fallback is short by one acceptable example, a locale resolver that
-# scores 0.81, a hundredth above the cutoff rather than below it, and moves
-# between 0.77 and 0.81 from pass to pass. Its answer is a false criterion
-# naming what its ok examples share, not a different cutoff.
 #
 # assertion-justified reads sharp on both three-pass runs, and a single pass
 # has read it usable at 0.93 when its weakest violation lands at 0.79. It sits
 # on the line rather than over it.
 #
-# no-defensive-nil is not listed below. At 0.8 it is usable, 0.79 accurate,
-# max sd 0.032, with three violations between 0.78 and 0.79 and two of them
-# crossing the cutoff between passes. Two are TypeScript and one is Python,
-# languages its corpus grew after its criteria were written, and a wording
-# pass over those cases is what it is waiting on. It carries the standalone
-# tag meanwhile, and a config that wants it names it under `rules:`.
+# Two rules ship in the binary and are not listed below, under the standalone
+# tag, so a config that wants one names it under `rules:`.
+#
+#   no-fallback       usable, 0.93, max sd 0.03. One acceptable example, a
+#                     locale resolver, scores 0.81, a hundredth above the
+#                     cutoff rather than below it, and moves between 0.77 and
+#                     0.81 from pass to pass. A false positive is the worse
+#                     kind of miss for a rule that gates a commit. Its answer
+#                     is a false criterion naming what its ok examples share.
+#   no-defensive-nil  usable, 0.79, max sd 0.032, with three violations
+#                     between 0.78 and 0.79 and two of them crossing the
+#                     cutoff between passes. Two are TypeScript and one is
+#                     Python, languages its corpus grew after its criteria
+#                     were written, and a wording pass over those cases is
+#                     what it is waiting on.
 version: 1
 name: agent-hygiene
 description: The habits a coding agent slips into when nobody reads the diff.
 rules:
   - comment-why
-  - no-fallback
   - no-mocking
   - no-transcript-comment
   - no-placeholder-phrase

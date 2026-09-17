@@ -6,4 +6,4 @@ criteria:
 source: amd/gaia CLAUDE.md
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
 kind: [code]
-tags: [code, errors]
+tags: [code, errors, standalone]
