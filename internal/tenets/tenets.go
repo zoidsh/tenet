@@ -460,5 +460,6 @@ func Find(startDir string) (string, []string, error) {
 		}
 		dir = parent
 	}
-	return "", searched, fmt.Errorf("no %s found in %s", FileName, strings.Join(searched, ", "))
+	return "", searched, fmt.Errorf("no %s found from %s up to %s; run tenet init to draft one",
+		FileName, searched[0], searched[len(searched)-1])
 }

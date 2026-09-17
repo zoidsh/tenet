@@ -289,6 +289,24 @@ func TestFindStopsAtGitRoot(t *testing.T) {
 	}
 }
 
+// The error is the first thing a newcomer with no config sees, so it says
+// where it looked and what to run.
+func TestFindNamesTheSearchAndTheWayOut(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".git"))
+	nested := filepath.Join(root, "a", "b")
+	mustMkdir(t, nested)
+
+	_, _, err := tenets.Find(nested)
+	if err == nil {
+		t.Fatal("want an error, there is no config")
+	}
+	want := "no " + tenets.FileName + " found from " + nested + " up to " + root + "; run tenet init to draft one"
+	if err.Error() != want {
+		t.Errorf("error is %q, want %q", err, want)
+	}
+}
+
 func mustMkdir(t *testing.T, dir string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o750); err != nil {
