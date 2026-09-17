@@ -345,7 +345,7 @@ func TestLintWithoutAKey(t *testing.T) {
 	}
 	// The one sentence a newcomer sees, whichever command they ran first and
 	// whichever hook relayed it.
-	want := "no TypeSafe API key: run tenet auth typesafe, or set " + jev.APIKeyEnv + "; set " + SkipEnv + "=1 to commit without linting"
+	want := "no TypeSafe API key: run tenet auth, or set " + jev.APIKeyEnv + "; set " + SkipEnv + "=1 to commit without linting"
 	if !strings.Contains(stderr.String(), want) {
 		t.Errorf("stderr is %q, want it to hold %q", stderr.String(), want)
 	}

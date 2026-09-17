@@ -58,7 +58,7 @@ func openCache(noCache bool) (*cache.Cache, error) {
 // missingKeyError is shared with init, so that whichever command a newcomer
 // runs first names the same key and the same way out.
 func missingKeyError(p provider.Provider) error {
-	return fmt.Errorf("no %s API key: run tenet auth %s, or set %s; set %s=1 to commit without linting", p.Label, p.Name, p.Env, SkipEnv)
+	return fmt.Errorf("no %s API key: run tenet auth, or set %s; set %s=1 to commit without linting", p.Label, p.Env, SkipEnv)
 }
 
 // keyFor is the key this config's provider is asked with.

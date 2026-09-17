@@ -35,6 +35,8 @@ const (
 	Dir      = ".tenetlint"
 	FileName = "credentials"
 	appDir   = "tenetlint"
+
+	configHomeEnv = "XDG_CONFIG_HOME"
 )
 
 // MinKeyLength is what every key tenet has seen clears, and enough to tell a
@@ -172,12 +174,17 @@ func ScopePath(scope string) (string, error) {
 	}
 }
 
-// GlobalPath is the credentials file outside any repository, ~/.config on a
-// Linux machine that says nothing else.
+// GlobalPath is the credentials file outside any repository. It is ~/.config
+// on every platform rather than os.UserConfigDir's answer, so that the one
+// path the documentation names is the path a Mac uses too.
 func GlobalPath() (string, error) {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
+	base := os.Getenv(configHomeEnv)
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".config")
 	}
 	return filepath.Join(base, appDir, FileName), nil
 }

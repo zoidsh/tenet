@@ -118,6 +118,36 @@ func TestResolveIsPerProvider(t *testing.T) {
 	}
 }
 
+// The path the documentation names is the path every platform uses, so that
+// a Mac is not told to look somewhere the README has never heard of.
+func TestGlobalPathIsUnderDotConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", "")
+	t.Setenv("HOME", home)
+
+	got, err := auth.GlobalPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(home, ".config", "tenetlint", auth.FileName); got != want {
+		t.Errorf("the global file is %q, want %q", got, want)
+	}
+}
+
+func TestGlobalPathFollowsTheConfigHomeWhenItIsSet(t *testing.T) {
+	config := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", config)
+
+	got, err := auth.GlobalPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(config, "tenetlint", auth.FileName); got != want {
+		t.Errorf("the global file is %q, want %q", got, want)
+	}
+}
+
 func TestSaveWritesAPrivateFile(t *testing.T) {
 	_, config := repo(t)
 
