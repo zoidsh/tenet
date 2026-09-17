@@ -37,6 +37,7 @@ func TestResolutionOrder(t *testing.T) {
 				"no-transcript-comment from agent-hygiene",
 				"no-placeholder-phrase from agent-hygiene",
 				"assertion-justified from agent-hygiene",
+				"no-fallback from agent-hygiene",
 			},
 		},
 		{
@@ -46,7 +47,7 @@ func TestResolutionOrder(t *testing.T) {
 		},
 		{
 			"rules come after presets",
-			"version: 1\npresets: [agent-hygiene]\nrules: []\ndisable: [comment-why, no-transcript-comment, no-placeholder-phrase, assertion-justified]\n",
+			"version: 1\npresets: [agent-hygiene]\nrules: []\ndisable: [comment-why, no-transcript-comment, no-placeholder-phrase, assertion-justified, no-fallback]\n",
 			[]string{"no-mocking from agent-hygiene"},
 		},
 		{
@@ -63,12 +64,13 @@ func TestResolutionOrder(t *testing.T) {
 				"no-transcript-comment from agent-hygiene",
 				"no-placeholder-phrase from agent-hygiene",
 				"assertion-justified from agent-hygiene",
+				"no-fallback from agent-hygiene",
 			},
 		},
 		{
 			"disable removes what the expansion added",
 			"version: 1\npresets: [agent-hygiene]\ndisable: [no-mocking, comment-why]\n",
-			[]string{"no-transcript-comment from agent-hygiene", "no-placeholder-phrase from agent-hygiene", "assertion-justified from agent-hygiene"},
+			[]string{"no-transcript-comment from agent-hygiene", "no-placeholder-phrase from agent-hygiene", "assertion-justified from agent-hygiene", "no-fallback from agent-hygiene"},
 		},
 		{
 			"disable removes a local tenet too",

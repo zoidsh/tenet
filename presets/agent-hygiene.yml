@@ -1,37 +1,36 @@
-# Measured by `tenet check --builtin --no-cache --runs 3`, every rule at
-# the 0.8 cutoff, over the corpus in this tree. Accuracy is the share of
-# labelled examples on the right side of 0.8, and the deviation is the largest
-# any one example moved across the three passes.
+# Every rule here holds its corpus above the 0.8 cutoff, measured by
+# `tenet check --builtin --no-cache --runs 3`, which judges each labelled
+# example three times and reports what moved between the passes. Three passes
+# rather than one because a rule that reads sharp once can read usable the
+# next time, and the preset is a promise about the rule, not about a run.
+# The two rules this pass reworded were measured over four such runs; the
+# rest of the preset over the three of those that covered every rule.
 #
-#   comment-why            sharp, 1.00
-#   no-mocking             sharp, 1.00
-#   no-transcript-comment  sharp, 1.00
-#   no-placeholder-phrase  sharp, 1.00
-#   assertion-justified    sharp, 1.00, max sd 0.02, on two three-pass runs of
-#                          three; the third read it usable at 0.93.
+# comment-why, no-mocking, no-transcript-comment, no-placeholder-phrase and
+# no-fallback read sharp in every run that covered them, with no example of
+# theirs moving across the cutoff in any pass. no-fallback's nearest
+# acceptable example is the invoice whose tax rate comes from a keyed lookup
+# with a zero default,
+# at 0.71, which the corpus keeps as the edge the tenet has not decided; it
+# is the highest anything acceptable scores here. That rule was held out of
+# this preset while a different acceptable case, its locale resolver, scored
+# 0.81 and made it fire on innocent code. A false criterion saying what a
+# selection is dropped the resolver to 0.30.
 #
-# Two rules ship in the binary and are not listed below, under the standalone
-# tag, so a config that wants one names it under `rules:`.
+# assertion-justified is the one rule here that straddles the cutoff, and it
+# straddles on a single example: its weakest violation, a header parse that
+# scores 0.78 to 0.81 and so decides on its own whether a run reads sharp or
+# usable. It crossed in one of the three runs that covered it. A violation
+# under the cutoff is a rule that misses, which is the milder of the two
+# failures; an acceptable example over it would be a rule firing on innocent
+# code.
 #
-#   no-fallback       usable, 0.93, max sd 0.03, on two three-pass runs of
-#                     three; the third read it sharp at 1.00.
-#   no-defensive-nil  usable, 0.79, max sd 0.032, with three violations
-#                     between 0.78 and 0.79 and two of them crossing the
-#                     cutoff between passes. Two are TypeScript and one is
-#                     Python, languages its corpus grew after its criteria
-#                     were written.
-#
-# assertion-justified and no-fallback both straddle the cutoff rather than
-# sitting either side of it, and which verdict a run reports depends on one
-# example each: assertion-justified's weakest violation, which lands around
-# 0.79, and no-fallback's locale resolver, an acceptable example that lands
-# around 0.81 and has been seen anywhere from 0.77 to 0.81. They are in
-# opposite kinds of trouble. A violation under the cutoff is a rule that
-# misses; an ok example over it is a rule that fires on innocent code, which
-# is why no-fallback is the one held out although its accuracy reads higher.
-#
-# The corpus task owns the wording of all three rules above. These numbers
-# are what the corpus measures today, not a target.
+# no-defensive-nil stays out, under the standalone tag, so a config that
+# wants it names it under `rules:`. Naming the TypeScript and Python
+# spellings of an unreachable check lifted its corpus to sharp in three of
+# the four runs, but the other read usable at 0.94, on one violation: the
+# TypeScript row builder, which scores 0.79 to 0.82. A rule whose verdict is
+# a coin toss between runs is not a promise this preset can make.
 version: 1
 name: agent-hygiene
 description: The habits a coding agent slips into when nobody reads the diff.
@@ -41,3 +40,4 @@ rules:
   - no-transcript-comment
   - no-placeholder-phrase
   - assertion-justified
+  - no-fallback

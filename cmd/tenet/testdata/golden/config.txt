@@ -6,3 +6,4 @@ no-mocking             agent-hygiene  code  0.80  **/*_test.go, **/*.test.ts, **
 no-transcript-comment  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 no-placeholder-phrase  agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
 assertion-justified    agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
+no-fallback            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
