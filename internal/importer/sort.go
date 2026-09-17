@@ -51,7 +51,7 @@ const cacheSalt = "tenetlint-importer-v1"
 func kindLabels() map[string]any {
 	return map[string]any{
 		KindCodeRule:   "a rule about how code, comments, tests, or docs must be written, checkable by reading a change to the files",
-		KindCommitRule: "a rule about the commit message subject or body",
+		KindCommitRule: "a rule about the wording of the commit message subject or body, checkable by reading the message alone",
 		KindProcess:    "an instruction about what the agent should do, run, ask, or avoid during its work",
 		KindContext:    "a description of the project, its layout, commands, or facts, not an instruction",
 		KindNeedsRepo:  "a rule about code that can only be checked with knowledge of other files, history, or the running system",
