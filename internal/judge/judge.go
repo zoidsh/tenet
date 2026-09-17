@@ -1,0 +1,327 @@
+// Package judge asks the model about every window and turns its answers into
+// findings.
+package judge
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/zoidsh/tenetlint/internal/cache"
+	"github.com/zoidsh/tenetlint/internal/jev"
+	"github.com/zoidsh/tenetlint/internal/source"
+	"github.com/zoidsh/tenetlint/internal/tenets"
+)
+
+// DefaultConcurrency is how many windows are in flight at once.
+const DefaultConcurrency = 8
+
+// NoneLabel is the escape hatch the location question always offers, so that
+// the model is never forced to name a line.
+const NoneLabel = "none"
+
+// Asker is the part of the jev client the judge needs, so that tests can
+// answer without the network.
+type Asker interface {
+	Ask(ctx context.Context, state string, questions map[string]jev.Question) (*jev.Response, error)
+}
+
+// Finding is one violation.
+type Finding struct {
+	File          string          `json:"file"`
+	Line          int             `json:"line"`
+	Tenet         string          `json:"tenet"`
+	Severity      tenets.Severity `json:"severity"`
+	Probability   float64         `json:"probability"`
+	LowConfidence bool            `json:"low_confidence"`
+	Message       string          `json:"message"`
+}
+
+// Stats is what a run cost.
+type Stats struct {
+	Files       int
+	Windows     int
+	Calls       int
+	CacheHits   int
+	InputTokens int
+	CostUSD     float64
+	Duration    time.Duration
+}
+
+// Judge runs the tenets over windows.
+type Judge struct {
+	Asker       Asker
+	Tenets      []*tenets.Tenet
+	Cache       *cache.Cache
+	Concurrency int
+
+	// Log, when set, receives a line per call made.
+	Log func(string)
+}
+
+// State is what the model is shown: the window's lines, each under the id the
+// location question will answer with.
+func State(w *source.Window) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Language: %s. File: %s. Source file excerpt:\n", w.File.Language(), w.Path())
+	for i, line := range w.Lines {
+		fmt.Fprintf(&b, "%s %s\n", lineID(i+1), line)
+	}
+	return b.String()
+}
+
+func lineID(n int) string { return fmt.Sprintf("L%03d", n) }
+
+func parseLineID(label string) (int, bool) {
+	n, err := strconv.Atoi(strings.TrimPrefix(label, "L"))
+	if err != nil || n < 1 {
+		return 0, false
+	}
+	return n, true
+}
+
+// VerdictInstructions and LocationInstructions carry the whole rule, because
+// the model is given no other memory of what it is judging.
+func VerdictInstructions(t *tenets.Tenet) string {
+	return "Rule: " + t.Tenet + " Does this code violate the rule?"
+}
+
+// LocationInstructions asks where the violation is.
+func LocationInstructions(t *tenets.Tenet) string {
+	return "Rule: " + t.Tenet + " Which line most clearly violates the rule? Pick none if no line does."
+}
+
+// Run judges every window and returns the findings in file, line and tenet
+// order. Any API error abandons the run: a partial verdict is worse than none.
+func (j *Judge) Run(ctx context.Context, windows []*source.Window) ([]Finding, Stats, error) {
+	started := time.Now()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	concurrency := j.Concurrency
+	if concurrency <= 0 {
+		concurrency = DefaultConcurrency
+	}
+
+	var (
+		mu       sync.Mutex
+		findings []Finding
+		stats    Stats
+		firstErr error
+		wg       sync.WaitGroup
+	)
+	slots := make(chan struct{}, concurrency)
+	files := map[string]bool{}
+
+	for _, w := range windows {
+		files[w.Path()] = true
+		wg.Add(1)
+		slots <- struct{}{}
+		go func(w *source.Window) {
+			defer wg.Done()
+			defer func() { <-slots }()
+			found, s, err := j.window(ctx, w)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+					cancel()
+				}
+				return
+			}
+			findings = append(findings, found...)
+			stats.Calls += s.Calls
+			stats.CacheHits += s.CacheHits
+			stats.InputTokens += s.InputTokens
+			stats.CostUSD += s.CostUSD
+		}(w)
+	}
+	wg.Wait()
+
+	if firstErr != nil {
+		return nil, Stats{}, firstErr
+	}
+	stats.Files = len(files)
+	stats.Windows = len(windows)
+	stats.Duration = time.Since(started)
+	sortFindings(findings)
+	return findings, stats, nil
+}
+
+func sortFindings(findings []Finding) {
+	sort.Slice(findings, func(a, b int) bool {
+		x, y := findings[a], findings[b]
+		if x.File != y.File {
+			return x.File < y.File
+		}
+		if x.Line != y.Line {
+			return x.Line < y.Line
+		}
+		return x.Tenet < y.Tenet
+	})
+}
+
+// pending is one tenet's state while its window is judged.
+type pending struct {
+	tenet *tenets.Tenet
+	key   string
+	prob  float64
+	line  string
+	asked bool
+}
+
+func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, Stats, error) {
+	var stats Stats
+	state := State(w)
+
+	var work []*pending
+	for _, t := range j.Tenets {
+		if !t.Applies(w.Path()) || w.File.Sup.File(t.ID) {
+			continue
+		}
+		p := &pending{tenet: t, key: cache.Key(state, t.Hash())}
+		if e, ok := j.Cache.Get(p.key); ok {
+			p.prob, p.line, p.asked = e.Prob, e.Line, true
+			stats.CacheHits++
+		}
+		work = append(work, p)
+	}
+	if len(work) == 0 {
+		return nil, stats, nil
+	}
+
+	if err := j.askVerdicts(ctx, w, state, work, &stats); err != nil {
+		return nil, stats, err
+	}
+	if err := j.askLocations(ctx, w, state, work, &stats); err != nil {
+		return nil, stats, err
+	}
+
+	var findings []Finding
+	for _, p := range work {
+		if p.prob < p.tenet.ThresholdValue() {
+			continue
+		}
+		id, ok := parseLineID(p.line)
+		if !ok || id > len(w.Lines) {
+			continue
+		}
+		line := w.Line(id)
+		if !w.File.Reportable(line) || w.File.Sup.Line(line, p.tenet.ID) {
+			continue
+		}
+		findings = append(findings, Finding{
+			File:          w.Path(),
+			Line:          line,
+			Tenet:         p.tenet.ID,
+			Severity:      p.tenet.Severity,
+			Probability:   p.prob,
+			LowConfidence: p.prob < p.tenet.ConfidentValue(),
+			Message:       p.tenet.Tenet,
+		})
+	}
+	return findings, stats, nil
+}
+
+func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
+	questions := map[string]jev.Question{}
+	for _, p := range work {
+		if p.asked {
+			continue
+		}
+		var trueDesc, falseDesc string
+		if c := p.tenet.Criteria; c != nil {
+			trueDesc, falseDesc = c.True, c.False
+		}
+		questions["verdict:"+p.tenet.ID] = jev.Noul(VerdictInstructions(p.tenet), trueDesc, falseDesc)
+	}
+	if len(questions) == 0 {
+		return nil
+	}
+	resp, err := j.ask(ctx, w, "verdict", state, questions, stats)
+	if err != nil {
+		return err
+	}
+	for _, p := range work {
+		answer, ok := resp.Answers["verdict:"+p.tenet.ID]
+		if !ok {
+			continue
+		}
+		p.prob = answer.Prob()
+		j.Cache.PutVerdict(p.key, p.prob)
+	}
+	return nil
+}
+
+func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
+	labels := map[string]any{NoneLabel: "no line violates the rule"}
+	for i := range w.Lines {
+		labels[lineID(i+1)] = nil
+	}
+
+	questions := map[string]jev.Question{}
+	var asking []*pending
+	for _, p := range work {
+		if p.prob < p.tenet.ThresholdValue() || p.line != "" {
+			continue
+		}
+		q, err := jev.Choice(LocationInstructions(p.tenet), labels)
+		if err != nil {
+			return err
+		}
+		questions["where:"+p.tenet.ID] = q
+		asking = append(asking, p)
+	}
+	if len(questions) == 0 {
+		return nil
+	}
+	resp, err := j.ask(ctx, w, "where", state, questions, stats)
+	if err != nil {
+		return err
+	}
+	for _, p := range asking {
+		answer, ok := resp.Answers["where:"+p.tenet.ID]
+		if !ok {
+			continue
+		}
+		p.line = topLine(answer)
+		if p.line != "" {
+			j.Cache.PutLocation(p.key, p.prob, p.line)
+		}
+	}
+	return nil
+}
+
+// topLine is the most probable line, read from the distribution with none
+// taken out: the verdict has already decided that the window violates the
+// rule, so the question left is only which line shows it best.
+func topLine(a jev.Answer) string {
+	trimmed := jev.Answer{Probabilities: map[string]float64{}}
+	for label, p := range a.Probabilities {
+		if label == NoneLabel {
+			continue
+		}
+		trimmed.Probabilities[label] = p
+	}
+	label, _ := trimmed.Top()
+	return label
+}
+
+func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, questions map[string]jev.Question, stats *Stats) (*jev.Response, error) {
+	resp, err := j.Asker.Ask(ctx, state, questions)
+	if err != nil {
+		return nil, err
+	}
+	stats.Calls++
+	stats.InputTokens += resp.Usage.InputTokens
+	stats.CostUSD += jev.Cost(resp.Usage)
+	if j.Log != nil {
+		j.Log(fmt.Sprintf("%s:%d %s for %d tenets, %d input tokens", w.Path(), w.First, kind, len(questions), resp.Usage.InputTokens))
+	}
+	return resp, nil
+}

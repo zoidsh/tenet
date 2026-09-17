@@ -6,10 +6,10 @@ import (
 )
 
 // Window limits, both chosen to stay inside what one call can carry: the
-// model takes at most 255 choice labels, so a window cannot offer more than
-// 255 lines to locate a finding on.
+// location question offers a label per line plus none, and the model takes at
+// most 255 labels.
 const (
-	MaxWindowLines = 255
+	MaxWindowLines = 254
 	MaxWindowBytes = 48 * 1024
 	cutbackLines   = 40
 )

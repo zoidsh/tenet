@@ -221,8 +221,15 @@ func (s *Set) add(path string, content []byte, reportable map[int]bool) {
 	if reportable != nil && len(reportable) == 0 {
 		return
 	}
+	s.Files = append(s.Files, NewFile(path, content, reportable))
+}
+
+// NewFile prepares one file's contents for the model: the directives are cut
+// out and recorded, and reportable, when it is not nil, limits findings to the
+// lines a diff touched.
+func NewFile(path string, content []byte, reportable map[int]bool) *File {
 	lines, sup := stripDirectives(splitLines(content))
-	s.Files = append(s.Files, &File{Path: path, Lines: lines, reportable: reportable, Sup: sup})
+	return &File{Path: path, Lines: lines, reportable: reportable, Sup: sup}
 }
 
 func skipByName(path string) string {
