@@ -37,13 +37,13 @@ Do this when a person asks you to set tenet up, or when the repository has no `t
 
 1. Run `tenet auth --status`. With no key, ask the person to run `tenet auth` and stop there, because the key is theirs to paste.
 2. Run `tenet init`. It reads `AGENTS.md`, `CLAUDE.md` and the other instruction files and asks jev what each sentence is, so do not parse those files yourself. Read the table it prints: every sentence it kept is now a drafted tenet in `tenet.yml`.
-3. Run `tenet rules`. For each drafted tenet that says what a built-in rule already says, delete the draft and name the built-in id under `rules:`, or the preset that holds it when several drafts map into the one preset. Keep a comment with the source line the draft came from.
+3. Run `tenet rules`. For each drafted tenet that says what a built-in rule already says, delete the draft and name that rule's id under `rules:`, as a block list, so that a comment holding the drafted `source` line sits above the entry. Two drafts often map to the one rule, which is one entry. Name a preset instead only when the drafts you deleted cover several rules of that preset. Then run `tenet config`, which prints what the file now resolves to and fails on one it cannot load.
 4. Run `tenet hook install`, so the built-in rules gate every commit from here on. Steps 1 to 4 are under two minutes; calibration comes after them.
 5. Calibrate each remaining custom tenet by the recipe in `rules/README.md`:
-   - Write at least twelve labelled examples in `examples/<id>.yml` and point the tenet at them with `examples_from: examples/<id>.yml`. Roughly half are `violation`, each with the `lines` a finding should land on, and the rest are `ok`. Mine them from this repository and its history where you can, and make them hard: include the innocent look-alikes a careless reading of the tenet would flag.
-   - Run `tenet check <id> --runs 3 --format json` and read the misjudged examples.
+   - Write at least twelve labelled examples in `examples/<id>.yml` and point the tenet at them with `examples_from: examples/<id>.yml`, a path read relative to the directory `tenet.yml` is in. Roughly half are `violation`, each with the `lines` a finding should land on, and the rest are `ok`. Mine them from this repository and its history where you can, and make them hard: include the innocent look-alikes a careless reading of the tenet would flag.
+   - Run `tenet check <id> --runs 3 --format json`. Read `verdict`, then `misjudged`, which names each example that landed on the wrong side of the cutoff by its first line.
    - Edit `criteria.true` and `criteria.false` and nothing else. Never reword the tenet sentence and never move `fail`. A criterion names the shape the misjudged examples share, never their text, and a clause you add needs two examples behind it.
-   - Four attempts. A tenet that is not sharp after four stays in the file with a comment saying what it is short of.
+   - Four attempts. A `verdict` of `sharp` is the end of it; a tenet that is still `usable` or `blurry` after four attempts stays in the file with a comment saying what it is short of.
    - A label you are not sure of gets a `note` saying what you were deciding, and a question for the person, rather than a guess.
 6. Commit `tenet.yml` and the examples.
 7. Report as in the last section.
