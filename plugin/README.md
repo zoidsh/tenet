@@ -13,7 +13,7 @@ This repository is its own marketplace, so add it and then install the plugin fr
 
 To try it from a checkout instead, start Claude Code with `claude --plugin-dir ./plugin`.
 
-The plugin runs the `tenet` binary, which the [README](../README.md) has every way of installing, and which needs `TYPESAFE_API_KEY` in the environment the agent runs in.
+The plugin runs the `tenet` binary, which the [README](../README.md) has every way of installing, and which needs a TypeSafe key: run `tenet auth typesafe` once, or set `TYPESAFE_API_KEY` in the environment the agent runs in.
 
 ## What it does
 

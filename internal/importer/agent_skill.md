@@ -1,4 +1,4 @@
-Run `tenet` on your staged changes before every commit, and `tenet --base <branch>`, the branch you started from and usually `main`, before you call a branch done. It lints the changed lines against the repository's `tenets.yml`, exiting 0 clean, 1 on a finding and 2 when the run broke; without `TYPESAFE_API_KEY`, or with no `tenet` on your PATH, it is broken, not clean, so say so rather than committing as though it had passed.
+Run `tenet` on your staged changes before every commit, and `tenet --base <branch>`, the branch you started from and usually `main`, before you call a branch done. It lints the changed lines against the repository's `tenets.yml`, exiting 0 clean, 1 on a finding and 2 when the run broke; with no key, from `tenet auth typesafe` or `TYPESAFE_API_KEY`, or with no `tenet` on your PATH, it is broken, not clean, so say so rather than committing as though it had passed.
 
 If the tenetlint plugin is installed, its hook runs the staged check when you commit; the answers are cached, so running it yourself first costs nothing and tells you sooner.
 

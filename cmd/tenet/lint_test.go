@@ -343,8 +343,11 @@ func TestLintWithoutAKey(t *testing.T) {
 	if code := execute(root); code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}
-	if !strings.Contains(stderr.String(), jev.APIKeyEnv) || !strings.Contains(stderr.String(), SkipEnv) {
-		t.Errorf("stderr %q should name both the key and the escape hatch", stderr.String())
+	// The one sentence a newcomer sees, whichever command they ran first and
+	// whichever hook relayed it.
+	want := "no TypeSafe API key: run tenet auth typesafe, or set " + jev.APIKeyEnv + "; set " + SkipEnv + "=1 to commit without linting"
+	if !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr is %q, want it to hold %q", stderr.String(), want)
 	}
 }
 

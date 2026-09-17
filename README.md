@@ -68,27 +68,35 @@ Every release tarball, and the `checksums.txt` that covers them, is on [GitHub R
 
 ## Quick start
 
-Set `TYPESAFE_API_KEY` to your key, which comes from a TypeSafe account at [typesafe.ai](https://typesafe.ai). Then, from the root of your repository:
+From the root of your repository:
 
-1. Draft a `tenets.yml` from the instruction files your agents already read.
+1. Save the key your lints are judged with, which comes from a TypeSafe account at [typesafe.ai](https://typesafe.ai).
+
+   ```
+   tenet auth
+   ```
+
+   The key is typed at a prompt with the echo off and kept in `~/.config/tenetlint/credentials`, which every repository on the machine then reads. `tenet auth --project` keeps it in `.tenetlint/credentials` in this repository instead, and adds that file to `.gitignore`. CI saves nothing: `TYPESAFE_API_KEY` in the environment outranks both files. `tenet auth --status` says which one a run is reading, and `tenet auth typesafe` names the provider outright, which is worth doing once there is more than one.
+
+2. Draft a `tenets.yml` from the instruction files your agents already read.
 
    ```
    tenet init
    ```
 
-2. Read what it drafted, delete the rules you did not mean, and print what the file now resolves to.
+3. Read what it drafted, delete the rules you did not mean, and print what the file now resolves to.
 
    ```
    tenet config
    ```
 
-3. Lint your staged changes.
+4. Lint your staged changes.
 
    ```
    tenet
    ```
 
-4. Install the hooks, so every commit is linted from here on.
+5. Install the hooks, so every commit is linted from here on.
 
    ```
    tenet hook install
@@ -165,6 +173,7 @@ unslop-prose  The prose an LLM writes into a README when nobody rewrites the dra
 
 ```yaml
 version: 1
+provider: typesafe              # who judges, and whose key is read; typesafe is the default
 presets: [agent-hygiene]        # built-in presets, expanded in order
 rules: [no-defensive-nil]       # individual built-in rules, added after presets
 disable: [no-mocking]           # removed after expansion, by id
@@ -343,6 +352,8 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
 
 `next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
 
+A run with no key exits 2 saying `no TypeSafe API key: run tenet auth typesafe, or set TYPESAFE_API_KEY`, which is a broken run rather than a clean one; the key is the person's to enter at that prompt, never something for an agent to read, write into a file or put in a commit.
+
 Reading the report is one thing and knowing to run it is another, so `plugin/` is a Claude Code plugin that does both. It carries a `tenet` skill, which says when to run the lint and what to do with each finding, and a `PreToolUse` hook, which lints the staged changes before a `git commit` and hands the findings back instead of letting the commit through. This repository is its own marketplace:
 
 ```
@@ -358,7 +369,7 @@ tenet init --agent cursor --agent agents
 
 ## Environment variables
 
-- `TYPESAFE_API_KEY` is your key, and every command that asks the model needs it.
+- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenetlint/credentials` in the repository, then `~/.config/tenetlint/credentials`, so exporting it in CI overrides whatever is saved on the machine. A provider added later reads a variable of its own, named after it.
 - `TYPESAFE_BASE_URL` sends the requests to another host, such as a proxy or a local stand-in.
 - `TENETLINT_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
 - `TENETLINT_SKIP=1` makes the installed hooks exit without linting.
