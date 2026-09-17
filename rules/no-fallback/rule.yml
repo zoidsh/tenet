@@ -1,7 +1,7 @@
 id: no-fallback
-tenet: Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error.
+tenet: "Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error."
 criteria:
-  true: The code catches or checks for a failure and then continues with a substitute value, an empty result, a cached or default value, a logged warning, or a swallowed exception, so the caller cannot tell the operation failed.
-  false: Failures propagate, are re-raised, or are converted to an explicit error with context; or the default is a documented, intentional part of the interface such as an optional parameter or a config value with a meaningful default.
+  true: "The code meets a failure or a missing required value and carries on with a substitute: a caught or suppressed exception followed by a default, an empty or cached result, an error value assigned to the blank identifier or otherwise discarded, a warning logged in place of a return, a required setting that becomes an empty string, a zero or a placeholder constant, or a keyed lookup whose default argument stands in for a value the result is computed from, such as a rate, an address or an identifier, as against an optional field the result merely carries. A blank, empty or zero stand-in for something the program cannot work without is a substitute however it is declared, and the caller cannot tell that anything went wrong."
+  false: "Failures propagate, are re-raised, or are converted to an explicit error with context; or the value is a declared and usable default of an optional parameter, field or setting the operation does not require; or the function is selecting among values its input and its own data already offer, such as negotiating a locale against a catalogue that declares a default, where no call failed and every branch is a result the interface promises."
 include: ["**/*.go"]
 tags: [code, errors]
