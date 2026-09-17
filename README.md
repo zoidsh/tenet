@@ -159,6 +159,8 @@ y := 1 // set y to one
 
 A directive only counts inside a comment, so a string, a test fixture or a sentence about directives does not quietly exempt the file it sits in. In code that means after a line comment marker, or between a block comment's markers, in the language the file's extension names; in a language that tenet does not know it counts anywhere on the line. The check is textual rather than a parse, so a marker inside a string literal opens a comment as far as tenet is concerned and a directive after it counts.
 
+A directive is yours to write, not your agent's. It records a false positive you have read and confirmed, so the instructions the plugin and `tenet init --agent` put in front of an agent tell it never to write one. A finding it believes is wrong comes back to you with the line, the tenet's sentence and why it thinks the rule misfired, and you then sharpen the tenet's criteria, write the directive yourself with the reason after the id, or tell it the finding was right and the code is what changes.
+
 In Markdown, YAML and other prose and data files a directive counts at the start of a line, after list markers, whitespace or the format's own comment marker, or inside an `<!-- -->` comment; a sentence that quotes one mid-line does not count. In a commit message, and in a pull request's title and description, it counts anywhere. The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
 
 ## Configuration
@@ -368,6 +370,8 @@ Agents that read a repository rather than a plugin get the same instructions fro
 ```
 tenet init --agent cursor --agent agents
 ```
+
+Setting tenet up is one instruction to the agent. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste. The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, which takes under two minutes. Each remaining custom tenet it then calibrates by `rules/README.md`: twelve labelled examples in `examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
 
 ## Comparison
 
