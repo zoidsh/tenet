@@ -58,8 +58,12 @@ func TestSplitStripsBoldAnywhere(t *testing.T) {
 	}{
 		{"- **Never mock anything in tests.**\n", "Never mock anything in tests."},
 		{"- **Do not** leave a commented-out block behind.\n", "Do not leave a commented-out block behind."},
-		{"- __Never__ print the key, and __never__ commit it.\n", "Never print the key, and never commit it."},
+		{"- __really__ important that you read this.\n", "really important that you read this."},
 		{"- Strip **bold** and __underlined__ emphasis from a rule.\n", "Strip bold and underlined emphasis from a rule."},
+		{"- **x__ is not a pair, so leave the markers alone.\n", "**x__ is not a pair, so leave the markers alone."},
+		{"- Name the `__init__.py` that the package needs.\n", "Name the `__init__.py` that the package needs."},
+		{"- Do not define __slots__ and __repr__ on a dataclass.\n", "Do not define __slots__ and __repr__ on a dataclass."},
+		{"- A **`code span`** keeps its backticks, not its stars.\n", "A `code span` keeps its backticks, not its stars."},
 	}
 	for _, c := range cases {
 		got := importer.Split("f.md", []byte(c.source))

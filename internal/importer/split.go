@@ -29,7 +29,9 @@ var (
 	fenceLine   = regexp.MustCompile("^\\s*(```|~~~)")
 	headingLine = regexp.MustCompile(`^(#{1,6})\s+(.*)$`)
 	itemLine    = regexp.MustCompile(`^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$`)
-	bold        = regexp.MustCompile(`(\*\*|__)(.+?)(\*\*|__)`)
+	boldStars   = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	boldScores  = regexp.MustCompile(`(^|\W)__([^_]+)__($|\W)`)
+	codeSpan    = regexp.MustCompile("`[^`]*`")
 	linkOnly    = regexp.MustCompile(`^<?\[[^\]]*\]\([^)]*\)>?$`)
 )
 
@@ -159,7 +161,37 @@ func (s *splitter) emit(line int, text string) {
 // clean strips the emphasis a rule file puts on part of a rule: the markers
 // are markdown for the eye, and a tenet is read as a sentence.
 func clean(text string) string {
-	return strings.TrimSpace(bold.ReplaceAllString(strings.TrimSpace(text), "$2"))
+	return strings.TrimSpace(outsideCode(strings.TrimSpace(text), stripEmphasis))
+}
+
+// codeMask stands in for a backticked span while the emphasis around it is
+// stripped. It is a byte no markdown file holds, so nothing else can match it.
+const codeMask = "\x00"
+
+// outsideCode applies f to the text with every backticked span held out of its
+// reach, because a code span means whatever the language it is written in says
+// it means. The span is masked rather than skipped so that emphasis wrapped
+// around one is still recognised as a pair.
+func outsideCode(text string, f func(string) string) string {
+	spans := codeSpan.FindAllString(text, -1)
+	out := f(codeSpan.ReplaceAllLiteralString(text, codeMask))
+	for _, span := range spans {
+		out = strings.Replace(out, codeMask, span, 1)
+	}
+	return out
+}
+
+// stripEmphasis takes the markers off a bold span and leaves a mismatched pair
+// alone. Asterisks are never part of a name, so every pair of them goes;
+// underscores are, so a run of them is only read as emphasis when the sentence
+// holds exactly one pair, which leaves Python names such as __slots__ and
+// __repr__ as their authors wrote them.
+func stripEmphasis(text string) string {
+	text = boldStars.ReplaceAllString(text, "$1")
+	if strings.Count(text, "__") == 2 {
+		text = boldScores.ReplaceAllString(text, "$1$2$3")
+	}
+	return text
 }
 
 func keep(text string) bool {
