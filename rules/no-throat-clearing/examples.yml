@@ -1,0 +1,233 @@
+# Labelled cases for the no-throat-clearing tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Configuration
+
+    In this section we will take a look at how configuration works.
+    Configuration is an important topic, so let us dive in.
+
+    The daemon reads `/etc/app/config.toml` at startup and re-reads it on
+    SIGHUP. Keys are case-sensitive; an unknown key is an error, not a warning.
+
+    ## Logging
+
+    Logs go to stderr as JSON lines, one object per request, with the trace id
+    under `trace`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Migrating to v3
+
+    Great question! Migrating between major versions can feel daunting, but do
+    not worry, I have got you covered. Let us walk through it together.
+
+    ## Breaking changes
+
+    `Client.New` takes a `context.Context` as its first argument.
+
+    `Client.Close` returns an error rather than panicking on a double close.
+
+    ## Deprecated
+
+    `Client.SetTimeout` is replaced by the `WithTimeout` option and logs once
+    per process when called.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## Rate limits
+
+    Rate limits are limits on the rate at which you may call the API. It is
+    worth understanding how they work before you build against it.
+
+    Each token gets 600 requests a minute, counted in one-second buckets.
+    Going over returns 429 with a `Retry-After` header in whole seconds.
+
+    ## Quotas
+
+    A quota is monthly and is not refilled by a failed request; a 429 does not
+    count against it, a 500 does.
+- label: violation
+  lang: markdown
+  lines: [11, 14]
+  code: |
+    ## Backups
+
+    `app backup` writes a single tar to the path you name and exits non-zero
+    if the database is mid-migration.
+
+    ## Restores
+
+    `app restore` refuses to run against a data directory that is not empty,
+    so a restore over a live installation is two commands, not one.
+
+    ## Summary
+
+    In summary, `app backup` writes a backup and `app restore` restores one.
+    We have now covered both commands and how each of them behaves.
+- label: violation
+  lang: markdown
+  lines: [9, 12]
+  code: |
+    # Caching
+
+    The cache keys on the SHA-256 of the request body and the model name. An
+    entry expires 30 days after it was written, which `--cache-ttl` overrides.
+
+    `--no-cache` skips the read and still writes the result, so a run with it
+    leaves the cache warmer than it found it.
+
+    ## Conclusion
+
+    To conclude, caching is a useful feature that can save you both time and
+    money. As we have seen, the cache is keyed carefully and expires sensibly.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    # Permissions
+
+    Permissions are one of the most important and most misunderstood parts of
+    any system, and getting them right matters more than almost anything else
+    you will do here.
+
+    A role is a named set of grants. A grant names a resource pattern and one
+    of `read`, `write` or `admin`.
+
+    A user holds any number of roles; the effective grant is the union, so a
+    deny cannot be expressed and a role can only add.
+- label: violation
+  lang: markdown
+  lines: [9, 12]
+  code: |
+    # Choosing a storage backend
+
+    `sqlite` is the default and keeps everything in one file.
+
+    `postgres` needs a server but takes more than one writer.
+
+    `memory` is for tests and loses everything when the process exits.
+
+    ## Final thoughts
+
+    To wrap up, there are three backends and each of them has its place.
+    Hopefully this has given you a good overview of the options available.
+- label: ok
+  lang: markdown
+  code: |
+    ## Configuration
+
+    The daemon reads `/etc/app/config.toml` at startup and re-reads it on
+    SIGHUP. Keys are case-sensitive; an unknown key is an error, not a warning.
+
+    Every key can be overridden by an environment variable of the same name
+    uppercased and prefixed `APP_`, which wins over the file.
+
+    ## Logging
+
+    Logs go to stderr as JSON lines, one object per request, with the trace id
+    under `trace`.
+- label: ok
+  lang: markdown
+  code: |
+    # Migrating to v3
+
+    v3 has two breaking changes and one deprecation. The deprecation still
+    works in v3 and is removed in v4.
+
+    ## Breaking changes
+
+    `Client.New` takes a `context.Context` as its first argument.
+
+    `Client.Close` returns an error rather than panicking on a double close.
+
+    ## Deprecated
+
+    `Client.SetTimeout` is replaced by the `WithTimeout` option and logs once
+    per process when called.
+- label: ok
+  note: "The closing section is headed Summary and restates nothing: it names an interaction between the two commands above and the command that checks the result, which neither section said."
+  lang: markdown
+  code: |
+    ## Backups
+
+    `app backup` writes a single tar to the path you name and exits non-zero
+    if the database is mid-migration.
+
+    ## Restores
+
+    `app restore` refuses to run against a data directory that is not empty,
+    so a restore over a live installation is two commands, not one.
+
+    ## Summary
+
+    Neither command takes a lock, so a backup taken during a restore is not
+    consistent. Run both from one cron entry, and keep `app backup --verify`
+    in the same entry to check the tar before it is shipped anywhere.
+- label: ok
+  note: "A Conclusion heading over a paragraph that names the two limits the body left out. The tenet is about a closing that restates, not about the word Conclusion."
+  lang: markdown
+  code: |
+    # Caching
+
+    The cache keys on the SHA-256 of the request body and the model name. An
+    entry expires 30 days after it was written, which `--cache-ttl` overrides.
+
+    `--no-cache` skips the read and still writes the result, so a run with it
+    leaves the cache warmer than it found it.
+
+    ## Conclusion
+
+    The cache is not shared between machines, and two processes writing one
+    directory will corrupt it. If you need either, give each process its own
+    `--cache-dir` and reconcile them outside the tool.
+- label: ok
+  lang: markdown
+  code: |
+    # Permissions
+
+    A role is a named set of grants. A grant names a resource pattern and one
+    of `read`, `write` or `admin`.
+
+    A user holds any number of roles; the effective grant is the union, so a
+    deny cannot be expressed and a role can only add.
+
+    ## Built-in roles
+
+    `owner` grants `admin` on `*` and `viewer` grants `read` on `*`. Neither
+    can be deleted, and `owner` cannot be taken from the last user holding it.
+- label: ok
+  note: "An opening that names the page's scope and what it leaves to another page is a fact a reader can act on, not an announcement that an explanation is coming."
+  lang: markdown
+  code: |
+    # Choosing a storage backend
+
+    This page compares the three backends on durability, concurrency and setup
+    cost. It does not cover the wire protocol, which `docs/protocol.md` has.
+
+    `sqlite` is the default and keeps everything in one file.
+
+    `postgres` needs a server but takes more than one writer.
+
+    `memory` is for tests and loses everything when the process exits.
+- label: ok
+  lang: markdown
+  code: |
+    ## 3.0.0 - 2026-02-11
+
+    ### Breaking
+
+    - `Client.New` takes a `context.Context` as its first argument.
+    - `Client.Close` returns an error rather than panicking on a double close.
+
+    ### Added
+
+    - `WithTimeout` replaces `SetTimeout`.
+
+    ## Upgrade notes
+
+    Run `go fix ./...` with the bundled rewrite rule. It handles the `New`
+    signature but not the `Close` return, which the compiler will find for you.

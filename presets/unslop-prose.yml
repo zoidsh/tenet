@@ -18,3 +18,4 @@ name: unslop-prose
 description: The prose an LLM writes into a README when nobody rewrites the draft.
 rules:
   - project-specific
+  - no-throat-clearing
