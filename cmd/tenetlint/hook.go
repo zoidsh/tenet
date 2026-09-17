@@ -53,7 +53,6 @@ func newHookCmd() *cobra.Command {
 	return cmd
 }
 
-// plan is one hook about to be written, with whatever is at its path now.
 type plan struct {
 	name     string
 	path     string

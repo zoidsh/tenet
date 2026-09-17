@@ -81,6 +81,9 @@ func TestLintCommitMsgEndToEnd(t *testing.T) {
 	if got.Stats.Files != 1 || got.Stats.Windows != 1 {
 		t.Errorf("stats are %#v", got.Stats)
 	}
+	if got.Next != report.NextCommitMsg {
+		t.Errorf("next is %q", got.Next)
+	}
 }
 
 func TestLintCommitMsgText(t *testing.T) {

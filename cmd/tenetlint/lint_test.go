@@ -90,6 +90,7 @@ func answerServer(t *testing.T) *httptest.Server {
 type jsonReport struct {
 	Version  int             `json:"version"`
 	Findings []judge.Finding `json:"findings"`
+	Next     string          `json:"next"`
 	Stats    struct {
 		Files       int     `json:"files"`
 		Windows     int     `json:"windows"`

@@ -1,6 +1,7 @@
 package source
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -19,7 +20,7 @@ const scissorsLine = "# ------------------------ >8 ------------------------"
 func collectCommitMsg(dir, path string, known map[string]bool) (*Set, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("commit message %s: %w", path, err)
 	}
 	// Root is where the lint was started, so that the message is reported
 	// under the name the tenets match it by rather than a path on disk that
