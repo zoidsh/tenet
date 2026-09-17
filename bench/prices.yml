@@ -1,32 +1,44 @@
 # The one file under bench/ that is edited by hand. bench/run.sh reads it for
-# the agent-reviewer comparison and prints n/a for any model whose numbers are
-# still null, so a missing price never fails the run or turns into a guess.
+# the agent-reviewer comparison and prints n/a for any field that is still
+# null, so a missing number never fails the run or turns into a guess.
 #
-# output_tokens_per_second and ttft_seconds are measured, not published, so
-# fill them from a run you made yourself and say where in source.
+# The prices are the vendors' own published per-million-token prices, read from
+# their pricing pages. The output rate and the time to first token are
+# third-party medians from Artificial Analysis, measured against each vendor's
+# API rather than published by the vendor, which is why they carry a source and
+# a date of their own.
 version: 1
 models:
   - id: claude-haiku-4-5-20251001
     name: Claude Haiku 4.5
-    input_usd_per_million: null
-    output_usd_per_million: null
-    output_tokens_per_second: null
-    ttft_seconds: null
-    source: null
-    date: null
+    input_usd_per_million: 1
+    output_usd_per_million: 5
+    output_tokens_per_second: 83.1
+    ttft_seconds: 0.69
+    source: https://claude.com/pricing
+    date: 2026-09-17
+    speed_source: https://artificialanalysis.ai/models/claude-4-5-haiku
+    speed_date: 2026-09-17
+    note: null
   - id: claude-sonnet-5
     name: Claude Sonnet 5
-    input_usd_per_million: null
-    output_usd_per_million: null
-    output_tokens_per_second: null
+    input_usd_per_million: 2
+    output_usd_per_million: 10
+    output_tokens_per_second: 62.4
+    ttft_seconds: 1.44
+    source: https://claude.com/pricing
+    date: 2026-09-17
+    speed_source: https://artificialanalysis.ai/models/claude-sonnet-5-non-reasoning
+    speed_date: 2026-09-17
+    note: the non-reasoning figures, which is the shape of call this row estimates
+  - id: gpt-5-nano
+    name: GPT-5 nano
+    input_usd_per_million: 0.05
+    output_usd_per_million: 0.40
+    output_tokens_per_second: 162.7
     ttft_seconds: null
-    source: null
-    date: null
-  - id: openai-cheapest
-    name: OpenAI, cheapest reviewing model
-    input_usd_per_million: null
-    output_usd_per_million: null
-    output_tokens_per_second: null
-    ttft_seconds: null
-    source: null
-    date: null
+    source: https://openai.com/api/pricing/
+    date: 2026-09-17
+    speed_source: https://artificialanalysis.ai/models/gpt-5-nano
+    speed_date: 2026-09-17
+    note: no time to first token, because the only published figure is for the high-reasoning variant and this row estimates a plain one

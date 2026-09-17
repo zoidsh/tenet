@@ -189,8 +189,8 @@ prices() {
 			return v
 		}
 		function flush() {
-			if (id != "") printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, name, inp, outp, tps, ttft, src, day
-			id = ""; name = ""; inp = ""; outp = ""; tps = ""; ttft = ""; src = ""; day = ""
+			if (id != "") printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, name, inp, outp, tps, ttft, src, day, sspeed, sday, note
+			id = ""; name = ""; inp = ""; outp = ""; tps = ""; ttft = ""; src = ""; day = ""; sspeed = ""; sday = ""; note = ""
 		}
 		/^[[:space:]]*#/ { next }
 		/^[[:space:]]*-[[:space:]]*id:/ { flush(); id = value($0); next }
@@ -199,8 +199,11 @@ prices() {
 		/^[[:space:]]*output_usd_per_million:/ { outp = value($0); next }
 		/^[[:space:]]*output_tokens_per_second:/ { tps = value($0); next }
 		/^[[:space:]]*ttft_seconds:/ { ttft = value($0); next }
+		/^[[:space:]]*speed_source:/ { sspeed = value($0); next }
+		/^[[:space:]]*speed_date:/ { sday = value($0); next }
 		/^[[:space:]]*source:/ { src = value($0); next }
 		/^[[:space:]]*date:/ { day = value($0); next }
+		/^[[:space:]]*note:/ { note = value($0); next }
 		END { flush() }
 	' bench/prices.yml
 }
@@ -307,7 +310,7 @@ agent_input=$((base_bytes / AGENT_BYTES_PER_TOKEN))
 	echo "| --- | --- | --- | --- | --- |"
 	printf '| tenetlint, measured | %s | — | %s | %s |\n' \
 		"$(group "$diff_tokens")" "$(cost "$diff_usd")" "$(secs "$diff_ms")"
-	prices | while IFS=$'\t' read -r id name inp outp tps ttft _ _; do
+	prices | while IFS=$'\t' read -r id name inp outp tps ttft _ _ _ _ _; do
 		[ -n "$name" ] && [ "$name" != null ] || name=$id
 		agent_cost="n/a"
 		if [ "$inp" != null ] && [ "$outp" != null ] && [ -n "$inp" ] && [ -n "$outp" ]; then
@@ -321,13 +324,27 @@ agent_input=$((base_bytes / AGENT_BYTES_PER_TOKEN))
 		printf '| %s | %s | %s | %s | %s |\n' "$name" "$(group "$agent_input")" "$(group "$AGENT_OUTPUT_TOKENS")" "$agent_cost" "$agent_time"
 	done
 	echo
-	echo "The agent rows are estimates, not runs. Input tokens are the $(group "$base_bytes") bytes of \`git diff $BASE\` over $AGENT_BYTES_PER_TOKEN bytes per token; output is fixed at $(group "$AGENT_OUTPUT_TOKENS") tokens, about a page of review. Cost is input tokens times the model's input price plus output tokens times its output price, and time is its time to first token plus output tokens over its output rate. The prices and rates are read from bench/prices.yml, which is filled in by hand; a row reads n/a until somebody puts the numbers and their source there. tenetlint's own row is measured rather than estimated, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
+	echo "The agent rows are estimates, not runs. Input tokens are the $(group "$base_bytes") bytes of \`git diff $BASE\` over $AGENT_BYTES_PER_TOKEN bytes per token; output is fixed at $(group "$AGENT_OUTPUT_TOKENS") tokens, about a page of review. Cost is input tokens times the model's input price plus output tokens times its output price, and time is its time to first token plus output tokens over its output rate. All four inputs are read from bench/prices.yml, which is filled in by hand: the prices from the vendors' own pricing pages, and the output rate and the time to first token from Artificial Analysis, whose figures are third-party medians measured against each vendor's API rather than anything the vendor publishes. Both carry their source and the date they were read, below. A single field that is still missing reads n/a on its own, so a row can price a call it cannot time. tenetlint's own row is measured rather than estimated, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
 	echo
 	echo "Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. A reviewer that opens the files around the diff, or that is asked again about what it missed, costs more than this and takes longer."
-	prices | while IFS=$'\t' read -r id _ _ _ _ _ src day; do
+	prices | while IFS=$'\t' read -r id _ _ _ _ ttft src day sspeed sday note; do
+		line=""
 		if [ "$src" != null ] && [ -n "$src" ]; then
+			line="prices from $src, read $day"
+		fi
+		if [ "$sspeed" != null ] && [ -n "$sspeed" ]; then
+			measured="rate and time to first token"
+			[ "$ttft" != null ] || measured="output rate"
+			[ -z "$line" ] || line="$line; "
+			line="$line$measured from $sspeed, read $sday"
+		fi
+		if [ "$note" != null ] && [ -n "$note" ]; then
+			[ -z "$line" ] || line="$line; "
+			line="$line$note"
+		fi
+		if [ -n "$line" ]; then
 			echo
-			echo "$id: $src, read $day."
+			echo "$id: $line."
 		fi
 	done
 } >"$partial"
