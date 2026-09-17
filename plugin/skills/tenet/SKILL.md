@@ -3,7 +3,7 @@ name: tenet
 description: Run the tenet lint and act on what it finds. Use before every commit, before declaring a branch or a task done, whenever a tenet finding appears in output you are reading, and when setting tenet up in a repository or adding a rule to its tenet.yml.
 ---
 
-Pass `--format json` on every `tenet` and `tenet check` call you make, written out rather than left to the default, because a harness that gives the command a pseudo-terminal is handed the text report instead.
+Pass `--format json` to the three commands that report on a run, the lint itself, `tenet init` and `tenet check`, written out rather than left to the default, because a harness that gives the command a pseudo-terminal is handed the text report instead. `tenet auth`, `tenet rules`, `tenet config` and `tenet hook install` print a listing rather than a result, take no such flag, and reject it.
 
 ### Running the lint
 
@@ -29,28 +29,62 @@ Stop instead and ask. Show the line, quote the tenet's sentence from `message`, 
 
 While you are fixing findings to get a commit through, `tenet.yml` and `examples/` are not yours to touch: never edit `tenet.yml`, never lower a tenet's `fail`, never set `TENET_SKIP`, never reword or delete a rule to make a finding go away, and never write a directive. `tenet baseline` accepts what a codebase already had, so never run it over a finding your own change introduced. A `[baselined]` finding, in the report or in the `baselined` array, is accepted history, not yours to fix.
 
-Setting tenet up and adding a rule are the two jobs that do edit `tenet.yml` and `examples/`, in the way the next two sections describe, and nowhere else.
+Setting tenet up and adding a rule are the two jobs that do edit `tenet.yml` and `examples/`, in the way the next three sections describe, and nowhere else.
 
 ### Setting tenet up
 
-Do this when a person asks you to set tenet up, or when the repository has no `tenet.yml`. Installing the binary and running `tenet auth` stay with the person; the rest is one instruction to you.
+Do this when a person asks you to set tenet up. Installing the binary and running `tenet auth` stay with the person; the rest is one instruction to you.
 
 1. Run `tenet auth --status`. With no key, ask the person to run `tenet auth` and stop there, because the key is theirs to paste.
-2. Run `tenet init`. It reads `AGENTS.md`, `CLAUDE.md` and the other instruction files and asks jev what each sentence is, so do not parse those files yourself. Read the table it prints: every sentence it kept is now a drafted tenet in `tenet.yml`.
+2. Run `tenet init --format json`. It reads `AGENTS.md`, `CLAUDE.md` and the other instruction files and asks jev what each sentence is, so do not parse those files yourself. Read its `candidates`: each one carries the sentence, its `kind`, a `checkable_p` and whether it was `accepted`, and every accepted one is now a drafted tenet in `tenet.yml`. Without `--format json` the same thing arrives as a table. Keep the drafts that are rules somebody meant, delete the rest, and say which you kept.
 3. Run `tenet rules`. For each drafted tenet that says what a built-in rule already says, delete the draft and name that rule's id under `rules:`, as a block list, so that a comment holding the drafted `source` line sits above the entry. Two drafts often map to the one rule, which is one entry. Name a preset instead only when the drafts you deleted cover several rules of that preset. Then run `tenet config`, which prints what the file now resolves to and fails on one it cannot load.
 4. Run `tenet hook install`, so the built-in rules gate every commit from here on. Steps 1 to 4 are under two minutes; calibration comes after them.
-5. Calibrate each remaining custom tenet by the recipe in `rules/README.md`:
-   - Write at least twelve labelled examples in `examples/<id>.yml` and point the tenet at them with `examples_from: examples/<id>.yml`, a path read relative to the directory `tenet.yml` is in. Roughly half are `violation`, each with the `lines` a finding should land on, and the rest are `ok`. Mine them from this repository and its history where you can, and make them hard: include the innocent look-alikes a careless reading of the tenet would flag.
-   - Run `tenet check <id> --runs 3 --format json`. Read `verdict`, then `misjudged`, which names each example that landed on the wrong side of the cutoff by its first line.
-   - Edit `criteria.true` and `criteria.false` and nothing else. Never reword the tenet sentence and never move `fail`. A criterion names the shape the misjudged examples share, never their text, and a clause you add needs two examples behind it.
-   - Four attempts. A `verdict` of `sharp` is the end of it; a tenet that is still `usable` or `blurry` after four attempts stays in the file with a comment saying what it is short of.
-   - A label you are not sure of gets a `note` saying what you were deciding, and a question for the person, rather than a guess.
+5. Calibrate each remaining custom tenet by the next section, one at a time.
 6. Commit `tenet.yml` and the examples.
 7. Report as in the last section.
 
+### Calibrating a tenet
+
+A tenet is calibrated when labelled examples say what it catches and what it leaves alone. Keep them in `examples/<id>.yml`, a bare YAML list whose entries take `label`, `lines`, `lang`, `note` and `code` and nothing else, because an unknown field fails the load:
+
+```yaml
+- label: violation
+  lines: 3
+  lang: go
+  code: |
+    func newClient(key string) *jev.Client {
+        if verbose {
+            fmt.Fprintf(os.Stderr, "asking jev with key %s\n", key)
+        }
+        return jev.New(key)
+    }
+- label: ok
+  lang: go
+  note: The status line says whether a key is set, never what it is.
+  code: |
+    func setOrNot(value string) string {
+        if strings.TrimSpace(value) == "" {
+            return "not set"
+        }
+        return "set"
+    }
+```
+
+- Point the tenet at the file with `examples_from: examples/<id>.yml`, a path read relative to the directory `tenet.yml` is in, and give the same tenet `exclude: ["examples/**"]`. The violations in that file are written to fire, and a tenet that names no `kind` or `include` of its own judges the examples file like any other, so without the exclusion the tenet you are adding blocks the commit that adds it.
+- Twelve examples at least, roughly half of them `violation` with the `lines` a finding should land on and the rest `ok`. Mine them from this repository and its history where you can, and make them hard: include the innocent look-alikes a careless reading of the tenet would flag.
+- A drafted tenet has no `criteria`, so write one: `true` describes what a violation looks like, `false` describes the innocent case that resembles it.
+- Run `tenet check <id> --runs 3 --format json`. Read `verdict`, then `misjudged`, which names each example that landed on the wrong side of the cutoff by its first line, then `stability.crossed`. The verdict is the first pass alone, so an example in `crossed` moved across the cutoff between passes and counts as a miss.
+- Edit `criteria.true` and `criteria.false` and nothing else. Never reword the tenet sentence and never move `fail`. A criterion names the shape the misjudged examples share, never their text, and a clause you add needs two examples behind it.
+- Four attempts. A `verdict` of `sharp` with an empty `crossed` is the end of it; a tenet still `usable` or `blurry`, or one that keeps crossing, stays in the file with a comment saying what it is short of.
+- A label you are not sure of gets a `note` saying what you were deciding, and a question for the person, rather than a guess.
+
+The long form of this recipe, with what to do about each verdict, is `rules/README.md` in the tenet repository: https://github.com/zoidsh/tenet/blob/main/rules/README.md
+
 ### Adding a rule later
 
-The same flow runs again whenever a rule arrives: a person asks for one, or `AGENTS.md` or `tenet.yml` has gained a sentence since the last run. Take only the new tenets through step 5 and leave the rest as they are. Examples are how you tell the two apart: a tenet with an `examples` list or an `examples_from` path has been calibrated, and one with neither has not, so calibrate it before it gates anybody's commit.
+`tenet init` refuses to run against a `tenet.yml` that exists, and `--force` throws that file away, so never pass it. When the rule arrived as a sentence in `AGENTS.md` or another instruction file, run `tenet init --dry-run --format json`, which writes nothing and sorts the new sentences for you; when the person told you the rule instead, take their sentence as it stands. Either way, append one entry to `tenets:` by hand with `id`, `tenet` and `source`, then calibrate it by the section above before it gates anybody's commit.
+
+Leave the tenets that are already calibrated alone. Examples are how you tell the two apart: a tenet with an `examples` list or an `examples_from` path has been calibrated, and one with neither has not.
 
 ### Reporting
 
