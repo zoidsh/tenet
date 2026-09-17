@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tenet · every commit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root {
+	--plane: #0a0a09;
+	--surface: #16161a;
+	--pane: #101014;
+	--ink: #f4f4ef;
+	--ink-2: #c3c2b7;
+	--muted: #8b8a82;
+	--faint: #5d5c56;
+	--hairline: rgba(244, 244, 239, 0.10);
+	--grid: #2c2c2a;
+	--fail: #d03b3b;
+	--fail-wash: rgba(208, 59, 59, 0.14);
+	--pass: #3fb950;
+	--quiet-bar: #4a6f8f;
+	--add-wash: rgba(63, 185, 80, 0.07);
+	--del-wash: rgba(208, 59, 59, 0.07);
+
+	--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+	--line: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+	height: 100%;
+	margin: 0;
+}
+
+body {
+	background: var(--plane);
+	color: var(--ink);
+	font-family: var(--sans);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+
+/* The stage is exactly the frame a 720p recording captures; it only ever
+   scales down, so a smaller window previews the same composition. */
+#stage {
+	width: 1280px;
+	height: 720px;
+	flex: 0 0 auto;
+	transform-origin: center center;
+	background: var(--surface);
+	border: 1px solid var(--hairline);
+	border-radius: 10px;
+	display: grid;
+	grid-template-rows: 44px 1fr 44px;
+	overflow: hidden;
+}
+
+header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 20px;
+	border-bottom: 1px solid var(--hairline);
+	font-family: var(--mono);
+	font-size: 12.5px;
+	letter-spacing: 0.02em;
+}
+
+header .title { color: var(--ink); font-weight: 500; }
+header .where { color: var(--faint); }
+
+main {
+	display: grid;
+	grid-template-columns: 700px 1fr;
+	min-height: 0;
+}
+
+.pane {
+	padding: 18px 22px;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.pane.left { border-right: 1px solid var(--hairline); background: var(--pane); }
+
+.commit .subject {
+	font-family: var(--sans);
+	font-size: 17px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	margin: 0 0 4px;
+}
+
+.commit .meta {
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.diff {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	font-family: var(--mono);
+	font-size: 11px;
+	line-height: var(--line);
+	tab-size: 2;
+}
+
+.diff-layer {
+	position: absolute;
+	inset: 0;
+	transition: opacity var(--fade, 700ms) ease;
+}
+
+.diff-layer[data-state="hidden"] { opacity: 0; }
+
+.row {
+	display: grid;
+	grid-template-columns: 34px 10px 1fr;
+	align-items: baseline;
+	height: var(--line);
+	border-left: 2px solid transparent;
+	padding-left: 6px;
+	white-space: pre;
+}
+
+.row .num {
+	color: var(--faint);
+	text-align: right;
+	padding-right: 10px;
+	font-variant-numeric: tabular-nums;
+}
+
+.row .sign { color: var(--faint); }
+.row .text { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+
+.row.file { border-left-color: transparent; }
+.row.file .text { color: var(--ink); font-weight: 700; }
+.row.gap .text { color: var(--faint); }
+.row.add { background: var(--add-wash); }
+.row.add .sign, .row.add .text { color: #a8d8ae; }
+.row.del { background: var(--del-wash); }
+.row.del .sign, .row.del .text { color: #e5a3a3; }
+
+.row.hit {
+	background: var(--fail-wash);
+	border-left-color: var(--fail);
+	transition: background 260ms ease, border-color 260ms ease;
+}
+
+.row.hit .text { color: #f1c9c9; }
+
+.pane.right { display: flex; flex-direction: column; gap: 14px; }
+
+.right h2 {
+	font-family: var(--mono);
+	font-size: 12.5px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	color: var(--ink);
+	margin: 0 0 4px;
+}
+
+.right .sub {
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--muted);
+	margin: 0;
+}
+
+.tenets {
+	position: relative;
+	flex: 1 1 auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 14px;
+}
+
+.tenet {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 5px;
+}
+
+.tenet .label {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+	font-family: var(--mono);
+	font-size: 12px;
+}
+
+.tenet .id { color: var(--ink-2); }
+.tenet .at { color: var(--faint); font-variant-numeric: tabular-nums; }
+.tenet.over .id { color: var(--ink); font-weight: 500; }
+.tenet.over .at { color: var(--fail); }
+
+.track {
+	position: relative;
+	height: 10px;
+	background: rgba(244, 244, 239, 0.05);
+	border-radius: 2px;
+}
+
+.fill {
+	height: 100%;
+	width: 0;
+	background: var(--quiet-bar);
+	border-radius: 0 4px 4px 0;
+	transition: width var(--bar-dur, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1), background-color 200ms ease;
+}
+
+.tenet.over .fill { background: var(--fail); }
+
+.value {
+	position: absolute;
+	top: -1px;
+	left: 0;
+	transform: translateX(6px);
+	font-family: var(--mono);
+	font-size: 11px;
+	line-height: 12px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	transition: left var(--bar-dur, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1), opacity 200ms ease;
+}
+
+.tenet.over .value { color: var(--ink); }
+.tenet.blank .value { color: var(--faint); }
+
+/* Past three quarters of the track the tip label would run off the pane, so it
+   sits inside the bar end, in white against the fill. */
+.value.inside {
+	transform: translateX(-100%) translateX(-6px);
+	color: #ffffff;
+}
+
+/* One cutoff for every bar, so the rows are read against a single scale. */
+#cutoff {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 1px;
+	background: var(--grid);
+	pointer-events: none;
+}
+
+#cutoff::after {
+	content: "fail 0.80";
+	position: absolute;
+	top: -15px;
+	left: 0;
+	transform: translateX(-50%);
+	font-family: var(--mono);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+.status {
+	font-family: var(--mono);
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--muted);
+	min-height: 20px;
+	transition: color 200ms ease;
+}
+
+.status.bad { color: var(--fail); }
+.status.good { color: var(--pass); }
+
+footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 0 22px;
+	border-top: 1px solid var(--hairline);
+	font-family: var(--mono);
+	font-size: 11.5px;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+#caption {
+	color: var(--ink-2);
+	opacity: 0;
+	transition: opacity 420ms ease;
+}
+
+#caption[data-shown="1"] { opacity: 1; }
+
+#numbers { color: var(--ink-2); }
+
+#replay { color: var(--faint); }
+
+@media (prefers-reduced-motion: reduce) {
+	.diff-layer, .fill, .value, #caption { transition-duration: 1ms; }
+}
+</style>
+</head>
+<body data-palette="#4a6f8f,#d03b3b,#3fb950">
+<div id="stage">
+	<header>
+		<span class="title">tenet · every commit</span>
+		<span class="where">northwind/invoicing · main</span>
+	</header>
+
+	<main>
+		<section class="pane left">
+			<div class="commit">
+				<p class="subject">Add discount codes</p>
+				<p class="meta" id="diffstat"></p>
+			</div>
+			<div class="diff">
+				<div class="diff-layer" id="diff-blocked"></div>
+				<div class="diff-layer" id="diff-passed" data-state="hidden"></div>
+			</div>
+		</section>
+
+		<section class="pane right">
+			<div>
+				<h2>tenet · pass / fail</h2>
+				<p class="sub">one jev call per window · rules in plain language · cutoff 0.80</p>
+			</div>
+			<div class="tenets" id="tenets">
+				<div id="cutoff"></div>
+			</div>
+			<div class="status" id="status"></div>
+		</section>
+	</main>
+
+	<footer>
+		<span id="caption">the agent fixes its own findings</span>
+		<span id="numbers"></span>
+		<span id="replay">space or click to replay</span>
+	</footer>
+</div>
+
+<script>
+// Every id, path, line number and number below is copied out of demo/data:
+// blocked.json and passed.json are one measured run of the sample project in
+// demo/sample, captured on 2026-09-18, and the probabilities under the cutoff
+// come from the below-cutoff-*.json files of the same run. jev answers with
+// the tenets it raises, so a tenet it stayed quiet about has no probability at
+// any cutoff: those rows carry null and are drawn at zero.
+const RUN = {
+	blocked: {
+		rows: [
+			{ id: "comment-why", p: 0.89, at: "billing.go:36" },
+			{ id: "no-mocking", p: 0.89, at: "billing_test.go:36" },
+			{ id: "no-transcript-comment", p: null, at: null },
+			{ id: "no-placeholder-phrase", p: null, at: null },
+			{ id: "assertion-justified", p: null, at: null },
+			{ id: "no-fallback", p: 0.94, at: "billing.go:28" },
+			{ id: "money-in-cents", p: 0.95, at: "billing.go:34" }
+		],
+		findings: 4,
+		stats: { duration_ms: 1469, input_tokens: 7575, cost_usd: 0.000318, calls: 4, windows: 2, cache_hits: 0 }
+	},
+	passed: {
+		rows: [
+			{ id: "comment-why", p: 0.36, at: "billing.go:18" },
+			{ id: "no-mocking", p: null, at: null },
+			{ id: "no-transcript-comment", p: 0.14, at: "billing.go:33" },
+			{ id: "no-placeholder-phrase", p: null, at: null },
+			{ id: "assertion-justified", p: null, at: null },
+			{ id: "no-fallback", p: null, at: null },
+			{ id: "money-in-cents", p: null, at: null }
+		],
+		findings: 0,
+		stats: { duration_ms: 699, input_tokens: 4530, cost_usd: 0.000190, calls: 2, windows: 2, cache_hits: 0 }
+	},
+	// git's own diffstat for the two patches in demo/sample.
+	diffstat: {
+		blocked: "staged · 2 files changed, 52 insertions(+)",
+		passed: "staged · 2 files changed, 22 insertions(+), 28 deletions(-)"
+	}
+};
+
+// The lines are verbatim from demo/sample/agent-change.patch and
+// agent-fix.patch, trimmed to the hunks the findings land in. n is the line
+// number in the file the lint reported, which is why only the staged-addition
+// view carries one.
+const DIFF_BLOCKED = [
+	{ k: "file", t: "billing.go" },
+	{ k: "add", n: 23, t: "// ParseDiscount reads a code of the form SAVE10." },
+	{ k: "add", n: 24, t: "func ParseDiscount(code string) Discount {" },
+	{ k: "add", n: 25, t: "\tpercent, err := strconv.ParseFloat(strings.TrimPrefix(code, \"SAVE\"), 64)" },
+	{ k: "add", n: 26, t: "\tif err != nil {" },
+	{ k: "add", n: 27, t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
+	{ k: "add", n: 28, t: "\t\tpercent = 0", hit: "no-fallback" },
+	{ k: "add", n: 29, t: "\t}" },
+	{ k: "add", n: 30, t: "\treturn Discount{Code: code, Percent: percent}" },
+	{ k: "add", n: 31, t: "}" },
+	{ k: "gap", t: "…" },
+	{ k: "add", n: 33, t: "// DiscountedTotal returns the amount due after the discount as a float64." },
+	{ k: "add", n: 34, t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
+	{ k: "add", n: 35, t: "\t// divide the cents by 100 to get dollars" },
+	{ k: "add", n: 36, t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
+	{ k: "add", n: 37, t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
+	{ k: "add", n: 38, t: "\treturn dollars - dollars*discount.Percent/100" },
+	{ k: "add", n: 39, t: "}" },
+	{ k: "blank", t: "" },
+	{ k: "file", t: "billing_test.go" },
+	{ k: "add", n: 5, t: "type stubRepository struct {" },
+	{ k: "add", n: 6, t: "\tinvoice Invoice" },
+	{ k: "add", n: 7, t: "}" },
+	{ k: "add", n: 8, t: "" },
+	{ k: "add", n: 9, t: "func (s stubRepository) Invoice(string) (Invoice, error) {" },
+	{ k: "add", n: 10, t: "\treturn s.invoice, nil" },
+	{ k: "add", n: 11, t: "}" },
+	{ k: "gap", t: "…" },
+	{ k: "add", n: 35, t: "func TestDiscountedTotal(t *testing.T) {" },
+	{ k: "add", n: 36, t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" },
+	{ k: "add", n: 37, t: "\t\tID:    \"INV-1042\"," }
+];
+
+const DIFF_PASSED = [
+	{ k: "file", t: "billing.go" },
+	{ k: "del", t: "\tPercent float64" },
+	{ k: "add", t: "\tPercent int" },
+	{ k: "gap", t: "…" },
+	{ k: "del", t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
+	{ k: "del", t: "\t\tpercent = 0" },
+	{ k: "add", t: "\t\treturn Discount{}, fmt.Errorf(\"discount code %q carries no percentage: %w\", code, err)" },
+	{ k: "gap", t: "…" },
+	{ k: "del", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {" },
+	{ k: "del", t: "\t// divide the cents by 100 to get dollars" },
+	{ k: "del", t: "\tdollars := float64(totalCents) / 100" },
+	{ k: "del", t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
+	{ k: "del", t: "\treturn dollars - dollars*discount.Percent/100" },
+	{ k: "add", t: "// DiscountedTotalCents rounds the discount up, so half a cent of rounding" },
+	{ k: "add", t: "// falls to Northwind rather than to the customer." },
+	{ k: "add", t: "func DiscountedTotalCents(totalCents int, discount Discount) int {" },
+	{ k: "add", t: "\treturn totalCents - (totalCents*discount.Percent+99)/100" },
+	{ k: "blank", t: "" },
+	{ k: "file", t: "billing_test.go" },
+	{ k: "del", t: "type stubRepository struct {" },
+	{ k: "del", t: "\tinvoice Invoice" },
+	{ k: "del", t: "}" },
+	{ k: "del", t: "" },
+	{ k: "del", t: "func (s stubRepository) Invoice(string) (Invoice, error) {" },
+	{ k: "del", t: "\treturn s.invoice, nil" },
+	{ k: "del", t: "}" },
+	{ k: "gap", t: "…" },
+	{ k: "del", t: "\trepo := stubRepository{invoice: Invoice{" },
+	{ k: "add", t: "\trepo := NewMemoryRepository(Invoice{" }
+];
+
+// The timeline, in milliseconds from the first frame. TOTAL is logged on load.
+const T = {
+	STATUS_ASKING: 300,
+	BAR_START: 1200,
+	BAR_STAGGER: 120,
+	BAR_DUR: 600,
+	VERDICT_GAP: 120,
+	READ_FINDINGS: 9000,
+	CAPTION_TO_DIFF: 700,
+	DIFF_FADE: 700,
+	DIFF_TO_BARS: 300,
+	REBAR_STAGGER: 100,
+	REBAR_DUR: 600,
+	END_HOLD: 7000
+};
+
+const CUTOFF = 0.8;
+const ROWS = RUN.blocked.rows.length;
+const BARS_DONE = T.BAR_START + (ROWS - 1) * T.BAR_STAGGER + T.BAR_DUR;
+const VERDICT_AT = BARS_DONE + T.VERDICT_GAP;
+const CAPTION_AT = VERDICT_AT + T.READ_FINDINGS;
+const DIFF_AT = CAPTION_AT + T.CAPTION_TO_DIFF;
+const REBAR_AT = DIFF_AT + T.DIFF_FADE + T.DIFF_TO_BARS;
+const REBARS_DONE = REBAR_AT + (ROWS - 1) * T.REBAR_STAGGER + T.REBAR_DUR;
+const PASS_AT = REBARS_DONE + T.VERDICT_GAP;
+const TOTAL = PASS_AT + T.END_HOLD;
+
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const stage = document.getElementById("stage");
+const statusEl = document.getElementById("status");
+const captionEl = document.getElementById("caption");
+const numbersEl = document.getElementById("numbers");
+const diffstatEl = document.getElementById("diffstat");
+const tenetsEl = document.getElementById("tenets");
+const cutoffEl = document.getElementById("cutoff");
+const blockedLayer = document.getElementById("diff-blocked");
+const passedLayer = document.getElementById("diff-passed");
+
+function fit() {
+	const scale = Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
+	stage.style.transform = "scale(" + scale + ")";
+}
+
+function signOf(kind) {
+	if (kind === "add") return "+";
+	if (kind === "del") return "-";
+	return " ";
+}
+
+function renderDiff(layer, lines) {
+	layer.textContent = "";
+	for (const line of lines) {
+		const row = document.createElement("div");
+		row.className = "row " + line.k;
+		if (line.hit) row.dataset.hit = line.hit;
+
+		const num = document.createElement("span");
+		num.className = "num";
+		num.textContent = line.n === undefined ? "" : String(line.n);
+
+		const sign = document.createElement("span");
+		sign.className = "sign";
+		sign.textContent = signOf(line.k);
+
+		const text = document.createElement("span");
+		text.className = "text";
+		text.textContent = line.t;
+
+		row.append(num, sign, text);
+		layer.append(row);
+	}
+}
+
+const bars = new Map();
+
+function renderTenets() {
+	for (const row of RUN.blocked.rows) {
+		const el = document.createElement("div");
+		el.className = "tenet";
+
+		const label = document.createElement("div");
+		label.className = "label";
+		const id = document.createElement("span");
+		id.className = "id";
+		id.textContent = row.id;
+		const at = document.createElement("span");
+		at.className = "at";
+		label.append(id, at);
+
+		const track = document.createElement("div");
+		track.className = "track";
+		const fill = document.createElement("div");
+		fill.className = "fill";
+		const value = document.createElement("span");
+		value.className = "value";
+		track.append(fill, value);
+
+		el.append(label, track);
+		tenetsEl.append(el);
+		bars.set(row.id, { el: el, fill: fill, value: value, at: at });
+	}
+}
+
+function money(usd) {
+	return "$" + usd.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function statsLine(stats) {
+	const seconds = (stats.duration_ms / 1000).toFixed(1) + " s round trip";
+	const tokens = stats.input_tokens.toLocaleString("en-US") + " tokens";
+	const calls = stats.calls + " calls over " + stats.windows + " windows, " + stats.cache_hits + " cached";
+	return [seconds, tokens, calls, money(stats.cost_usd) + " per commit"].join(" · ");
+}
+
+function setBar(row, duration) {
+	const bar = bars.get(row.id);
+	const p = row.p === null ? 0 : row.p;
+	const over = row.p !== null && row.p >= CUTOFF;
+
+	bar.fill.style.setProperty("--bar-dur", (reduced ? 1 : duration) + "ms");
+	bar.value.style.setProperty("--bar-dur", (reduced ? 1 : duration) + "ms");
+	const pct = (p * 100).toFixed(1).replace(/\.0$/, "") + "%";
+	bar.fill.style.width = pct;
+	bar.value.style.left = pct;
+	bar.value.textContent = row.p === null ? "no answer" : row.p.toFixed(2);
+	bar.value.classList.toggle("inside", p >= 0.7);
+	bar.el.classList.toggle("blank", row.p === null);
+	bar.el.classList.toggle("over", over);
+	bar.at.textContent = over ? row.at : "";
+
+	if (over) {
+		const line = blockedLayer.querySelector('[data-hit="' + row.id + '"]');
+		if (line) line.classList.add("hit");
+	}
+}
+
+function clearBars() {
+	for (const row of RUN.blocked.rows) {
+		const bar = bars.get(row.id);
+		bar.fill.style.setProperty("--bar-dur", "0ms");
+		bar.value.style.setProperty("--bar-dur", "0ms");
+		bar.fill.style.width = "0";
+		bar.value.style.left = "0";
+		bar.value.textContent = "";
+		bar.value.classList.remove("inside");
+		bar.at.textContent = "";
+		bar.el.classList.remove("over", "blank");
+	}
+	for (const line of blockedLayer.querySelectorAll(".hit")) line.classList.remove("hit");
+}
+
+let timers = [];
+
+function at(ms, fn) {
+	timers.push(setTimeout(fn, ms));
+}
+
+function play() {
+	for (const t of timers) clearTimeout(t);
+	timers = [];
+
+	clearBars();
+	statusEl.textContent = "";
+	statusEl.className = "status";
+	captionEl.dataset.shown = "0";
+	diffstatEl.textContent = RUN.diffstat.blocked;
+	numbersEl.textContent = statsLine(RUN.blocked.stats);
+	blockedLayer.dataset.state = "shown";
+	passedLayer.dataset.state = "hidden";
+
+	at(T.STATUS_ASKING, function () {
+		statusEl.textContent = "asking jev…";
+	});
+
+	RUN.blocked.rows.forEach(function (row, i) {
+		at(T.BAR_START + i * T.BAR_STAGGER, function () {
+			setBar(row, T.BAR_DUR);
+		});
+	});
+
+	at(VERDICT_AT, function () {
+		statusEl.textContent = "commit blocked · " + RUN.blocked.findings + " findings";
+		statusEl.className = "status bad";
+	});
+
+	at(CAPTION_AT, function () {
+		captionEl.dataset.shown = "1";
+	});
+
+	at(DIFF_AT, function () {
+		blockedLayer.style.setProperty("--fade", T.DIFF_FADE + "ms");
+		passedLayer.style.setProperty("--fade", T.DIFF_FADE + "ms");
+		blockedLayer.dataset.state = "hidden";
+		passedLayer.dataset.state = "shown";
+		diffstatEl.textContent = RUN.diffstat.passed;
+		statusEl.textContent = "asking jev…";
+		statusEl.className = "status";
+	});
+
+	RUN.passed.rows.forEach(function (row, i) {
+		at(REBAR_AT + i * T.REBAR_STAGGER, function () {
+			setBar(row, T.REBAR_DUR);
+		});
+	});
+
+	at(PASS_AT, function () {
+		statusEl.textContent = "commit passed · " + RUN.passed.findings + " findings";
+		statusEl.className = "status good";
+		numbersEl.textContent = statsLine(RUN.passed.stats);
+		captionEl.dataset.shown = "0";
+	});
+}
+
+renderDiff(blockedLayer, DIFF_BLOCKED);
+renderDiff(passedLayer, DIFF_PASSED);
+renderTenets();
+cutoffEl.style.left = (CUTOFF * 100).toFixed(1).replace(/\.0$/, "") + "%";
+fit();
+window.addEventListener("resize", fit);
+window.addEventListener("keydown", function (e) {
+	if (e.code === "Space" || e.key === " ") {
+		e.preventDefault();
+		play();
+	}
+});
+window.addEventListener("click", play);
+play();
+console.log("demo/index.html: " + (TOTAL / 1000).toFixed(1) + " s from the first frame to the last");
+</script>
+</body>
+</html>
