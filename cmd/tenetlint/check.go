@@ -22,6 +22,7 @@ type checkOptions struct {
 	noCache     bool
 	verbose     bool
 	minExamples int
+	runs        int
 }
 
 // builtinConfigPath is what the messages name when the run measures the rules
@@ -64,6 +65,7 @@ func newCheckCmd() *cobra.Command {
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
 	f.IntVar(&o.minExamples, "min-examples", check.DefaultMinExamples, "report no numbers for a tenet with fewer examples than this")
+	f.IntVar(&o.runs, "runs", 1, "judge every example this many times and report how far the answers moved")
 	return cmd
 }
 
@@ -76,6 +78,10 @@ func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
 	}
 	if o.format != report.FormatText && o.format != report.FormatJSON {
 		return fail(fmt.Errorf("--format must be %s or %s, got %q", report.FormatText, report.FormatJSON, o.format))
+	}
+
+	if o.runs < 1 {
+		return fail(fmt.Errorf("--runs is how many times each example is judged, so it is at least 1, got %d", o.runs))
 	}
 
 	cfg, err := configForCheck(o)
@@ -145,6 +151,7 @@ func checkExamples(cmd *cobra.Command, o *checkOptions, key, model string, ts []
 	c := &check.Checker{
 		Asker:       jev.New(key, jev.WithModel(model)),
 		MinExamples: o.minExamples,
+		Runs:        o.runs,
 	}
 	if !o.noCache {
 		opened, err := cache.Open("")

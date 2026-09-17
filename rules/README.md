@@ -49,7 +49,7 @@ Rerun after each edit and keep the numbers. Four attempts is enough to find out 
 fail: 0.75
 ```
 
-To read that highest probability off `check`, point it at a config that overrides the rule's `fail` down to a floor nothing sits under, and every ok example is then listed as misjudged with its probability. Never lower a cutoff to cover a violation that an acceptable example is scoring near: that is a rule asking to be reworded, not recalibrated.
+To read that highest probability off `check`, point it at a config that overrides the rule's `fail` down to a floor nothing sits under, and every ok example is then listed as misjudged with its probability. `check --runs 3` is the other half of the argument: it says which examples land on both sides of the cutoff from one pass to the next, which is usually what a lower cutoff is really for. Never lower a cutoff to cover a violation that an acceptable example is scoring near: that is a rule asking to be reworded, not recalibrated.
 
 ## 6. Add it to a preset
 

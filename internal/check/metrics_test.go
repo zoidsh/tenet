@@ -250,3 +250,35 @@ func judged(violations, oks []float64) []check.Judged {
 	}
 	return out
 }
+
+func TestStabilityOverRuns(t *testing.T) {
+	// Three passes over two examples: the violation straddles the 0.8 cutoff,
+	// the ok never approaches it.
+	passes := [][]check.Judged{
+		judged([]float64{0.79}, []float64{0.10}),
+		judged([]float64{0.83}, []float64{0.14}),
+		judged([]float64{0.75}, []float64{0.12}),
+	}
+	s := check.StabilityOf(tenetAt(0.8), passes)
+	if s == nil {
+		t.Fatal("three passes reported no stability")
+	}
+	if s.Runs != 3 {
+		t.Errorf("runs is %d, want 3", s.Runs)
+	}
+	if math.Abs(s.MaxStdDev-0.0400) > 5e-4 {
+		t.Errorf("max standard deviation is %.4f, want the violation's 0.0400", s.MaxStdDev)
+	}
+	if len(s.Crossed) != 1 {
+		t.Fatalf("%d examples crossed the cutoff, want only the violation", len(s.Crossed))
+	}
+	if c := s.Crossed[0]; c.Label != tenets.LabelViolation || c.Min != 0.75 || c.Max != 0.83 {
+		t.Errorf("the crossing is %#v", c)
+	}
+}
+
+func TestStabilityNeedsTwoRuns(t *testing.T) {
+	if s := check.StabilityOf(tenetAt(0.8), [][]check.Judged{judged([]float64{0.9}, nil)}); s != nil {
+		t.Errorf("one pass reported %#v, which measures nothing", s)
+	}
+}

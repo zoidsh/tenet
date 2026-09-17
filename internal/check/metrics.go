@@ -141,6 +141,75 @@ type Result struct {
 
 	Misjudged []Misjudged `json:"misjudged"`
 	Advice    string      `json:"advice"`
+
+	// Stability is nil unless the run judged the examples more than once.
+	Stability *Stability `json:"stability,omitempty"`
+}
+
+// Stability is how far the model's answers moved when the same examples were
+// judged again, reported only when a run asked for more than one pass.
+type Stability struct {
+	Runs      int        `json:"runs"`
+	MaxStdDev float64    `json:"max_std_dev"`
+	Crossed   []Crossing `json:"crossed"`
+}
+
+// Crossing is an example the passes did not agree about: its probabilities
+// fall on both sides of the tenet's cutoff, so the verdict it gets is the run
+// it was asked in.
+type Crossing struct {
+	Label tenets.Label `json:"label"`
+	Code  string       `json:"code"`
+	Min   float64      `json:"min_probability"`
+	Max   float64      `json:"max_probability"`
+}
+
+// StabilityOf compares the passes of one tenet, which hold the same examples
+// in the same order. The deviation is the sample one, over n-1: the passes are
+// draws from what the model would answer, not the whole of it.
+func StabilityOf(t *tenets.Tenet, passes [][]Judged) *Stability {
+	if len(passes) < 2 {
+		return nil
+	}
+	fail := t.FailValue()
+	s := &Stability{Runs: len(passes), Crossed: []Crossing{}}
+	probs := make([]float64, len(passes))
+	for i := range passes[0] {
+		for p, pass := range passes {
+			probs[p] = pass[i].Prob
+		}
+		s.MaxStdDev = math.Max(s.MaxStdDev, stdDev(probs))
+		low, high := probs[0], probs[0]
+		for _, p := range probs {
+			low, high = math.Min(low, p), math.Max(high, p)
+		}
+		if low < fail && high >= fail {
+			e := passes[0][i].Example
+			s.Crossed = append(s.Crossed, Crossing{Label: e.Label, Code: e.CodeLines()[0], Min: low, Max: high})
+		}
+	}
+	return s
+}
+
+func stdDev(values []float64) float64 {
+	var sum float64
+	same := true
+	for _, v := range values {
+		sum += v
+		same = same && v == values[0]
+	}
+	// The mean of equal values is not exactly that value in binary floating
+	// point, which would leave an example nothing moved on reporting a
+	// deviation of 1e-17 rather than none.
+	if same {
+		return 0
+	}
+	mean := sum / float64(len(values))
+	var squares float64
+	for _, v := range values {
+		squares += (v - mean) * (v - mean)
+	}
+	return math.Sqrt(squares / float64(len(values)-1))
 }
 
 // Judged is one example with what the model answered about it: the

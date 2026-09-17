@@ -168,6 +168,32 @@ func run(t *testing.T, c *check.Checker) ([]check.Result, check.Stats) {
 	return results, stats
 }
 
+func TestRunsJudgeEachExampleAgain(t *testing.T) {
+	asker := &table{answers: answers()}
+	results, stats := run(t, &check.Checker{Asker: asker, Runs: 3})
+	if stats.Calls != 3*stats.Examples {
+		t.Errorf("%d calls over %d examples, want each example asked three times", stats.Calls, stats.Examples)
+	}
+	for _, r := range results {
+		if r.Stability == nil {
+			t.Fatalf("%s reported no stability", r.Tenet)
+		}
+		// The table answers the same way every time, so the passes agree.
+		if r.Stability.Runs != 3 || r.Stability.MaxStdDev != 0 || len(r.Stability.Crossed) != 0 {
+			t.Errorf("%s stability is %#v", r.Tenet, r.Stability)
+		}
+	}
+}
+
+func TestOneRunReportsNoStability(t *testing.T) {
+	results, _ := run(t, &check.Checker{Asker: &table{answers: answers()}})
+	for _, r := range results {
+		if r.Stability != nil {
+			t.Errorf("%s reported %#v from a single pass", r.Tenet, r.Stability)
+		}
+	}
+}
+
 func TestGoldenOutput(t *testing.T) {
 	asker := &table{answers: answers()}
 	results, stats := run(t, &check.Checker{Asker: asker})

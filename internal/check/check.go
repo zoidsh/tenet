@@ -39,24 +39,68 @@ type Checker struct {
 	Concurrency int
 	MinExamples int
 
+	// Runs is how many times each example is judged, one by default. Above
+	// one the cache is left out of it entirely, read and write: two passes
+	// that answer from the same cached entry measure nothing.
+	Runs int
+
 	// Log, when set, receives a line per call made.
 	Log func(string)
 }
 
 // Run judges the examples and measures each tenet. Any API error abandons the
 // run, as it does in a lint: half the examples say nothing about a tenet.
+//
+// The numbers a run reports are the first pass's, so that asking for several
+// does not change what one of them says; the later passes are there to say how
+// far the answer moved.
 func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats, error) {
 	started := time.Now()
+	minExamples := c.MinExamples
+	if minExamples <= 0 {
+		minExamples = DefaultMinExamples
+	}
+	runs := c.Runs
+	if runs <= 0 {
+		runs = 1
+	}
+
+	var stats Stats
+	passes := make([][][]Judged, runs)
+	for i := range passes {
+		judgeds, s, err := c.pass(ctx, ts, runs > 1)
+		if err != nil {
+			return nil, Stats{}, err
+		}
+		passes[i] = judgeds
+		stats.Calls += s.Calls
+		stats.CacheHits += s.CacheHits
+		stats.InputTokens += s.InputTokens
+		stats.CostUSD += s.CostUSD
+		stats.Examples = s.Examples
+	}
+
+	results := make([]Result, len(ts))
+	for i, t := range ts {
+		results[i] = Measure(t, passes[0][i], minExamples)
+		perTenet := make([][]Judged, runs)
+		for p := range passes {
+			perTenet[p] = passes[p][i]
+		}
+		results[i].Stability = StabilityOf(t, perTenet)
+	}
+	stats.Duration = time.Since(started)
+	return results, stats, nil
+}
+
+// pass judges every example of every tenet once.
+func (c *Checker) pass(ctx context.Context, ts []*tenets.Tenet, skipCache bool) ([][]Judged, Stats, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	concurrency := c.Concurrency
 	if concurrency <= 0 {
 		concurrency = judge.DefaultConcurrency
-	}
-	minExamples := c.MinExamples
-	if minExamples <= 0 {
-		minExamples = DefaultMinExamples
 	}
 
 	judgeds := make([][]Judged, len(ts))
@@ -79,7 +123,7 @@ func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats,
 			go func(t *tenets.Tenet, e tenets.Example, out *Judged) {
 				defer wg.Done()
 				defer func() { <-slots }()
-				judged, s, err := c.example(ctx, t, e)
+				judged, s, err := c.example(ctx, t, e, skipCache)
 				mu.Lock()
 				defer mu.Unlock()
 				if err != nil {
@@ -102,15 +146,10 @@ func (c *Checker) Run(ctx context.Context, ts []*tenets.Tenet) ([]Result, Stats,
 	if firstErr != nil {
 		return nil, Stats{}, firstErr
 	}
-	results := make([]Result, len(ts))
-	for i, t := range ts {
-		results[i] = Measure(t, judgeds[i], minExamples)
-	}
-	stats.Duration = time.Since(started)
-	return results, stats, nil
+	return judgeds, stats, nil
 }
 
-func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example) (Judged, Stats, error) {
+func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example, skipCache bool) (Judged, Stats, error) {
 	var stats Stats
 	lines := e.CodeLines()
 	state := judge.StateOf(exampleLang(t, e), exampleFile(t, e), lines)
@@ -118,10 +157,13 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 
 	judged := Judged{Example: e}
 	var located string
-	entry, cached := c.Cache.Get(key)
-	if cached {
-		judged.Prob, located = entry.Prob, entry.Line
-		stats.CacheHits++
+	cached := false
+	if !skipCache {
+		var entry cache.Entry
+		if entry, cached = c.Cache.Get(key); cached {
+			judged.Prob, located = entry.Prob, entry.Line
+			stats.CacheHits++
+		}
 	}
 
 	questions := map[string]jev.Question{}
@@ -153,9 +195,11 @@ func (c *Checker) example(ctx context.Context, t *tenets.Tenet, e tenets.Example
 		if answer, ok := resp.Answers[locationQuestion]; ok {
 			located = judge.TopLine(answer)
 		}
-		if located != "" {
+		switch {
+		case skipCache:
+		case located != "":
 			c.Cache.PutLocation(key, judged.Prob, located)
-		} else {
+		default:
 			c.Cache.PutVerdict(key, judged.Prob)
 		}
 	}

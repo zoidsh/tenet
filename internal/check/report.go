@@ -36,6 +36,7 @@ func (r Report) Text(w io.Writer) error {
 				row(&b, "location", fmt.Sprintf("%d of %d lines named (%.2f)",
 					result.LocationHits, result.LocatedExamples, result.LocationRate))
 			}
+			stability(&b, result)
 			if result.Advice != "" {
 				row(&b, "advice", result.Advice)
 			}
@@ -80,6 +81,18 @@ func comparison(result Result) string {
 		parts = append(parts, fmt.Sprintf("%.2f at %.2f", a.Accuracy, a.Cutoff))
 	}
 	return strings.Join(parts, ", ")
+}
+
+func stability(b *strings.Builder, result Result) {
+	s := result.Stability
+	if s == nil {
+		return
+	}
+	row(b, "stability", fmt.Sprintf("%s, max sd %.3f, %s crossed fail %.2f",
+		plural(s.Runs, "run"), s.MaxStdDev, plural(len(s.Crossed), "example"), result.Fail))
+	for _, c := range s.Crossed {
+		fmt.Fprintf(b, "    %-9s p=%.2f to %.2f  %s\n", c.Label, c.Min, c.Max, strings.TrimSpace(c.Code))
+	}
 }
 
 func misjudged(b *strings.Builder, result Result) {
