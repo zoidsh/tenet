@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/zoidsh/tenetlint/internal/source"
 )
 
 // Marker is how an uninstall tells our hook from one somebody else wrote. It
@@ -73,6 +75,10 @@ func newHookInstallCmd() *cobra.Command {
 			if err != nil {
 				return fail(err)
 			}
+			root, err := repoRoot(cmd.Context())
+			if err != nil {
+				return fail(err)
+			}
 			binary, err := os.Executable()
 			if err != nil {
 				return fail(err)
@@ -103,7 +109,7 @@ func newHookInstallCmd() *cobra.Command {
 				if p.existing != nil {
 					verb = "replaced"
 				}
-				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s the %s hook at %s\n", verb, p.name, p.path)
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", verb, inRepo(root, p.path))
 			}
 			return nil
 		},
@@ -145,6 +151,26 @@ func newHookUninstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// repoRoot is what the installed paths are printed relative to.
+func repoRoot(ctx context.Context) (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return source.RepoRoot(ctx, dir)
+}
+
+// inRepo names a hook the way the repository does. A hooks directory outside
+// the repository, which core.hooksPath allows, keeps its absolute path: a
+// trail of ".." is no easier to read than the path itself.
+func inRepo(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return path
+	}
+	return filepath.ToSlash(rel)
 }
 
 // hooksDir asks git where hooks live, which honours core.hooksPath.

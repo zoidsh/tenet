@@ -29,7 +29,8 @@ func TestHookInstallAndUninstall(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
-	if !strings.Contains(out, "installed") || !strings.Contains(out, path) {
+	// The path is printed once, as the repository names it.
+	if out != "installed .git/hooks/pre-commit\ninstalled .git/hooks/commit-msg\n" {
 		t.Errorf("stdout is %q", out)
 	}
 	script, err := os.ReadFile(path)
