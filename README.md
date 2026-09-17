@@ -6,7 +6,7 @@
 
 *Pre-release: the tenet format, the flags and the output are not stable, and any release can change them, so pin the version you install with `TENET_VERSION`.*
 
-tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each rule once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
+tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each tenet once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
 
 TypeSafe's jev model answers each rule with a calibrated probability, so a tenet is a pass-or-fail cutoff rather than a review comment to skim. On this repository a staged change took 1.4 s and cost $0.0022; a 2,062-line diff took 1.5 s and $0.0036, about 8x faster than one Claude Haiku 4.5 call and about 12x faster than Sonnet 5, and cheaper than both. The tables are under Benchmarks.
 
@@ -18,7 +18,7 @@ Homebrew, on macOS and on Linux:
 brew install zoidsh/tap/tenet
 ```
 
-npm, which carries the binary for your platform as an optional dependency:
+npm, which carries the binary for your platform as an optional dependency and runs no install script:
 
 ```sh
 npm install -g @zoidsh/tenet
@@ -79,7 +79,7 @@ From the root of your repository:
 
    `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged.
 
-5. Install the hooks, so every commit is linted from here on.
+5. Install the hooks, so every commit is linted from here on; `tenet hook uninstall` takes them away again.
 
    ```sh
    tenet hook install
@@ -91,7 +91,7 @@ Without `--from` it reads every one of `AGENTS.md`, `CLAUDE.md`, `.cursorrules`,
 
 In the table, `kind` is what jev took the sentence for (a rule about code, a process step, or context about the project) and `checkable p` is its confidence that a diff alone can settle it; only a checkable rule becomes a tenet.
 
-```
+```text
 CLAUDE.md
   line  kind       kind p  checkable p  tenet                          sentence
   3     context    1.00    0.10         -                              A Go CLI that lints code against English rules, judged by T…
@@ -149,7 +149,7 @@ unslop-prose  The prose an LLM writes into a README when nobody rewrites the dra
 - `body-states-door`, it says how far the change can be walked back
 - `body-few-visuals`, one or two visuals, each beside the text it supports
 
-Eleven of the twenty-five are standalone. They ship in the binary, and `tenet rules` lists every rule with its tags and the preset that includes it. They are in no preset because their corpus does not read sharp at the 0.8 cutoff. The comment at the top of each preset file says what each one is short of, example by example, so you can decide whether it is short of anything you care about. `rules: [no-defensive-nil]` turns one on.
+Eleven of the twenty-five are standalone. They ship in the binary, and `tenet rules` lists every rule with its tags and the preset that includes it. They are in no preset because their corpus does not read sharp in every run at the 0.8 `fail` cutoff, defined under Pass or fail. The comment at the top of each preset file says what each one is short of, example by example, so you can decide whether it is short of anything you care about. `rules: [no-defensive-nil]` turns one on.
 
 `tenet init` names agent-hygiene when it finds no instruction file to read, and Configuration below says how presets, rules and your own tenets compose.
 
@@ -159,9 +159,9 @@ Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A win
 
 There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place.
 
-`tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window.
+`tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` (see Configuration) is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window.
 
-```
+```text
 internal/cache/cache.go:11: comment-why (p=0.94)
 internal/judge/judge.go:15: no-fallback (p=0.96)
 
@@ -176,7 +176,7 @@ fix the lines above, then commit again
 
 Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is written on, `tenet:ignore-next-line` the line below it, and `tenet:ignore-file` the whole file, wherever in that file you put it; the first line is the usual place, but it is not a rule.
 
-Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. Ids are joined by commas with no spaces; the first word after the list begins a reason, as in `tenet:ignore no-fallback the vendor API returns 200 on failure`. A directive with no ids has nowhere for a reason, so put it in a comment of its own.
+Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. Ids are joined by commas; the first word after the list begins a reason, as in `tenet:ignore no-fallback the vendor API returns 200 on failure`. A directive with no ids has nowhere for a reason, so put it in a comment of its own.
 
 A directive that names an id your `tenet.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
 
@@ -293,7 +293,7 @@ tenets:
 
 Then run `tenet check`, which judges every example of every tenet that has any, or `tenet check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed. The AUC in what it prints is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all.
 
-```
+```text
 comment-why: sharp
   examples          14 (7 violation, 7 ok)
   auc               1.00
@@ -430,7 +430,7 @@ A run with no key exits 2 saying `no TypeSafe API key: run tenet auth, or set TY
 
 Reading the report is one thing and knowing to run it is another, so `plugin/` is a Claude Code plugin that does both. It carries a `tenet` skill, which says when to run the lint and what to do with each finding, and a `PreToolUse` hook, which lints the staged changes before a `git commit` and hands the findings back instead of letting the commit through. This repository is its own marketplace:
 
-```
+```text
 /plugin marketplace add zoidsh/tenet
 /plugin install tenet@zoidsh
 ```
@@ -443,7 +443,7 @@ tenet init --agent cursor --agent agents
 
 Setting tenet up is one instruction to the agent. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
 
-The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, which takes under two minutes, so the built-in rules gate the next commit. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
+The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
 
 ## Comparison
 
@@ -454,8 +454,8 @@ The static linters are eslint, ruff and golangci-lint, the prose linter is Vale,
 | | Static linters | Vale | Review bots | An agent | tenet |
 | --- | --- | --- | --- | --- | --- |
 | Rules in plain language | no, rules are code | word lists, regex | yes | yes | yes |
-| Every commit, locally | yes | yes | no, PR bots | a call each time | over the network |
-| Judges a diff without running the code | needs a build | yes | yes | yes | yes |
+| Every commit, locally | yes | yes | mostly no, PR bots | a call each time | yes, over the network |
+| Judges a diff without running the code | type-aware rules need a build | yes | yes | yes | yes |
 | Findings on a line | yes | yes | yes | if you wire it up | yes |
 | Calibrated pass or fail | yes, exact match | yes, exact match | no, free text | no, free text | yes |
 | Prose, commit and PR text | no | prose files only | PR text at most | yes | yes |
@@ -538,4 +538,4 @@ The built-in rules quote sentences other people wrote for their own repositories
 - The CLAUDE.md of [Kaikei-e/Alt](https://github.com/Kaikei-e/Alt/blob/HEAD/CLAUDE.md) for no-defensive-nil.
 - The author's own CLAUDE.md for comment-why.
 
-Every judgement a lint makes comes from [TypeSafe](https://typesafe.ai)'s jev model. The quoted skills and instruction files stay under their own licences: maxgoff/unslop, hardikpandya/stop-slop, mattpocock/skills and dmmulroy/anti-slop are MIT.
+Every judgement a lint makes comes from [TypeSafe](https://typesafe.ai)'s jev model. The quoted skills and instruction files stay under their own licences: the four skills are MIT, as are the vitest-dev/vitest and amd/gaia files, and Kaikei-e/Alt is Apache-2.0.
