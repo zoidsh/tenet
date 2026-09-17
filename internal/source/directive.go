@@ -146,11 +146,11 @@ func directiveCounts(path string, lines []string) func(line, col int) bool {
 	}
 	var spans [][]span
 	return func(line, col int) bool {
-		if spans == nil {
-			spans = commentSpans(lines, syn)
-		}
 		if prose && linePrefixPattern.MatchString(lines[line][:col]) {
 			return true
+		}
+		if spans == nil {
+			spans = commentSpans(lines, syn)
 		}
 		return inSpans(spans[line], col)
 	}

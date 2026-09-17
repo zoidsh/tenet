@@ -5,8 +5,11 @@ import (
 	"testing"
 )
 
+// A fixture escapes the colon only where this file's own line carries a
+// comment marker, or sits inside a block comment opened by an earlier line;
+// there the directive would apply to this file as well as to the fixture.
 func TestDirectiveMustSitInAComment(t *testing.T) {
-	const directive = "tenet\x3aignore comment-why"
+	const directive = "tenet:ignore comment-why"
 	for _, tc := range []struct {
 		name  string
 		path  string
@@ -25,6 +28,8 @@ func TestDirectiveMustSitInAComment(t *testing.T) {
 		{"typescript code", "a.ts", []string{"const x = call(" + directive + ")"}, false},
 		{"ruby comment", "a.rb", []string{"x = 1 # " + directive}, true},
 		{"ruby block", "a.rb", []string{"=begin", directive, "=end", "x = 1"}, true},
+		{"ruby =begin indented", "a.rb", []string{"  =begin", directive, "  =end", "x = 1"}, false},
+		{"ruby =begin mid line", "a.rb", []string{"x = 1 =begin", directive, "=end"}, false},
 		{"ruby code", "a.rb", []string{"x = call(" + directive + ")"}, false},
 		{"sql comment", "a.sql", []string{"select 1 -- " + directive}, true},
 		{"sql code", "a.sql", []string{"select '" + directive + "' from t"}, false},
@@ -60,7 +65,7 @@ func TestDirectiveInABlockCommentSpanningLines(t *testing.T) {
 		"   tenet\x3aignore-next-line comment-why",
 		"   and more */",
 		"y := 2",
-		`z := call("tenet` + "\x3a" + `ignore-file no-such-rule")`,
+		`z := call("tenet:ignore-file no-such-rule")`,
 	}
 	stripped, sup, err := stripDirectives("a.go", lines, knownTenets)
 	if err != nil {
@@ -75,14 +80,14 @@ func TestDirectiveInABlockCommentSpanningLines(t *testing.T) {
 }
 
 func TestUnknownTenetInACommentStillErrors(t *testing.T) {
-	_, _, err := stripDirectives("a.py", []string{"x = 1  # tenet\x3aignore no-such-rule"}, knownTenets)
+	_, _, err := stripDirectives("a.py", []string{"x = 1  # tenet:ignore no-such-rule"}, knownTenets)
 	if err == nil || !strings.Contains(err.Error(), "no-such-rule") {
 		t.Fatalf("error is %v", err)
 	}
 }
 
 func TestUnknownTenetOutsideACommentIsLeftAlone(t *testing.T) {
-	lines := []string{`x := call("tenet` + "\x3a" + `ignore no-such-rule")`}
+	lines := []string{`x := call("tenet:ignore no-such-rule")`}
 	stripped, _, err := stripDirectives("a.go", lines, knownTenets)
 	if err != nil {
 		t.Fatalf("a mention outside a comment was validated: %v", err)
