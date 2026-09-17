@@ -5,4 +5,5 @@ criteria:
   false: "The code does what its comment says it does; or the deferred work is recorded with an owner or a tracking identifier that says who finishes it and where; or the unfinished path refuses outright, raising or returning an explicit unsupported or unimplemented error rather than a value."
 source: tenetlint/demand.md complaints corpus
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
+kind: [code]
 tags: [code, comments]

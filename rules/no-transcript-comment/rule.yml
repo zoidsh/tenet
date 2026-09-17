@@ -5,4 +5,5 @@ criteria:
   false: "The comment tells a reader of the code as it stands something the code does not show: a reason, a constraint, a contract, a workaround for an external system, a reference to a specification, or a fact about data or clients written in the past that still binds this code today."
 source: oven-sh/bun src/CLAUDE.md
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
+kind: [code]
 tags: [code, comments]

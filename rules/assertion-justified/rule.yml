@@ -5,4 +5,5 @@ criteria:
   false: "The conversion is checked, so a value of the wrong type takes an error path instead of being assumed away: a two-result assertion, a guard or a parse that rejects, or a narrowing the language itself carries through. Or the unchecked conversion carries a comment naming the invariant that makes it hold, such as where the value was produced, what a check above it established, or what the only writer of that field ever stores, so that a reader can judge whether the invariant is true."
 source: dmmulroy/anti-slop require-safety-comment-for-type-assertion
 include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
+kind: [code]
 tags: [code, types]
