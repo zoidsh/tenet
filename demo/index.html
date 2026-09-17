@@ -481,7 +481,7 @@ footer {
 					<span id="counter">0.00 s</span>
 					<span id="cost"></span>
 				</div>
-				<span class="caption">seconds, this commit</span>
+				<span class="caption" id="clock-caption"></span>
 			</div>
 			<div class="tenets" id="tenets">
 				<div id="cutoff"></div>
@@ -650,6 +650,7 @@ const PR_ROWS_PASSED = [
 const ACTS = [
 	{
 		key: "code",
+		unit: "commit",
 		lead: "Add discount codes.",
 		fixedLead: "Fixed by the agent.",
 		caption: "the agent fixes its own findings",
@@ -672,6 +673,7 @@ const ACTS = [
 	},
 	{
 		key: "commit",
+		unit: "message",
 		lead: "Commit message.",
 		fixedLead: "Reworded.",
 		caption: "the agent rewords the subject",
@@ -694,6 +696,7 @@ const ACTS = [
 	},
 	{
 		key: "pr",
+		unit: "pull request",
 		lead: "Pull request.",
 		fixedLead: "Rewritten.",
 		caption: "the agent rewrites the description",
@@ -758,6 +761,7 @@ const sublineEl = document.getElementById("subline");
 const fileMetaEl = document.getElementById("filemeta");
 const counterEl = document.getElementById("counter");
 const costEl = document.getElementById("cost");
+const clockCaptionEl = document.getElementById("clock-caption");
 const stripEl = document.getElementById("strip");
 const statusEl = document.getElementById("status");
 const tenetsEl = document.getElementById("tenets");
@@ -1009,6 +1013,7 @@ function scheduleAct(act, start) {
 		fileMetaEl.textContent = act.meta;
 		counterEl.textContent = "0.00 s";
 		costEl.textContent = "";
+		clockCaptionEl.textContent = "seconds, this " + act.unit;
 		setStrip(act.blocked);
 		statusEl.textContent = "";
 		statusEl.className = "";
@@ -1045,7 +1050,7 @@ function scheduleAct(act, start) {
 	at(verdictAt, function () {
 		setHeadline(act.lead, "Blocked in " + seconds(act.blocked.duration_ms) + ".", "bad");
 		setSubline(act, act.blocked.findings);
-		costEl.textContent = money(act.blocked.cost_usd) + " per commit";
+		costEl.textContent = money(act.blocked.cost_usd) + " per " + act.unit;
 		statusEl.textContent = "blocked · " + act.blocked.findings +
 			(act.blocked.findings === 1 ? " finding" : " findings");
 		statusEl.className = "bad";
@@ -1081,7 +1086,7 @@ function scheduleAct(act, start) {
 	at(passAt, function () {
 		setHeadline(act.fixedLead, "Passed in " + seconds(act.passed.duration_ms) + ".", "good");
 		setSubline(act, act.passed.findings);
-		costEl.textContent = money(act.passed.cost_usd) + " per commit";
+		costEl.textContent = money(act.passed.cost_usd) + " per " + act.unit;
 		setStrip(act.passed);
 		statusEl.textContent = "passed · 0 findings";
 		statusEl.className = "good";
