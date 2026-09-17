@@ -113,14 +113,14 @@ Then run `tenetlint check`, which judges every example of every tenet that has a
 
 ```
 comment-why: sharp
-  examples          8 (4 violation, 4 ok)
+  examples          14 (7 violation, 7 ok)
   auc               1.00
-  accuracy          1.00 at fail 0.80 · 0.88 at 0.70, 1.00 at 0.80, 0.75 at 0.90
-  mean probability  violation 0.84, ok 0.14, gap 0.69
-  location          4 of 4 lines named (1.00)
+  accuracy          1.00 at fail 0.80 · 1.00 at 0.70, 1.00 at 0.80, 0.71 at 0.90
+  mean probability  violation 0.89, ok 0.19, gap 0.71
+  location          7 of 7 lines named (1.00)
 ```
 
-Choose the examples as carefully as the wording: they are what the numbers mean. This repository leaves one case out of `comment-why` on purpose, a function whose only comment is a `TODO`, because the model scores it 0.20 and the tenet never says where it stands on TODOs; a tenet that has not taken a position cannot be measured on one.
+Choose the examples as carefully as the wording: they are what the numbers mean. Where a label is a call the tenet's sentence does not obviously make, write the reason in the example's `note`; `comment-why` carries a function whose only comment is a `TODO`, labelled `ok` with a note saying that a TODO restates nothing, because the tenet is about a comment that repeats the code. `rules/README.md` is how the built-in rules were built, step by step, and is the recipe to follow for one of your own.
 
 The AUC is the chance the tenet scores a violation above an innocent example, which is what says whether the wording separates them at all; the accuracy row says how the tenet's own `fail` does and what 0.70, 0.80 and 0.90 would have done with the same examples, which is the whole of what moving it buys. A tenet is `sharp` when nothing lands on the wrong side of its cutoff, `usable` when the ranking is still good enough to lint with, and `blurry` when it is not; under six examples, reported as `too few examples`, there is nothing worth measuring. Every misjudged example is listed with its probability and its first line, so the next edit to the criteria has something to aim at, and one line of advice names what usually moves the numbers: a lower `fail`, and which value, when the violations cluster just under the cutoff; a higher one when an innocent example reaches it; a `false` criterion when the innocent examples score high, a `true` criterion when the violations score low, and a rewrite of the sentence itself when both sit in the middle. `check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
 

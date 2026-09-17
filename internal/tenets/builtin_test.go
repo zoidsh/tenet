@@ -7,9 +7,11 @@ import (
 	"github.com/zoidsh/tenetlint/internal/tenets"
 )
 
-// minExamples is check.DefaultMinExamples, which this package cannot import
-// back: a rule under it is not worth measuring, so it is not worth shipping.
-const minExamples = 6
+// minExamples is what a shipped rule's corpus must hold. It is twice
+// check.DefaultMinExamples, which this package cannot import back: six is
+// enough for a tenet someone is drafting, and a rule in the binary has had
+// the time to collect a corpus whose numbers are worth quoting.
+const minExamples = 12
 
 func TestBuiltinRulesShip(t *testing.T) {
 	rules, err := tenets.BuiltinRules()
