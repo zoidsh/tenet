@@ -3,6 +3,6 @@ tenet: "The subject or title says what changed for a reader, not which files or 
 criteria:
   true: "The first line names where the work happened instead of what is different because of it: the files, paths or packages edited, or the symbols, structs, fields or constants altered. It fails the same way when the line is an act of editing with a piece of code as its object rather than a behaviour, whatever the verb of editing happens to be, because that tells a reader what the diff would have told them and nothing more. Whether the body goes on to say what changed makes no difference: the rule reads the first line, which is the line a log, a list of pull requests and a release note carry on their own."
   false: "The first line says what is different for somebody using the thing: what it now does, stops doing, shows, accepts or refuses. A symbol, a file or a table named inside such a line is not the fault, because the line is still about what changed and the name only says where; what the rule wants is a sentence a reader who has not seen the diff can take something from."
-source: tenetlint synthesis (maxgoff commit rules)
+source: tenet synthesis (maxgoff commit rules)
 kind: [commit, pr]
 tags: [commit, pr, prose]

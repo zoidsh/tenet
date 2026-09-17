@@ -3,6 +3,6 @@ tenet: "The subject or title is a complete statement in the imperative mood, not
 criteria:
   true: "The first line is not a sentence telling the codebase to do the thing the change does. It is a label rather than a statement: a noun phrase naming the area that was worked on, or a placeholder standing in for a subject nobody wrote, or a ticket or issue identifier on its own or with a fragment hung off it. Or it is a sentence in the wrong mood, reporting the work rather than commanding it. Such a line passes for a sentence at a glance, because it carries a verb and an object, and it is still a description of what the author was busy with. The opening word settles it. A first word in the past is a report of what somebody did. A first word in the -ing form is not even that: it heads a noun phrase naming an activity, so the line is a label after all, of the same kind as the area name, however much detail it carries about what the change touches and why."
   false: "The first line is an imperative sentence: a verb in the bare form with what it acts on, so that it would complete 'applying this change will'. It stays one when it is short, and when something other than the sentence rides on the line, a ticket reference beside the statement rather than in place of it, or a conventional-commit prefix in front of it. This rule judges the sentence and not the shape of the line around it."
-source: tenetlint synthesis
+source: tenet synthesis
 kind: [commit, pr]
 tags: [commit, pr, prose, standalone]

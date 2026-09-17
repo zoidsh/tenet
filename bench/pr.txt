@@ -12,7 +12,7 @@ tenet auth --status says which key a run would use and where it was read
 from, so a stale key is something you can look at instead of guess at:
 
     $ tenet auth --status
-    typesafe  ~/.config/tenetlint/auth.json  (TYPESAFE_API_KEY also set, ignored)
+    typesafe  ~/.config/tenet/auth.json  (TYPESAFE_API_KEY also set, ignored)
 
 The environment still wins where CI sets it, which is the order it had
 before. init and every lint name tenet auth in the message they print when

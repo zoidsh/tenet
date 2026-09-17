@@ -1,4 +1,4 @@
-# tenetlint
+# tenet
 
 A Go CLI that lints code against English rules, judged by TypeSafe's jev model.
 

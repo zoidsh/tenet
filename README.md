@@ -1,55 +1,55 @@
-# tenetlint
+# tenet
 
-[![CI](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenetlint/actions/workflows/ci.yml)
+**Your agents read AGENTS.md. Then they ignore it. tenet makes them fix it before you ever see the diff.**
 
-tenetlint is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.2 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
+[![CI](https://github.com/zoidsh/tenet/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenet/actions/workflows/ci.yml)
 
-TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenetlint took 1.6 s and cost $0.0037. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenetlint is about 8x faster than the Haiku estimate and about 11x faster than the Sonnet one, dividing each of those times by its 1.6 s. It is cheaper than both, $0.0037 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
+tenet is the review gate for code that agents write. Your CLAUDE.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenets.yml`, and every commit is judged against it: the staged change measured on this repository took 1.2 s and cost $0.0021, so an agent can fix its own findings before a human sees the diff.
+
+TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenet took 1.6 s and cost $0.0037. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenet is about 8x faster than the Haiku estimate and about 11x faster than the Sonnet one, dividing each of those times by its 1.6 s. It is cheaper than both, $0.0037 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
 
 ## Install
 
-The command is `tenet`, and every path below but the one from source installs `tenetlint` beside it as the same program under its old name.
-
-Homebrew, on macOS and on Linux. tenetlint ships as a cask with a `binary` stanza, which a recent Homebrew installs on both:
+Homebrew, on macOS and on Linux. tenet ships as a cask with a `binary` stanza, which a recent Homebrew installs on both:
 
 ```
-brew install zoidsh/tap/tenetlint
+brew install zoidsh/tap/tenet
 ```
 
 npm, which carries the binary for your platform as an optional dependency and runs no install script:
 
 ```
-npm install -g tenetlint
-npx tenetlint
+npm install -g @zoidsh/tenet
+npx @zoidsh/tenet
 ```
 
-As a devDependency, so everyone working on the repository gets the same tenetlint:
+As a devDependency, so everyone working on the repository gets the same tenet:
 
 ```
-npm install --save-dev tenetlint
+npm install --save-dev @zoidsh/tenet
 ```
 
-The installer script, which puts the binary in `~/.local/bin`, or in `TENETLINT_INSTALL_DIR` when you set it, and never asks for sudo:
+The installer script, which puts the binary in `~/.local/bin`, or in `TENET_INSTALL_DIR` when you set it, and never asks for sudo:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/zoidsh/tenet/main/install.sh | sh
 ```
 
-From source, which needs a Go toolchain and gives you `tenet` alone, since the package is now `cmd/tenet`:
+From source, which needs a Go toolchain:
 
 ```
-go install github.com/zoidsh/tenetlint/cmd/tenet@latest
+go install github.com/zoidsh/tenet/cmd/tenet@latest
 ```
 
-Through the [pre-commit](https://pre-commit.com) framework, which builds tenetlint from source itself, fetching a Go toolchain of its own if the machine has none:
+Through the [pre-commit](https://pre-commit.com) framework, which builds tenet from source itself, fetching a Go toolchain of its own if the machine has none:
 
 ```yaml
 repos:
-  - repo: https://github.com/zoidsh/tenetlint
+  - repo: https://github.com/zoidsh/tenet
     rev: main
     hooks:
-      - id: tenetlint
-      - id: tenetlint-commit-msg
+      - id: tenet
+      - id: tenet-commit-msg
 ```
 
 In GitHub Actions, where the action downloads the release binary for the runner and lints the pull request against its base:
@@ -59,14 +59,14 @@ In GitHub Actions, where the action downloads the release binary for the runner 
         with:
           fetch-depth: 0
 
-      - uses: zoidsh/tenetlint@v1
+      - uses: zoidsh/tenet@v1
         with:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
 Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
 
-Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenetlint/releases).
+Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenet/releases).
 
 ## Quick start
 
@@ -78,7 +78,7 @@ From the root of your repository:
    tenet auth
    ```
 
-   The key is typed at a prompt with the echo off and kept in `~/.config/tenetlint/credentials`, which every repository on the machine then reads. `tenet auth --project` keeps it in `.tenetlint/credentials` in this repository instead, and adds that file to `.gitignore`. CI saves nothing: `TYPESAFE_API_KEY` in the environment outranks both files. `tenet auth --status` says which one a run is reading, and `tenet auth typesafe` names the provider outright, which is worth doing once there is more than one.
+   The key is typed at a prompt with the echo off and kept in `~/.config/tenet/credentials`, which every repository on the machine then reads. `tenet auth --project` keeps it in `.tenet/credentials` in this repository instead, and adds that file to `.gitignore`. CI saves nothing: `TYPESAFE_API_KEY` in the environment outranks both files. `tenet auth --status` says which one a run is reading, and `tenet auth typesafe` names the provider outright, which is worth doing once there is more than one.
 
 2. Draft a `tenets.yml` from the instruction files your agents already read.
 
@@ -157,7 +157,7 @@ x := fallback() // tenet:ignore no-fallback
 y := 1 // set y to one
 ```
 
-A directive only counts inside a comment, so a string, a test fixture or a sentence about directives does not quietly exempt the file it sits in. In code that means after a line comment marker, or between a block comment's markers, in the language the file's extension names; in a language tenetlint does not know it counts anywhere on the line. The check is textual rather than a parse, so a marker inside a string literal opens a comment as far as tenetlint is concerned and a directive after it counts.
+A directive only counts inside a comment, so a string, a test fixture or a sentence about directives does not quietly exempt the file it sits in. In code that means after a line comment marker, or between a block comment's markers, in the language the file's extension names; in a language that tenet does not know it counts anywhere on the line. The check is textual rather than a parse, so a marker inside a string literal opens a comment as far as tenet is concerned and a directive after it counts.
 
 In Markdown, YAML and other prose and data files a directive counts at the start of a line, after list markers, whitespace or the format's own comment marker, or inside an `<!-- -->` comment; a sentence that quotes one mid-line does not count. In a commit message, and in a pull request's title and description, it counts anywhere. The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
 
@@ -284,7 +284,7 @@ Where a label is a call the tenet's sentence does not obviously make, write the 
 
 ## Adopting on an existing codebase
 
-A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenetlint-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds.
+A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenet-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds.
 
 `tenet --show-baselined` lists the accepted ones alongside, marked `[baselined]` and still passing, when you want to see what is waiting, which in JSON is a `baselined` array beside `findings`, of the same shape. `--baseline path` reads a file other than the default one, and `--no-baseline` is a run that honours nothing, which is the sweep to do before a release.
 
@@ -292,7 +292,7 @@ An entry is matched by the file, the tenet and a hash of the offending line with
 
 ```
 $ tenet baseline .
-wrote 2 findings to .tenetlint-baseline.json
+wrote 2 findings to .tenet-baseline.json
 
 $ tenet .
 0 findings, 2 baselined · 5 windows, 0 calls, 10 cached · $0.0000 · 0.0s
@@ -352,15 +352,15 @@ Without `--format`, output is text on a terminal and JSON anywhere else, because
 }
 ```
 
-`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
+`next` is the empty string when `findings` is empty, so there is nothing to tell anyone to do; the three directive forms it names are the ones Directives lists. Every path tenet prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is. The exception is `--format github`, one `::error` workflow command per finding, whose paths are relative to the repository root because that is what GitHub resolves an annotation against.
 
 A run with no key exits 2 saying `no TypeSafe API key: run tenet auth typesafe, or set TYPESAFE_API_KEY`, which is a broken run rather than a clean one; the key is the person's to enter at that prompt, never something for an agent to read, write into a file or put in a commit.
 
 Reading the report is one thing and knowing to run it is another, so `plugin/` is a Claude Code plugin that does both. It carries a `tenet` skill, which says when to run the lint and what to do with each finding, and a `PreToolUse` hook, which lints the staged changes before a `git commit` and hands the findings back instead of letting the commit through. This repository is its own marketplace:
 
 ```
-/plugin marketplace add zoidsh/tenetlint
-/plugin install tenetlint@tenetlint
+/plugin marketplace add zoidsh/tenet
+/plugin install tenet@zoidsh
 ```
 
 Agents that read a repository rather than a plugin get the same instructions from `tenet init --agent`. `--agent cursor` writes them to `.cursor/rules/tenet.mdc`, `--agent agents` and `--agent claude` keep them as a `## tenet` section of `AGENTS.md` or `CLAUDE.md`, replacing the section an earlier run wrote rather than adding a second one, and the flag repeats. A run that names an agent writes those files and nothing else, so it refuses `--from`, `--preset`, `--config` and `--force` rather than half-doing two jobs, and `--dry-run` names the files it would write.
@@ -379,16 +379,16 @@ This is about fit rather than speed; the timings are under Benchmarks.
 | Prose linters (Vale) | word lists and regex | yes | yes | yes | yes, exact match | prose files only | no | no | if you wire it up |
 | AI review bots (CodeRabbit, Copilot code review, Cursor Bugbot) | yes | mostly no, PR bots | yes | yes | no, free text | PR text at most | yes, uncalibrated | yes | yes |
 | An agent asked to review | yes | network call each time | yes | if you wire it up | no, free text | yes | yes, uncalibrated | yes | if you wire it up |
-| tenetlint | yes | yes, over the network | yes | yes | yes | yes | no | no | no |
+| tenet | yes | yes, over the network | yes | yes | yes | yes | no | no | no |
 
-tenetlint's three no's are the same decision three times: it judges the changed windows against the rule you wrote, never the program's behaviour and never the rest of the tree. So a logic bug, and a contract broken between two files that each look fine, are still a reviewer's job. It has no way to post a comment either, and the GitHub Action's annotations are annotations rather than review comments.
+tenet's three no's are the same decision three times: it judges the changed windows against the rule you wrote, never the program's behaviour and never the rest of the tree. So a logic bug, and a contract broken between two files that each look fine, are still a reviewer's job. It has no way to post a comment either, and the GitHub Action's annotations are annotations rather than review comments.
 
 ### What to use for what
 
 - A static linter settles what a parser can settle: syntax, types, unused code, the rules whose answer is in the grammar.
 - Vale, or a `grep -nE` in the same hook, settles the mechanical prose checks the presets hand off on purpose, because a regex decides them and a model should not be paid to: em dashes, emoji, curly quotes, buzzword lists, punctuation caps, title case in headings, runs of same-length sentences, subject length caps, conventional-commit prefixes and ticket-id formats.
 - A review bot or an agent takes the reading that needs the whole program: logic, contracts across files, and whether the design is the right one.
-- tenetlint takes the rules you wrote in plain language that a diff is enough to judge, and runs them on every commit rather than once a pull request is open.
+- tenet takes the rules you wrote in plain language that a diff is enough to judge, and runs them on every commit rather than once a pull request is open.
 
 ## Benchmarks
 
@@ -416,7 +416,7 @@ And the 2,062-line diff against what one agent call over the same diff would cos
 
 | Reviewer | Input tokens | Output tokens | Cost | Time |
 | --- | --- | --- | --- | --- |
-| tenetlint, measured | 88,765 | n/a | $0.0037 | 1.6 s |
+| tenet, measured | 88,765 | n/a | $0.0037 | 1.6 s |
 | Claude Haiku 4.5 | 20,823 | 1,000 | $0.0258 | 12.7 s |
 | Claude Sonnet 5 | 20,823 | 1,000 | $0.0516 | 17.5 s |
 | GPT-5 nano | 20,823 | 1,000 | $0.0014 | n/a |
@@ -427,13 +427,13 @@ Every agent row is a lower bound: one call, the whole diff in the prompt, no too
 
 Every one of these can be settled for a single run by a flag, which outranks the variable. The flags are on `tenet` itself and on every subcommand.
 
-- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenetlint/credentials` in the repository, then `~/.config/tenetlint/credentials`, so exporting it in CI overrides whatever is saved on the machine. `--typesafe-api-key` outranks all three, though a saved key or the variable is better: a flag is in the process list for anyone on the machine to read. A provider added later reads a variable of its own and answers to its own pair of flags, both named after it.
+- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenet/credentials` in the repository, then `~/.config/tenet/credentials`, so exporting it in CI overrides whatever is saved on the machine. `--typesafe-api-key` outranks all three, though a saved key or the variable is better: a flag is in the process list for anyone on the machine to read. A provider added later reads a variable of its own and answers to its own pair of flags, both named after it.
 - `TYPESAFE_BASE_URL`, or `--typesafe-base-url`, sends the requests to another host, such as a proxy or a local stand-in.
-- `TENETLINT_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
-- `TENETLINT_SKIP=1` makes the installed hooks exit without linting.
-- `TENETLINT_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
-- `TENETLINT_VERSION` is the release the installer script fetches, `latest` by default, with or without the leading `v`.
-- `TENETLINT_BINARY` points the npm wrapper at a binary of your own instead of the one its platform package carries.
+- `TENET_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
+- `TENET_SKIP=1` makes the installed hooks exit without linting.
+- `TENET_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
+- `TENET_VERSION` is the release the installer script fetches, `latest` by default, with or without the leading `v`.
+- `TENET_BINARY` points the npm wrapper at a binary of your own instead of the one its platform package carries.
 - `NO_COLOR` turns the colour off in the text report, whatever the terminal is. `--color` settles it outright: `auto`, the default, reads the terminal and `NO_COLOR`, while `always` and `never` say so.
 
 ## Development
