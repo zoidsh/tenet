@@ -72,7 +72,8 @@ func State(w *source.Window) string {
 
 func lineID(n int) string { return fmt.Sprintf("L%03d", n) }
 
-func parseLineID(label string) (int, bool) {
+// ParseLineID reads the line a location answer names.
+func ParseLineID(label string) (int, bool) {
 	n, err := strconv.Atoi(strings.TrimPrefix(label, "L"))
 	if err != nil || n < 1 {
 		return 0, false
@@ -208,7 +209,7 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 		if p.prob < p.tenet.ThresholdValue() {
 			continue
 		}
-		id, ok := parseLineID(p.line)
+		id, ok := ParseLineID(p.line)
 		if !ok || id > len(w.Lines) {
 			continue
 		}
@@ -313,7 +314,7 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 		if !ok {
 			continue
 		}
-		p.line = topLine(answer)
+		p.line = TopLine(answer)
 		if p.line != "" {
 			j.Cache.PutLocation(p.key, p.prob, p.line)
 		}
@@ -321,10 +322,10 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 	return nil
 }
 
-// topLine is the most probable line, read from the distribution with none
+// TopLine is the most probable line, read from the distribution with none
 // taken out: the verdict has already decided that the window violates the
 // rule, so the question left is only which line shows it best.
-func topLine(a jev.Answer) string {
+func TopLine(a jev.Answer) string {
 	trimmed := jev.Answer{Probabilities: map[string]float64{}}
 	for label, p := range a.Probabilities {
 		if label == NoneLabel {

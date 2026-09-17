@@ -38,9 +38,3 @@ func LocationQuestion(t *tenets.Tenet, lines int) (jev.Question, error) {
 	}
 	return jev.Choice(LocationInstructions(t), labels)
 }
-
-// ParseLineID reads the line a location answer names.
-func ParseLineID(label string) (int, bool) { return parseLineID(label) }
-
-// TopLine is the line a location answer names, with none taken out.
-func TopLine(a jev.Answer) string { return topLine(a) }
