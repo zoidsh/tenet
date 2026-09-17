@@ -8,6 +8,8 @@ Every path tenetlint prints, including the `file` field of `--format json`, is r
 
 ## Install
 
+The command is `tenet`, and every path below installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
+
 Homebrew, on macOS; tenetlint ships as a cask, which Homebrew on Linux does not install, so use the installer script or npm below there:
 
 ```
@@ -33,10 +35,10 @@ The installer script, which puts the binary in `~/.local/bin`, or in `TENETLINT_
 curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
 ```
 
-From source, which needs a Go toolchain:
+From source, which needs a Go toolchain and gives you `tenet` alone, since the package is now `cmd/tenet`:
 
 ```
-go install github.com/zoidsh/tenetlint/cmd/tenetlint@latest
+go install github.com/zoidsh/tenetlint/cmd/tenet@latest
 ```
 
 Through the [pre-commit](https://pre-commit.com) framework, which builds tenetlint from source itself, fetching a Go toolchain of its own if the machine has none:
@@ -66,7 +68,7 @@ Every release tarball, and the `checksums.txt` that covers them, is on [GitHub R
 
 ## Usage
 
-Start with `tenetlint init`, which drafts a `tenets.yml` from the instruction files your agents already read. It splits each file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, and `--format json` gives you every candidate with its probabilities.
+Start with `tenet init`, which drafts a `tenets.yml` from the instruction files your agents already read. It splits each file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, and `--format json` gives you every candidate with its probabilities.
 
 ```
 CLAUDE.md
@@ -76,13 +78,13 @@ CLAUDE.md
   19    code-rule  1.00    0.81         never-code-does-name-smaller   Never what the code does; a name or a smaller function says…
 ```
 
-Then read what it drafted, delete the rules you did not mean, and run `tenetlint`, which lints your staged changes. `tenetlint --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
+Then read what it drafted, delete the rules you did not mean, and run `tenet`, which lints your staged changes. `tenet --base main` lints the whole branch instead, and naming paths lints those files whether or not they are staged. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
 
-Finally, `tenetlint hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenetlint hook uninstall` takes them away again.
+Finally, `tenet hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenet hook uninstall` takes them away again.
 
 ## Commit messages
 
-`tenetlint --commit-msg <file>` lints a commit message rather than code. The message is of kind `commit`, so `kind: [commit]` is how a tenet says it is about the message and nothing else, and it is linted as a file named `COMMIT_EDITMSG`, which an include glob can name instead; the comment lines git strips itself, and everything below a `>8` scissors line, are gone before the model sees any of it, and the lines that are left keep the numbers your editor showed them under. `tenetlint hook install` writes this as the `commit-msg` hook, which git runs after `pre-commit`, so the code is judged first and the message only once the code passes. A finding says `reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again`, and a config with no tenet for the message costs nothing, because there is nothing to ask.
+`tenet --commit-msg <file>` lints a commit message rather than code. The message is of kind `commit`, so `kind: [commit]` is how a tenet says it is about the message and nothing else, and it is linted as a file named `COMMIT_EDITMSG`, which an include glob can name instead; the comment lines git strips itself, and everything below a `>8` scissors line, are gone before the model sees any of it, and the lines that are left keep the numbers your editor showed them under. `tenet hook install` writes this as the `commit-msg` hook, which git runs after `pre-commit`, so the code is judged first and the message only once the code passes. A finding says `reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again`, and a config with no tenet for the message costs nothing, because there is nothing to ask.
 
 ```yaml
   - id: commit-subject
@@ -92,7 +94,7 @@ Finally, `tenetlint hook install` writes a pre-commit hook that runs the lint on
 
 ## Pass or fail
 
-A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenetlint check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
+A tenet is one cutoff: `fail`, 0.8 unless the tenet says otherwise. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place. `tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window, which is what a cutoff you are about to lower is really about.
 
 ```
 internal/cache/cache.go:42: comment-why (p=0.91)
@@ -122,7 +124,7 @@ The directive and its id list are cut out of the line before anything is sent to
 
 ## Configuration
 
-A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenetlint rules` lists the built-in rules with their tags and the presets that include them, `tenetlint rules comment-why` prints one of them in full, and `tenetlint presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
+A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
 
 ```yaml
 version: 1
@@ -139,7 +141,7 @@ tenets: [...]                   # your own tenets, as before
 
 A tenet's `kind` is how it says what it is about. Every file is code, prose or data, read off its name: `.md`, `.rst`, `.txt` and the like, everything under `locales/` and `i18n/` whatever it is serialised as, and a README, CHANGELOG, CONTRIBUTING or LICENSE are prose; `.json`, `.yml`, `.toml`, `.csv` and lock files are data; anything else under `docs/` is prose, so a `docs/api.json` stays data; everything else is code. A commit message is a kind of its own, `commit`, read off the literal name `COMMIT_EDITMSG` it is linted under. The model is told which it is looking at, so a document is judged as a document rather than as source code, and a tenet that names a kind is asked only about files of that kind, on top of its include and exclude globs. A tenet that names none is asked about everything its globs match.
 
-The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenetlint config` prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
+The order is the order of that file: the presets in the order you list them, then the rules, then your own tenets, then the disables, then the overrides. A tenet of your own that carries a built-in id replaces that rule wholesale, where it stood, so moving a rule into your config to reword it does not reorder the report. An override patches only the fields it names and leaves the rest of the rule alone. An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenet config` prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
 ```
 tenets.yml
@@ -149,7 +151,7 @@ comment-why       agent-hygiene  code  0.80  **/*.go
 no-fallback       agent-hygiene  code  0.80  **/*.go
 ```
 
-`tenetlint init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
+`tenet init --preset agent-hygiene` writes a config that names that preset and nothing else, which is also what `init` writes when it finds no instruction file to read; add `--from` to draft your own rules into the same file underneath it.
 
 ## Criteria
 
@@ -165,7 +167,7 @@ A tenet is judged by its sentence alone unless you give it criteria: a `true` de
 
 ## Checking a tenet
 
-`tenetlint check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok`, the `code` it is about, and on a violation the `lines` a finding should land on: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenetlint check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
+`tenet check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok`, the `code` it is about, and on a violation the `lines` a finding should land on: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenet check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
 
 ```yaml
     examples:
@@ -197,7 +199,7 @@ A tenet is judged by its sentence alone unless you give it criteria: a `true` de
           }
 ```
 
-Then run `tenetlint check`, which judges every example of every tenet that has any, or `tenetlint check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed.
+Then run `tenet check`, which judges every example of every tenet that has any, or `tenet check comment-why` for one of them. The answers are cached under the same cache the lint uses, so a re-run after an edit costs only the examples whose question changed.
 
 ```
 comment-why: sharp
