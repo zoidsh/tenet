@@ -81,6 +81,17 @@ func TestSplitNumberedItems(t *testing.T) {
 	}
 }
 
+func TestSplitKeepsAbbreviationsWhole(t *testing.T) {
+	source := "Name the narrow case, e.g. When a window is empty, in the criteria. Everything else is prose.\n"
+	got := importer.Split("f.md", []byte(source))
+	if len(got) != 2 {
+		t.Fatalf("got %#v", got)
+	}
+	if got[0].Text != "Name the narrow case, e.g. When a window is empty, in the criteria." {
+		t.Errorf("first sentence is %q", got[0].Text)
+	}
+}
+
 func TestSplitSentenceEdges(t *testing.T) {
 	source := "Use it e.g. when the cache is cold and nothing else applies. Version 1.13.0 is the default one.\n"
 	got := importer.Split("f.md", []byte(source))

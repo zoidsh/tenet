@@ -254,9 +254,24 @@ func pieceAt(text string, lineAt []int, whole string, start int) piece {
 	return piece{line: lineAt[start], text: text}
 }
 
+// abbreviations end in a dot without ending a sentence, so the capital that
+// follows one is the next word rather than a new sentence.
+var abbreviations = map[string]bool{"e.g.": true, "i.e.": true, "etc.": true, "vs.": true}
+
+func endsAbbreviation(text string, end int) bool {
+	start := end
+	for start > 0 && (text[start-1] == '.' || isLetter(text[start-1])) {
+		start--
+	}
+	return abbreviations[strings.ToLower(text[start:end])]
+}
+
+func isLetter(c byte) bool { return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' }
+
 // bounds are the offsets a paragraph breaks at: an end of sentence is
 // punctuation that either ends the paragraph or is followed by a space and a
-// capital, which leaves "e.g. this" and version numbers alone. Backticked
+// capital, and is not one of the abbreviations that end in a dot mid-sentence.
+// Version numbers are left alone by the space. Backticked
 // spans are skipped whole, because `pkg.Func()` is code, not prose.
 func bounds(text string) []int {
 	var out []int
@@ -265,7 +280,7 @@ func bounds(text string) []int {
 		switch c := text[i]; {
 		case c == '`':
 			inTick = !inTick
-		case inTick, c != '.' && c != '!' && c != '?':
+		case inTick, c != '.' && c != '!' && c != '?', endsAbbreviation(text, i+1):
 		case strings.TrimSpace(text[i+1:]) == "":
 			out = append(out, i+1)
 		case text[i+1] == ' ':
