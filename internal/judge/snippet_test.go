@@ -33,6 +33,12 @@ func TestStateOfFraming(t *testing.T) {
 			path: "tenets.yml",
 			want: "Data file: yaml. File: tenets.yml. Excerpt:\nL001 one\nL002 two\n",
 		},
+		{
+			kind: source.KindCommit,
+			lang: "text",
+			path: source.CommitMsgPath,
+			want: "Commit message. Text excerpt:\nL001 one\nL002 two\n",
+		},
 	} {
 		if got := judge.StateOf(tc.kind, tc.lang, tc.path, body); got != tc.want {
 			t.Errorf("%s state is\n%q\nwant\n%q", tc.kind, got, tc.want)

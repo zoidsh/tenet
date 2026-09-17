@@ -28,6 +28,8 @@ func header(kind, lang, path string) string {
 		return fmt.Sprintf("Document: %s. File: %s. Text excerpt:", lang, path)
 	case source.KindData:
 		return fmt.Sprintf("Data file: %s. File: %s. Excerpt:", lang, path)
+	case source.KindCommit:
+		return "Commit message. Text excerpt:"
 	default:
 		return fmt.Sprintf("Language: %s. File: %s. Source file excerpt:", lang, path)
 	}
