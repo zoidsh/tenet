@@ -47,6 +47,10 @@ const NextStaged = Next + ", then commit again"
 // prints this.
 const NextCommitMsg = "reword the message, which git kept in .git/COMMIT_EDITMSG, then commit again"
 
+// NextPR is what a user does about a finding in a pull request's title or
+// description, neither of which is in the branch a push would change.
+const NextPR = "edit the pull request title or description, then push again"
+
 // DefaultFormat is text for a person at a terminal and JSON for everything
 // else, because what reads a pipe is a script or an agent.
 func DefaultFormat(w io.Writer) string {

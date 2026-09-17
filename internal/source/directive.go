@@ -139,7 +139,7 @@ func directiveCounts(path string, lines []string) func(line, col int) bool {
 	var syn commentSyntax
 	prose, fences := false, false
 	switch Kind(path) {
-	case KindCommit:
+	case KindCommit, KindPR:
 		return anywhere
 	case KindProse:
 		syn, prose, fences = htmlStyle, true, true

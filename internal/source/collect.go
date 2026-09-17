@@ -47,8 +47,8 @@ type Skip struct {
 	Reason string `json:"reason"`
 }
 
-// Options select what to collect. CommitMsg wins over Paths, which win over
-// Base, and with none of them the staged changes are linted.
+// Options select what to collect. CommitMsg and PRText win over Paths, which
+// win over Base, and with none of them the staged changes are linted.
 type Options struct {
 	Dir   string
 	Base  string
@@ -57,6 +57,10 @@ type Options struct {
 	// CommitMsg is the path of a commit message file to lint on its own, as
 	// git hands it to a commit-msg hook.
 	CommitMsg string
+
+	// PRText is the path of a file holding a pull request's title and
+	// description, to lint on its own.
+	PRText string
 
 	// Tenets are the ids an ignore directive may name.
 	Tenets []string
@@ -101,6 +105,8 @@ func Collect(ctx context.Context, opts Options) (*Set, error) {
 	switch {
 	case opts.CommitMsg != "":
 		return collectCommitMsg(abs, opts.CommitMsg, known)
+	case opts.PRText != "":
+		return collectPRText(abs, opts.PRText, known)
 	case len(opts.Paths) > 0:
 		return collectPaths(ctx, abs, root, opts.Paths, known)
 	case opts.Base != "":

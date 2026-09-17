@@ -12,6 +12,7 @@ const (
 	KindProse  = "prose"
 	KindData   = "data"
 	KindCommit = "commit"
+	KindPR     = "pr"
 )
 
 var proseExts = map[string]bool{
@@ -67,6 +68,9 @@ func Kind(path string) string {
 	path = filepath.ToSlash(path)
 	if path == CommitMsgPath {
 		return KindCommit
+	}
+	if path == PRTextPath {
+		return KindPR
 	}
 	base := strings.ToLower(filepath.Base(path))
 	ext := strings.ToLower(filepath.Ext(base))

@@ -151,6 +151,44 @@ tenets:
 	}
 }
 
+func TestAppliesToPullRequestText(t *testing.T) {
+	cfg, err := tenets.Parse([]byte(`
+version: 1
+tenets:
+  - id: title-for-a-reader
+    tenet: The title says what changed for a reader.
+    kind: [pr]
+  - id: by-name
+    tenet: The title says what changed for a reader.
+    include: ["PULL_REQUEST"]
+  - id: either-text
+    tenet: The subject or title says what changed for a reader.
+    kind: [commit, pr]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKind, byName, both := cfg.Tenets[0], cfg.Tenets[1], cfg.Tenets[2]
+	cases := []struct {
+		tenet *tenets.Tenet
+		path  string
+		want  bool
+	}{
+		{byKind, source.PRTextPath, true},
+		{byKind, source.CommitMsgPath, false},
+		{byKind, "main.go", false},
+		{byName, source.PRTextPath, true},
+		{both, source.PRTextPath, true},
+		{both, source.CommitMsgPath, true},
+		{both, "README.md", false},
+	}
+	for _, c := range cases {
+		if got := c.tenet.Applies(c.path); got != c.want {
+			t.Errorf("%s applies to %s = %v, want %v", c.tenet.ID, c.path, got, c.want)
+		}
+	}
+}
+
 func TestHashCoversOnlyWhatIsAsked(t *testing.T) {
 	cfg, err := tenets.Parse([]byte(sample))
 	if err != nil {

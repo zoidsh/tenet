@@ -62,6 +62,7 @@ func missingKeyError() error {
 type lintOptions struct {
 	base          string
 	commitMsg     string
+	prText        string
 	config        string
 	format        string
 	model         string
@@ -77,6 +78,7 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	addRunFlags(cmd, o)
 	f := cmd.Flags()
 	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
+	f.StringVar(&o.prText, "pr-text", "", "lint the pull request title and description in this file instead of any code")
 	f.StringVar(&o.format, "format", "", "output format: text, json or github (default text on a terminal, json otherwise)")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" in the repository root")
@@ -102,6 +104,16 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be given paths as well")
 		case o.base != "":
 			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be combined with --base")
+		case o.prText != "":
+			return fmt.Errorf("--commit-msg lints the message on its own, so it cannot be combined with --pr-text")
+		}
+	}
+	if o.prText != "" {
+		switch {
+		case len(paths) > 0:
+			return fmt.Errorf("--pr-text lints the pull request text on its own, so it cannot be given paths as well")
+		case o.base != "":
+			return fmt.Errorf("--pr-text lints the pull request text on its own, so it cannot be combined with --base")
 		}
 	}
 	if o.baseline != "" && o.noBaseline {
@@ -166,13 +178,14 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	for _, t := range cfg.Tenets {
 		ids = append(ids, t.ID)
 	}
-	// A repository whose tenets say nothing about the commit message must not
-	// pay for a call on every commit, so the message is not even read. The set
-	// then has no root either: a run that read nothing has no paths to print,
-	// and the directory it started in is not where they would be relative to.
+	// A repository whose tenets say nothing about the commit message or the
+	// pull request text must not pay for a call on every commit or push, so
+	// neither is even read. The set then has no root either: a run that read
+	// nothing has no paths to print, and the directory it started in is not
+	// where they would be relative to.
 	set := &source.Set{}
-	if o.commitMsg == "" || applies(cfg, source.CommitMsgPath) {
-		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, Tenets: ids})
+	if text := textPath(o); text == "" || applies(cfg, text) {
+		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, PRText: o.prText, Tenets: ids})
 		if err != nil {
 			return nil, err
 		}
@@ -235,6 +248,8 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	switch {
 	case o.commitMsg != "":
 		r.Next = report.NextCommitMsg
+	case o.prText != "":
+		r.Next = report.NextPR
 	case len(paths) == 0 && o.base == "":
 		r.Next = report.NextStaged
 	}
@@ -278,6 +293,18 @@ func (o *lintOptions) accepted(root string) (*baseline.File, error) {
 		return nil, nil
 	}
 	return f, err
+}
+
+// textPath is the name the tenets match this run's text under when what it
+// lints is text rather than files, and empty when it lints files.
+func textPath(o *lintOptions) string {
+	switch {
+	case o.commitMsg != "":
+		return source.CommitMsgPath
+	case o.prText != "":
+		return source.PRTextPath
+	}
+	return ""
 }
 
 func applies(cfg *tenets.Config, path string) bool {
