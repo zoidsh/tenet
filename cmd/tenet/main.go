@@ -1,4 +1,4 @@
-// Command tenetlint lints code against English rules.
+// Command tenet lints code against English rules.
 package main
 
 import (
@@ -15,7 +15,7 @@ import (
 func newRootCmd() *cobra.Command {
 	opts := &lintOptions{}
 	root := &cobra.Command{
-		Use:   "tenetlint [paths...]",
+		Use:   "tenet [paths...]",
 		Short: "Lint code against the rules you wrote in English",
 		// Without this, cobra reads the first path as the name of a subcommand
 		// it does not have.
@@ -34,7 +34,7 @@ func newRootCmd() *cobra.Command {
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Print the tenetlint version",
+		Short: "Print the tenet version",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			_, err := fmt.Fprintln(cmd.OutOrStdout(), buildinfo.Version())
@@ -51,11 +51,11 @@ func execute(root *cobra.Command) int {
 	var exit *exitError
 	if errors.As(err, &exit) {
 		if exit.err != nil {
-			_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenetlint:", exit.err)
+			_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenet:", exit.err)
 		}
 		return exit.code
 	}
-	_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenetlint:", err)
+	_, _ = fmt.Fprintln(root.ErrOrStderr(), "tenet:", err)
 	return report.ExitError
 }
 

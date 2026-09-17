@@ -19,7 +19,7 @@ import (
 )
 
 // exitError carries the code the process should end with, so that a finding
-// and a broken run are told apart by the caller of tenetlint, usually a hook.
+// and a broken run are told apart by the caller of tenet, usually a hook.
 type exitError struct {
 	code int
 	err  error

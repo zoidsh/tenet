@@ -17,7 +17,7 @@ const marker = "# tenetlint hook"
 // SkipEnv lets someone commit without a key, or without the lint, at all.
 const SkipEnv = "TENETLINT_SKIP"
 
-// hooks are the git hooks tenetlint installs. args are shell words, not
+// hooks are the git hooks tenet installs. args are shell words, not
 // arguments to quote: "$1" is the message file git passes a commit-msg hook,
 // and quoting it here would make it a literal.
 var hooks = []struct {
@@ -64,7 +64,7 @@ func newHookInstallCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Write the pre-commit and commit-msg hooks that run tenetlint",
+		Short: "Write the pre-commit and commit-msg hooks that run tenet",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dir, err := hooksDir(cmd.Context())

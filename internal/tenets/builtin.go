@@ -73,7 +73,7 @@ func BuiltinRule(id string) (*Rule, error) {
 		return nil, err
 	}
 	if _, ok := c.rules[id]; !ok {
-		return nil, fmt.Errorf("no built-in rule %q; run tenetlint rules to see them", id)
+		return nil, fmt.Errorf("no built-in rule %q; run tenet rules to see them", id)
 	}
 	return c.rule(id)
 }
@@ -98,7 +98,7 @@ func BuiltinPreset(name string) (*Preset, error) {
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("no built-in preset %q; run tenetlint presets to see them", name)
+	return nil, fmt.Errorf("no built-in preset %q; run tenet presets to see them", name)
 }
 
 // files is a rule's directory, held as it ships so that every caller parses
