@@ -1,0 +1,226 @@
+# Labelled cases for the no-hedging tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 5]
+  code: |
+    ## The index
+
+    It could potentially be the case that a stale byte offset might, in some
+    circumstances, end up pointing into the middle of another record rather
+    than at the start of the one it names.
+
+    The index stores a document id and a byte offset. A document rewritten in
+    place keeps its id.
+
+    ## Rebuilding
+
+    Run `idx rebuild` after an in-place rewrite, or pass `--rewrite-safe` to
+    the writer, which appends instead of overwriting.
+- label: violation
+  lang: markdown
+  lines: [6, 7]
+  code: |
+    ## Leases
+
+    A worker leases a job for 30 seconds and extends the lease every 10 while
+    it runs.
+
+    If the process is paused for longer than the lease, this may possibly
+    cause the worker to perhaps drop the job without noticing.
+
+    ## Recovery
+
+    The job is handed to another worker, which starts it from the beginning.
+    A job that runs twice must leave the same rows behind.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Contributing
+
+    It is generally recommended that you should probably try to run
+    `make check` before pushing, in most cases.
+
+    `make check` runs the unit tests with the race detector, `golangci-lint`
+    with the repository's config, and `gofmt -l` over the tree.
+
+    ## Reviews
+
+    One maintainer approval merges a patch. A change under `internal/wire`
+    needs two.
+- label: violation
+  lang: markdown
+  lines: [6, 8]
+  code: |
+    # Caching
+
+    The cache keys on the SHA-256 of the request body and the model name. An
+    entry expires 30 days after it was written.
+
+    Some users may find that, in certain situations, the cache could possibly
+    not end up being shared between two machines in the way they might have
+    expected it to be.
+
+    ## Pointing it elsewhere
+
+    `--cache-dir` moves it. Two processes writing one directory corrupt it,
+    so give each its own.
+- label: violation
+  lang: markdown
+  lines: [9, 10]
+  code: |
+    ## Pinning the action
+
+    The action is published by digest as well as by tag. A tag is moved on
+    every patch release; a digest never moves.
+
+    CI reads the digest from `.github/workflows/ci.yml` and fails the run if
+    the file names a tag instead.
+
+    It could be argued that it would likely be better for most projects to
+    probably pin by digest wherever that is possible.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    ## `app status`
+
+    The command should usually complete more or less instantly, although it
+    might occasionally take somewhat longer than that in a few cases.
+
+    It reads the stage table and the lease table and prints one row per
+    stage, with the worker id and the lease expiry.
+
+    ## Exit codes
+
+    0 when every stage is running, 1 when any stage is stalled, 2 when the
+    database could not be reached.
+- label: violation
+  lang: markdown
+  lines: [4, 5]
+  code: |
+    # Configuration
+
+    The daemon reads `/etc/app/config.toml` at startup and re-reads it on
+    SIGHUP. An unknown key may, in some cases, potentially result in what
+    could be considered a load error, depending on the circumstances.
+
+    Keys are case-sensitive, and an environment variable of the same name
+    uppercased and prefixed `APP_` wins over the file.
+
+    ## Secrets
+
+    A value beginning with `file:` is read from the path that follows, once
+    at startup and never again.
+- label: ok
+  note: "One hedge on a figure that really does move with the runner, and the sentence names what it moves with."
+  lang: markdown
+  code: |
+    ## Cold caches
+
+    A run against a cold module cache may take twice as long as a warm one.
+    The figure depends on the runner's network, and the cache mount keyed on
+    `go.sum` is what removes the variance.
+
+    ## Measuring
+
+    `make bench-ci` prints the time each stage took, read from the runner's
+    own step timings rather than from the wall clock.
+
+    A stage that gets slower by more than 10% against the stored baseline
+    fails the run.
+- label: ok
+  lang: markdown
+  code: |
+    ## Watching files
+
+    On Windows the watcher can miss a rename, because the platform API
+    reports one as a delete and a create with no ordering between them.
+
+    `--poll` falls back to a two-second stat loop, which costs more and
+    misses nothing.
+
+    ## Ignored paths
+
+    Anything matched by `.gitignore` is ignored, and `--watch-all` turns that
+    off for the run.
+- label: ok
+  lang: markdown
+  code: |
+    # Architecture
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from
+    the `jobs` stream in Redis and writes results to Postgres.
+
+    ## Failure modes
+
+    If Redis is unreachable, the gateway answers reads from its in-process
+    cache for up to 60 seconds and then returns 503.
+
+    Writes fail immediately with 503. There is no local queue, because a
+    write the client believes landed and the cluster never saw is worse than
+    a retry.
+- label: ok
+  note: "Two modals, both granting the reader an option rather than softening a claim, which is a modal doing its other job."
+  lang: markdown
+  code: |
+    ## Writing the config
+
+    `init` writes a `tenets.yml` in the directory you run it from. You may
+    pass `--force` to replace one that is already there, and you may pass
+    `--dry-run` to print the table and write nothing.
+
+    ## What it reads
+
+    Without `--from` it reads every instruction file the repository has.
+    With `--from path` it reads exactly the files you name.
+
+    An unreadable file named with `--from` is an error; one found by the
+    default search is skipped with a line on stderr.
+- label: ok
+  lang: markdown
+  code: |
+    ## Timings
+
+    A check over the sample corpus takes 2 to 6 seconds, depending on how
+    many examples the cache already holds.
+
+    The cache is keyed on the question, so a re-run after editing one
+    tenet's criteria re-asks only that tenet's examples.
+
+    ## Cost
+
+    Each example is one call. `--runs 3` is three calls per example and
+    leaves the cache out of it, so it costs three times as much.
+- label: ok
+  lang: markdown
+  code: |
+    # Workers
+
+    A worker runs one job at a time. Run more processes to run more jobs;
+    there is no thread pool inside a worker.
+
+    A job that fails is retried three times and then moved to the
+    dead-letter queue with its last error stored beside it.
+
+    ## Draining
+
+    `SIGTERM` finishes the current job and exits. A second `SIGTERM` exits
+    at once and the lease expires 30 seconds later.
+- label: ok
+  note: "One should, marking a case the implementation has not settled, with the command that tells the reader which case they are in."
+  lang: markdown
+  code: |
+    ## Migrating from 0.9
+
+    `app config migrate` rewrites the two keys that moved in 3.0 and refuses
+    to touch a file it cannot parse.
+
+    A config written by hand against 0.9 should migrate unchanged; the
+    rewrite has only been exercised against files `init` wrote, so run
+    `app config check` afterwards and read what it prints.
+
+    ## Removed
+
+    `--lenient` is gone. An unknown key has been an error since 2.4 and the
+    flag did nothing after that.

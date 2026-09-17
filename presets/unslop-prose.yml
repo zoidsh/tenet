@@ -22,3 +22,4 @@ rules:
   - no-false-contrast
   - no-connector-colon
   - no-false-range
+  - no-hedging
