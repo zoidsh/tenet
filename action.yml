@@ -1,0 +1,39 @@
+name: tenetlint
+description: Lint a pull request against the tenets in its tenets.yml
+branding:
+  icon: check-square
+  color: purple
+
+inputs:
+  version:
+    description: The tenetlint release to run, or latest
+    default: latest
+  base:
+    description: The commit to lint the branch against
+    default: ${{ github.event.pull_request.base.sha || github.event.before }}
+  args:
+    description: Extra flags passed to tenetlint
+    default: ""
+  api-key:
+    description: A TypeSafe API key, which the lint needs to reach jev
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install tenetlint
+      shell: bash
+      env:
+        # install.sh reads an empty TENETLINT_VERSION as "resolve the latest
+        # release", which is what the input's default means.
+        TENETLINT_VERSION: ${{ inputs.version == 'latest' && '' || inputs.version }}
+        TENETLINT_INSTALL_DIR: ${{ runner.temp }}/tenetlint
+      run: |
+        sh "${{ github.action_path }}/install.sh"
+        echo "$TENETLINT_INSTALL_DIR" >> "$GITHUB_PATH"
+
+    - name: Lint the branch
+      shell: bash
+      env:
+        TYPESAFE_API_KEY: ${{ inputs.api-key }}
+      run: tenetlint --base "${{ inputs.base }}" --format json ${{ inputs.args }}
