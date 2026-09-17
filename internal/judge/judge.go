@@ -33,6 +33,8 @@ type Asker interface {
 
 // Finding is one violation. Fail is the cutoff it was judged against, so that
 // a reader of the JSON can see how close the call was without the config.
+// Hash is what a baseline matches on, and stays out of the report: it is
+// about a run's own bookkeeping, not about the violation.
 type Finding struct {
 	File        string  `json:"file"`
 	Line        int     `json:"line"`
@@ -40,6 +42,7 @@ type Finding struct {
 	Probability float64 `json:"probability"`
 	Fail        float64 `json:"fail"`
 	Message     string  `json:"message"`
+	Hash        string  `json:"-"`
 }
 
 // NearBand is how far under its cutoff a verdict still counts as a near miss.
@@ -207,16 +210,19 @@ func (j *Judge) Cached(windows []*source.Window) int {
 }
 
 func sortFindings(findings []Finding) {
-	sort.Slice(findings, func(a, b int) bool {
-		x, y := findings[a], findings[b]
-		if x.File != y.File {
-			return x.File < y.File
-		}
-		if x.Line != y.Line {
-			return x.Line < y.Line
-		}
-		return x.Tenet < y.Tenet
-	})
+	sort.Slice(findings, func(a, b int) bool { return Less(findings[a], findings[b]) })
+}
+
+// Less is the order findings are printed in, which a report printing findings
+// of its own alongside them has to keep to.
+func Less(x, y Finding) bool {
+	if x.File != y.File {
+		return x.File < y.File
+	}
+	if x.Line != y.Line {
+		return x.Line < y.Line
+	}
+	return x.Tenet < y.Tenet
 }
 
 // pending is one tenet's state while its window is judged.
@@ -291,6 +297,7 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 			Probability: p.prob,
 			Fail:        cutoff,
 			Message:     p.tenet.Tenet,
+			Hash:        FindingHash(p.tenet.Hash(), w.File.Lines, line),
 		})
 	}
 	return findings, near, nil

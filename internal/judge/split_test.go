@@ -108,8 +108,16 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 		t.Fatalf("split run found %#v, one call found %#v", findings, whole)
 	}
 	for i := range findings {
-		if findings[i] != whole[i] {
+		// The hash follows the tenet's wording, and these two configs word
+		// their criteria differently on purpose, so it is the one field the
+		// split is allowed to change here.
+		split := findings[i]
+		split.Hash = whole[i].Hash
+		if split != whole[i] {
 			t.Errorf("split finding %#v, one call gave %#v", findings[i], whole[i])
+		}
+		if findings[i].Hash == "" {
+			t.Errorf("split finding %#v has no hash", findings[i])
 		}
 	}
 }

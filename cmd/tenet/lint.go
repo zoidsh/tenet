@@ -54,15 +54,22 @@ type lintOptions struct {
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
+	addRunFlags(cmd, o)
+	f := cmd.Flags()
+	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
+	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
+	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
+}
+
+// addRunFlags are the flags that choose what is judged and how, which baseline
+// takes too so that it accepts exactly what a lint would have found.
+func addRunFlags(cmd *cobra.Command, o *lintOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
-	f.StringVar(&o.commitMsg, "commit-msg", "", "lint the commit message in this file instead of any code")
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
-	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenets.yml")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
-	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
 }
 
 func (o *lintOptions) validate(out io.Writer, paths []string) error {
@@ -83,21 +90,27 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 	return nil
 }
 
-func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
-	ctx := cmd.Context()
-	out, errOut := cmd.OutOrStdout(), cmd.ErrOrStderr()
-	if err := o.validate(out, paths); err != nil {
-		return fail(err)
-	}
+// run is what one judged pass over the selected code amounts to, before
+// anything decides what to print or write about it. The findings' paths are
+// still the repository-relative ones the tenets were matched against.
+type run struct {
+	dir     string
+	set     *source.Set
+	outcome judge.Outcome
+}
 
+// judgeRun collects what the options select and judges it, which is the part
+// lint and baseline share.
+func judgeRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error) {
+	ctx := cmd.Context()
 	dir, err := os.Getwd()
 	if err != nil {
-		return fail(err)
+		return nil, err
 	}
 
 	cfg, err := openConfig(o.config)
 	if err != nil {
-		return fail(err)
+		return nil, err
 	}
 
 	model := o.model
@@ -111,7 +124,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 
 	key := jev.KeyFromEnv()
 	if key == "" {
-		return fail(missingKeyError())
+		return nil, missingKeyError()
 	}
 
 	ids := make([]string, 0, len(cfg.Tenets))
@@ -126,26 +139,43 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	if o.commitMsg == "" || applies(cfg, source.CommitMsgPath) {
 		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, Tenets: ids})
 		if err != nil {
-			return fail(err)
+			return nil, err
 		}
 	}
+	r := &run{dir: dir, set: set, outcome: judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}}}
+	windows := set.Windows()
+	if len(windows) == 0 {
+		return r, nil
+	}
+	outcome, err := lintWindows(ctx, cmd, o, cfg, windows, key, model)
+	if err != nil {
+		return nil, err
+	}
+	outcome.Stats.Files = len(set.Files)
+	r.outcome = outcome
+	return r, nil
+}
+
+func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
+	out, errOut := cmd.OutOrStdout(), cmd.ErrOrStderr()
+	if err := o.validate(out, paths); err != nil {
+		return fail(err)
+	}
+
+	run, err := judgeRun(cmd, paths, o)
+	if err != nil {
+		return fail(err)
+	}
+	set, dir, near := run.set, run.dir, run.outcome.NearMisses
+
 	r := report.Report{
-		Stats:   judge.Stats{Files: len(set.Files)},
-		Skipped: set.Skipped,
-		Quiet:   o.quiet,
+		Findings: run.outcome.Findings,
+		Stats:    run.outcome.Stats,
+		Skipped:  set.Skipped,
+		Quiet:    o.quiet,
 	}
 	if o.commitMsg != "" {
 		r.Next = report.NextCommitMsg
-	}
-	var near []judge.NearMiss
-	windows := set.Windows()
-	if len(windows) > 0 {
-		outcome, err := lintWindows(ctx, cmd, o, cfg, windows, key, model)
-		if err != nil {
-			return fail(err)
-		}
-		outcome.Stats.Files = len(set.Files)
-		r.Findings, r.Stats, near = outcome.Findings, outcome.Stats, outcome.NearMisses
 	}
 
 	relocate(&r, set.Root, dir)
@@ -189,12 +219,15 @@ func relocate(r *report.Report, root, dir string) {
 }
 
 func displayPath(root, dir, path string) string {
-	abs := filepath.Join(root, filepath.FromSlash(path))
-	rel, err := filepath.Rel(dir, abs)
+	return filepath.ToSlash(relativeTo(dir, filepath.Join(root, filepath.FromSlash(path))))
+}
+
+func relativeTo(dir, path string) string {
+	rel, err := filepath.Rel(dir, path)
 	if err != nil {
-		return filepath.ToSlash(abs)
+		return path
 	}
-	return filepath.ToSlash(rel)
+	return rel
 }
 
 func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, key, model string) (judge.Outcome, error) {
