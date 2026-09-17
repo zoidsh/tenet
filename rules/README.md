@@ -16,7 +16,7 @@ tags: [code, errors]
 
 ## 2. Collect twelve examples or more
 
-`examples.yml` holds at least twelve cases, roughly half of each label, with `lines` on every violation: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Where the evidence is scattered over a file, give the tightest span that covers the part the rule is really about, which is usually where the substitution or the check happens rather than where the test later asserts on it.
+`examples.yml` holds at least twelve cases, roughly half of each label, with `lines` on every violation: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right. Where the evidence is scattered over a file, give the tightest span that covers the part the rule is really about, which is usually where the substitution or the check happens rather than where the test later asserts on it. A tenet that judges every sentence rather than the passage is the exception: there the span runs over every offending sentence in the snippet, because the model will name whichever of them is barest and the tenet covers all of them, which is what `concrete-subject` does.
 
 Choose cases that are hard. A violation nobody would argue about scores 0.97 whatever the wording says, and moves no number when you edit the criteria; the cases that teach `check` anything are the ones a careful reviewer would have to stop and think about. Put in the acceptable cases that look like violations, too: the default that is genuinely part of an interface, the fake clock that is a production constructor argument, the null check on a value that really can be absent. Those are what a `false` criterion is written against.
 

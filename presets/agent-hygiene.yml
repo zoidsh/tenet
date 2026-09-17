@@ -1,3 +1,13 @@
+# A preset is a promise that every rule in it holds its whole corpus above
+# 0.8, which is the cutoff for every rule and the only one there is.
+#
+# no-defensive-nil ships in the binary and is not listed here. It held
+# fail: 0.75 until that was taken away; at 0.8 it is 0.86 accurate with the
+# AUC at 1.00, so the ranking is right and two violations are short of the
+# line. Both are TypeScript, a language its corpus grew after the criteria
+# were written, and a wording pass over those cases is what it is waiting
+# on. It carries the standalone tag meanwhile, and a config that wants it
+# names it under `rules:`.
 version: 1
 name: agent-hygiene
 description: The habits a coding agent slips into when nobody reads the diff.
@@ -5,7 +15,6 @@ rules:
   - comment-why
   - no-fallback
   - no-mocking
-  - no-defensive-nil
   - no-transcript-comment
   - no-placeholder-phrase
   - assertion-justified
