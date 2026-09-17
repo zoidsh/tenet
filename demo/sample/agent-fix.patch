@@ -1,0 +1,94 @@
+diff --git a/billing.go b/billing.go
+index ef3125d..7a2357a 100644
+--- a/billing.go
++++ b/billing.go
+@@ -1,6 +1,7 @@
+ package invoicing
+ 
+ import (
++	"fmt"
+ 	"strconv"
+ 	"strings"
+ )
+@@ -17,23 +18,19 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
+ // Discount is a code the customer types at checkout.
+ type Discount struct {
+ 	Code    string
+-	Percent float64
++	Percent int
+ }
+ 
+-// ParseDiscount reads a code of the form SAVE10.
+-func ParseDiscount(code string) Discount {
+-	percent, err := strconv.ParseFloat(strings.TrimPrefix(code, "SAVE"), 64)
++func ParseDiscount(code string) (Discount, error) {
++	percent, err := strconv.Atoi(strings.TrimPrefix(code, "SAVE"))
+ 	if err != nil {
+-		// default to 0 on a parse error so that checkout keeps working
+-		percent = 0
++		return Discount{}, fmt.Errorf("discount code %q carries no percentage: %w", code, err)
+ 	}
+-	return Discount{Code: code, Percent: percent}
++	return Discount{Code: code, Percent: percent}, nil
+ }
+ 
+-// DiscountedTotal returns the amount due after the discount as a float64.
+-func DiscountedTotal(totalCents int, discount Discount) float64 {
+-	// divide the cents by 100 to get dollars
+-	dollars := float64(totalCents) / 100
+-	// multiply the dollars by the percent, divide that by 100, take it away
+-	return dollars - dollars*discount.Percent/100
++// DiscountedTotalCents rounds the discount up, so half a cent of rounding
++// falls to Northwind rather than to the customer.
++func DiscountedTotalCents(totalCents int, discount Discount) int {
++	return totalCents - (totalCents*discount.Percent+99)/100
+ }
+diff --git a/billing_test.go b/billing_test.go
+index f79dd96..4d85d57 100644
+--- a/billing_test.go
++++ b/billing_test.go
+@@ -2,14 +2,6 @@ package invoicing
+ 
+ import "testing"
+ 
+-type stubRepository struct {
+-	invoice Invoice
+-}
+-
+-func (s stubRepository) Invoice(string) (Invoice, error) {
+-	return s.invoice, nil
+-}
+-
+ func TestTotalCentsAddsTax(t *testing.T) {
+ 	repo := NewMemoryRepository(Invoice{
+ 		ID:       "INV-1041",
+@@ -32,17 +24,22 @@ func TestTotalCentsReportsAMissingInvoice(t *testing.T) {
+ 	}
+ }
+ 
+-func TestDiscountedTotal(t *testing.T) {
+-	repo := stubRepository{invoice: Invoice{
+-		ID:    "INV-1042",
+-		Lines: []Line{{Description: "Onboarding", Quantity: 1, UnitCents: 10000}},
+-	}}
++func TestDiscountedTotalCents(t *testing.T) {
++	repo := NewMemoryRepository(Invoice{
++		ID:       "INV-1042",
++		Customer: "Blue Harbour Cafe",
++		Lines:    []Line{{Description: "Onboarding", Quantity: 1, UnitCents: 10000}},
++	})
+ 
+ 	total, err := TotalCents(repo, "INV-1042", 0)
+ 	if err != nil {
+ 		t.Fatalf("TotalCents: %v", err)
+ 	}
+-	if due := DiscountedTotal(total, ParseDiscount("SAVE10")); due != 90 {
+-		t.Errorf("due = %v, want 90", due)
++	discount, err := ParseDiscount("SAVE10")
++	if err != nil {
++		t.Fatalf("ParseDiscount: %v", err)
++	}
++	if due := DiscountedTotalCents(total, discount); due != 9000 {
++		t.Errorf("due = %d cents, want 9000", due)
+ 	}
+ }

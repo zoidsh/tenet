@@ -1,0 +1,18 @@
+version: 1
+presets: [agent-hygiene]
+tenets:
+  - id: money-in-cents
+    tenet: Money is an integer number of cents, never a float.
+    criteria:
+      true: An amount of money, such as a price, a subtotal, a total, a tax, a discount or a balance, is declared, computed, returned or stored as a float or a double, or an amount in cents is divided into units of currency.
+      false: Every amount of money is a whole number of cents. A float holds something that is not money, such as a rate, a percentage or a ratio, and any amount derived from one is a whole number of cents again.
+    include: ["**/*.go"]
+    kind: [code]
+override:
+  comment-why: {fail: 0.01}
+  no-mocking: {fail: 0.01}
+  no-transcript-comment: {fail: 0.01}
+  no-placeholder-phrase: {fail: 0.01}
+  assertion-justified: {fail: 0.01}
+  no-fallback: {fail: 0.01}
+  money-in-cents: {fail: 0.01}

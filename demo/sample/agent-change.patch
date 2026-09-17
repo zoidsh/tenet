@@ -1,0 +1,81 @@
+diff --git a/billing.go b/billing.go
+index aa84936..ef3125d 100644
+--- a/billing.go
++++ b/billing.go
+@@ -1,5 +1,10 @@
+ package invoicing
+ 
++import (
++	"strconv"
++	"strings"
++)
++
+ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
+ 	inv, err := repo.Invoice(id)
+ 	if err != nil {
+@@ -8,3 +13,27 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
+ 	subtotal := inv.SubtotalCents()
+ 	return subtotal + TaxCents(subtotal, taxRatePerMille), nil
+ }
++
++// Discount is a code the customer types at checkout.
++type Discount struct {
++	Code    string
++	Percent float64
++}
++
++// ParseDiscount reads a code of the form SAVE10.
++func ParseDiscount(code string) Discount {
++	percent, err := strconv.ParseFloat(strings.TrimPrefix(code, "SAVE"), 64)
++	if err != nil {
++		// default to 0 on a parse error so that checkout keeps working
++		percent = 0
++	}
++	return Discount{Code: code, Percent: percent}
++}
++
++// DiscountedTotal returns the amount due after the discount as a float64.
++func DiscountedTotal(totalCents int, discount Discount) float64 {
++	// divide the cents by 100 to get dollars
++	dollars := float64(totalCents) / 100
++	// multiply the dollars by the percent, divide that by 100, take it away
++	return dollars - dollars*discount.Percent/100
++}
+diff --git a/billing_test.go b/billing_test.go
+index 552ea9b..f79dd96 100644
+--- a/billing_test.go
++++ b/billing_test.go
+@@ -2,6 +2,14 @@ package invoicing
+ 
+ import "testing"
+ 
++type stubRepository struct {
++	invoice Invoice
++}
++
++func (s stubRepository) Invoice(string) (Invoice, error) {
++	return s.invoice, nil
++}
++
+ func TestTotalCentsAddsTax(t *testing.T) {
+ 	repo := NewMemoryRepository(Invoice{
+ 		ID:       "INV-1041",
+@@ -23,3 +31,18 @@ func TestTotalCentsReportsAMissingInvoice(t *testing.T) {
+ 		t.Fatal("TotalCents on an empty store: want an error, got nil")
+ 	}
+ }
++
++func TestDiscountedTotal(t *testing.T) {
++	repo := stubRepository{invoice: Invoice{
++		ID:    "INV-1042",
++		Lines: []Line{{Description: "Onboarding", Quantity: 1, UnitCents: 10000}},
++	}}
++
++	total, err := TotalCents(repo, "INV-1042", 0)
++	if err != nil {
++		t.Fatalf("TotalCents: %v", err)
++	}
++	if due := DiscountedTotal(total, ParseDiscount("SAVE10")); due != 90 {
++		t.Errorf("due = %v, want 90", due)
++	}
++}

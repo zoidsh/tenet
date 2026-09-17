@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "file": "billing.go",
+      "line": 18,
+      "tenet": "comment-why",
+      "probability": 0.36,
+      "fail": 0.01,
+      "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
+    },
+    {
+      "file": "billing.go",
+      "line": 33,
+      "tenet": "no-transcript-comment",
+      "probability": 0.14,
+      "fail": 0.01,
+      "message": "Do not add comments that reference context from the transcript."
+    }
+  ],
+  "next": "fix the lines above, then commit again",
+  "stats": {
+    "baselined": 0,
+    "files": 2,
+    "windows": 2,
+    "calls": 2,
+    "cache_hits": 13,
+    "input_tokens": 5276,
+    "cost_usd": 0.000222,
+    "duration_ms": 674
+  },
+  "skipped": []
+}

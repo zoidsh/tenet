@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "file": "billing.go",
+      "line": 28,
+      "tenet": "no-fallback",
+      "probability": 0.94,
+      "fail": 0.8,
+      "message": "Do not add fallbacks, default-to-something-that-works-ish behavior, or silent degradation paths. Either the operation succeeds as intended, or it raises an actionable error."
+    },
+    {
+      "file": "billing.go",
+      "line": 34,
+      "tenet": "money-in-cents",
+      "probability": 0.95,
+      "fail": 0.8,
+      "message": "Money is an integer number of cents, never a float."
+    },
+    {
+      "file": "billing.go",
+      "line": 36,
+      "tenet": "comment-why",
+      "probability": 0.89,
+      "fail": 0.8,
+      "message": "A comment says why the code exists or why it is written this way, not what the code does, what it used to do, or what its declaration already states."
+    },
+    {
+      "file": "billing_test.go",
+      "line": 36,
+      "tenet": "no-mocking",
+      "probability": 0.89,
+      "fail": 0.8,
+      "message": "You must never mock anything in tests."
+    }
+  ],
+  "next": "fix the lines above, then commit again",
+  "stats": {
+    "baselined": 0,
+    "files": 2,
+    "windows": 2,
+    "calls": 4,
+    "cache_hits": 0,
+    "input_tokens": 7575,
+    "cost_usd": 0.000318,
+    "duration_ms": 1469
+  },
+  "skipped": []
+}
