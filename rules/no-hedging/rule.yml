@@ -1,8 +1,8 @@
 id: no-hedging
 tenet: "Excessive hedging. 'could potentially possibly be argued that it might' becomes 'may'."
 criteria:
-  true: "One claim carries more than one marker of uncertainty, so several words do the work of one: a modal verb with an adverb of possibility, an impersonal frame that holds the claim at arm's length wrapped around a modal, a qualifier of scope on top of either, or a softener attached to a quantity that is already vague. The surplus is visible in the rewrite, where deleting every hedge but one leaves the meaning untouched. A single hedge on something the document elsewhere states as fact counts too: the software's own behaviour, which the writer knows, offered as something that may in some cases happen."
-  false: "Exactly one hedge, marking a limit the writer genuinely cannot see past: the behaviour of a dependency or a platform, a figure that moves with the workload, a case the implementation has not settled. A modal that grants permission or states an option the reader has is not a hedge at all, and a possibility stated with the condition that brings it about is a fact however it is worded."
+  true: "One claim carries more than one marker of uncertainty, so several words do the work of one: modals, adverbs of possibility, impersonal frames holding the claim at arm's length, and qualifiers of scope, stacked in any combination. The surplus shows in the rewrite, where striking every hedge but one leaves the meaning where it was."
+  false: "A single hedge, and it marks something the writer genuinely cannot know: how a platform or a dependency will behave, or a figure that moves with the workload. A modal that grants the reader permission or offers them an option is not a hedge at all, and a possibility stated together with the condition that brings it about is a fact however it is worded."
 source: cursor/plugins pstack/skills/unslop/SKILL.md #24
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
