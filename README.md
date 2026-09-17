@@ -6,6 +6,64 @@ tenetlint is a command-line linter for the rules you wrote in English. It reads 
 
 Every path tenetlint prints, including the `file` field of `--format json`, is relative to the directory you ran it from, whatever part of the repository that is.
 
+## Install
+
+Homebrew, on macOS and on Linux:
+
+```
+brew install zoidsh/tap/tenetlint
+```
+
+npm, which carries the binary for your platform as an optional dependency and runs no install script:
+
+```
+npm install -g tenetlint
+npx tenetlint
+```
+
+As a devDependency, so everyone working on the repository gets the same tenetlint:
+
+```
+npm install --save-dev tenetlint
+```
+
+The installer script, which puts the binary in `~/.local/bin`, or in `TENETLINT_INSTALL_DIR` when you set it, and never asks for sudo:
+
+```
+curl -fsSL https://raw.githubusercontent.com/zoidsh/tenetlint/main/install.sh | sh
+```
+
+From source, which needs a Go toolchain:
+
+```
+go install github.com/zoidsh/tenetlint/cmd/tenetlint@latest
+```
+
+Through the [pre-commit](https://pre-commit.com) framework, which builds tenetlint with `go install` and so also needs Go on the machine; the three paths above do not:
+
+```yaml
+repos:
+  - repo: https://github.com/zoidsh/tenetlint
+    rev: main
+    hooks:
+      - id: tenetlint
+      - id: tenetlint-commit-msg
+```
+
+In GitHub Actions, where the action downloads the release binary for the runner and lints the pull request against its base:
+
+```yaml
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: zoidsh/tenetlint@v1
+        with:
+          api-key: ${{ secrets.TYPESAFE_API_KEY }}
+```
+
+Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenetlint/releases).
+
 ## Usage
 
 Start with `tenetlint init`, which drafts a `tenets.yml` from the instruction files your agents already read. It splits each file into sentences and list items, asks jev what kind of instruction each one is and whether a diff alone settles it, and keeps the rules a diff is enough to judge; what describes your project rather than instructing anyone is reported and left out. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines. Without `--from` it reads every one of `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name. `--dry-run` prints the table without writing anything, `--force` replaces a `tenets.yml` that is already there, and `--format json` gives you every candidate with its probabilities.
