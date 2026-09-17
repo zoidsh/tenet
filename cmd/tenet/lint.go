@@ -119,8 +119,10 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		ids = append(ids, t.ID)
 	}
 	// A repository whose tenets say nothing about the commit message must not
-	// pay for a call on every commit, so the message is not even read.
-	set := &source.Set{Root: dir}
+	// pay for a call on every commit, so the message is not even read. The set
+	// then has no root either: a run that read nothing has no paths to print,
+	// and the directory it started in is not where they would be relative to.
+	set := &source.Set{}
 	if o.commitMsg == "" || applies(cfg, source.CommitMsgPath) {
 		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, Tenets: ids})
 		if err != nil {
