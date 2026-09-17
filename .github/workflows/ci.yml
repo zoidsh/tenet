@@ -80,8 +80,10 @@ jobs:
         if: env.TYPESAFE_API_KEY != '' && github.event_name == 'pull_request'
         run: go run ./cmd/tenetlint --base origin/${{ github.base_ref }} --format json
 
+      # The account's artifact quota can fill; the jq step above is this job's verdict.
       - uses: actions/upload-artifact@v4
         if: always() && env.TYPESAFE_API_KEY != ''
+        continue-on-error: true
         with:
           name: check.json
           path: check.json
