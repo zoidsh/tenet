@@ -5,10 +5,10 @@
   code: |
     ## Features
 
-    - **Fast.** Built for speed from the very first commit.
-    - **Reliable.** Behaviour you can depend on, every single time.
-    - **Simple.** An interface that is straightforward to use.
-    - **Flexible.** It adapts to whatever workflow you already have.
+    - **Fast:** Built for speed from the very first commit.
+    - **Reliable:** Behaviour you can depend on, every single time.
+    - **Simple:** An interface that is straightforward to use.
+    - **Flexible:** It adapts to whatever workflow you already have.
 
     ## Requirements
 
@@ -23,10 +23,10 @@
   code: |
     ## Flags
 
-    - **`--watch`.** Watches for changes.
-    - **`--clean`.** Cleans the output directory.
-    - **`--verbose`.** Prints verbose output.
-    - **`--quiet`.** Runs quietly.
+    - **`--watch`:** Watches for changes.
+    - **`--clean`:** Cleans the output directory.
+    - **`--verbose`:** Prints verbose output.
+    - **`--quiet`:** Runs quietly.
 
     ## Exit codes
 
@@ -41,9 +41,9 @@
   code: |
     ## Concepts
 
-    - **Queue.** A queue that holds jobs.
-    - **Worker.** A worker that works on jobs from a queue.
-    - **Lease.** The lease a worker holds on the job it is working on.
+    - **Queue:** A queue that holds jobs.
+    - **Worker:** A worker that works on jobs from a queue.
+    - **Lease:** The lease a worker holds on the job it is working on.
 
     ## Getting started
 
@@ -59,10 +59,10 @@
 
     These are the things the project optimises for.
 
-    - **Simplicity.** We value simplicity above other concerns.
-    - **Correctness.** Being correct matters a great deal to us.
-    - **Speed.** We care about being fast.
-    - **Transparency.** We aim to be transparent in what we do.
+    - **Simplicity:** We value simplicity above other concerns.
+    - **Correctness:** Being correct matters a great deal to us.
+    - **Speed:** We care about being fast.
+    - **Transparency:** We aim to be transparent in what we do.
 
     ## Governance
 
@@ -76,10 +76,10 @@
 
     ### Added
 
-    - **Watch mode.** A mode that watches.
-    - **Cache table.** A table for cache configuration.
-    - **Table output.** Output in the form of a table.
-    - **Verify flag.** A flag that verifies.
+    - **Watch mode:** A mode that watches.
+    - **Cache table:** A table for cache configuration.
+    - **Table output:** Output in the form of a table.
+    - **Verify flag:** A flag that verifies.
 
     ### Fixed
 
@@ -92,9 +92,9 @@
 
     The documentation is split into three pages.
 
-    - **Configuration.** How configuration works.
-    - **Scheduling.** All about scheduling.
-    - **Protocol.** A description of the protocol.
+    - **Configuration:** How configuration works.
+    - **Scheduling:** All about scheduling.
+    - **Protocol:** A description of the protocol.
 
     Each page stands alone. Nothing in one of them assumes you have read
     another, and the glossary at the end of each repeats the terms it uses.
@@ -106,9 +106,9 @@
 
     Three backends ship with the binary.
 
-    - **`sqlite`.** Stores data in SQLite.
-    - **`postgres`.** Stores data in Postgres.
-    - **`memory`.** Keeps everything in memory.
+    - **`sqlite`:** Stores data in SQLite.
+    - **`postgres`:** Stores data in Postgres.
+    - **`memory`:** Keeps everything in memory.
 
     ## Choosing
 
