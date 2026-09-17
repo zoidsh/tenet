@@ -228,6 +228,43 @@ func TestInitRefusesAnExistingConfig(t *testing.T) {
 	}
 }
 
+func TestInitWritesARelativeConfig(t *testing.T) {
+	dir := initRepo(t)
+
+	code, stdout, stderr := runInitCmd(t, "--config", "rules.yml")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "written to rules.yml") {
+		t.Errorf("stdout is %s", stdout)
+	}
+	cfg, err := tenets.Load(filepath.Join(dir, "rules.yml"))
+	if err != nil {
+		t.Fatalf("the drafted file does not load: %v", err)
+	}
+	if cfg.Tenets[0].Tenet != commentRule {
+		t.Errorf("drafted %#v", cfg.Tenets[0])
+	}
+}
+
+func TestInitDryRunToASubdirectory(t *testing.T) {
+	dir := initRepo(t)
+	if err := os.Mkdir(filepath.Join(dir, "sub"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	code, stdout, stderr := runInitCmd(t, "--config", "sub/tenets.yml", "--dry-run")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "nothing written (--dry-run)") {
+		t.Errorf("stdout is %s", stdout)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sub", "tenets.yml")); !os.IsNotExist(err) {
+		t.Errorf("a dry run wrote the file: %v", err)
+	}
+}
+
 func TestInitWithoutAKey(t *testing.T) {
 	initRepo(t)
 	t.Setenv(jev.APIKeyEnv, "")

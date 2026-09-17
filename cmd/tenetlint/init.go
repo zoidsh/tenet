@@ -77,9 +77,9 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		return fail(err)
 	}
 
-	target := o.config
-	if target == "" {
-		target = filepath.Join(root, tenets.FileName)
+	target, err := o.target(root)
+	if err != nil {
+		return fail(err)
 	}
 	if err := o.checkTarget(target); err != nil {
 		return fail(err)
@@ -185,6 +185,16 @@ func (o *initOptions) starter(cmd *cobra.Command, target, shown string) error {
 	}
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "found no rule files to read; %s%s\n", verb, shown)
 	return err
+}
+
+// target is the file to write, absolute because everything downstream of it
+// is stated relative to somewhere: the repository root for a source line, the
+// working directory for what is printed.
+func (o *initOptions) target(root string) (string, error) {
+	if o.config == "" {
+		return filepath.Join(root, tenets.FileName), nil
+	}
+	return filepath.Abs(o.config)
 }
 
 // checkTarget refuses to overwrite a tenets.yml somebody has edited. A dry run
