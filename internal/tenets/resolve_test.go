@@ -36,6 +36,7 @@ func TestResolutionOrder(t *testing.T) {
 				"no-fallback from agent-hygiene",
 				"no-mocking from agent-hygiene",
 				"no-defensive-nil from agent-hygiene",
+				"no-transcript-comment from agent-hygiene",
 			},
 		},
 		{
@@ -45,7 +46,7 @@ func TestResolutionOrder(t *testing.T) {
 		},
 		{
 			"rules come after presets",
-			"version: 1\npresets: [agent-hygiene]\nrules: []\ndisable: [comment-why, no-fallback, no-defensive-nil]\n",
+			"version: 1\npresets: [agent-hygiene]\nrules: []\ndisable: [comment-why, no-fallback, no-defensive-nil, no-transcript-comment]\n",
 			[]string{"no-mocking from agent-hygiene"},
 		},
 		{
@@ -61,12 +62,13 @@ func TestResolutionOrder(t *testing.T) {
 				"no-fallback from local",
 				"no-mocking from agent-hygiene",
 				"no-defensive-nil from agent-hygiene",
+				"no-transcript-comment from agent-hygiene",
 			},
 		},
 		{
 			"disable removes what the expansion added",
 			"version: 1\npresets: [agent-hygiene]\ndisable: [no-mocking, comment-why]\n",
-			[]string{"no-fallback from agent-hygiene", "no-defensive-nil from agent-hygiene"},
+			[]string{"no-fallback from agent-hygiene", "no-defensive-nil from agent-hygiene", "no-transcript-comment from agent-hygiene"},
 		},
 		{
 			"disable removes a local tenet too",
@@ -213,8 +215,9 @@ override:
 // A rule two presets both include is what makes presets composable, so it
 // arrives once rather than as a clash.
 func TestARuleInSeveralPresets(t *testing.T) {
-	got := resolved(t, "version: 1\npresets: [agent-hygiene, agent-hygiene]\n")
-	if len(got) != 4 {
-		t.Errorf("resolved to %v", got)
+	once := resolved(t, "version: 1\npresets: [agent-hygiene]\n")
+	twice := resolved(t, "version: 1\npresets: [agent-hygiene, agent-hygiene]\n")
+	if strings.Join(twice, ", ") != strings.Join(once, ", ") {
+		t.Errorf("resolved to %v, want %v", twice, once)
 	}
 }

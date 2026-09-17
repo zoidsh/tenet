@@ -1,2 +1,2 @@
 agent-hygiene  The habits a coding agent slips into when nobody reads the diff.
-  comment-why, no-fallback, no-mocking, no-defensive-nil
+  comment-why, no-fallback, no-mocking, no-defensive-nil, no-transcript-comment

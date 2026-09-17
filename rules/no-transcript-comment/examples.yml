@@ -1,0 +1,242 @@
+# Labelled cases for the no-transcript-comment tenet, measured by `tenetlint check`.
+- label: violation
+  lines: [7, 8]
+  code: |
+    func (q *Queue) Flush(ctx context.Context) error {
+    	batch := q.pending
+    	q.pending = nil
+    	if len(batch) == 0 {
+    		return nil
+    	}
+    	// As you asked, this now sends the whole batch in one request instead
+    	// of looping over the items one at a time.
+    	payload, err := json.Marshal(batch)
+    	if err != nil {
+    		return fmt.Errorf("encoding batch of %d: %w", len(batch), err)
+    	}
+    	if err := q.transport.Send(ctx, payload); err != nil {
+    		return fmt.Errorf("sending batch: %w", err)
+    	}
+    	return nil
+    }
+- label: violation
+  lines: [6, 7]
+  code: |
+    func ParseWindow(raw string) (time.Duration, error) {
+    	trimmed := strings.TrimSpace(raw)
+    	if trimmed == "" {
+    		return 0, errors.New("window must not be empty")
+    	}
+    	// Previously this swallowed the parse error and returned a zero window;
+    	// the error is returned now.
+    	d, err := time.ParseDuration(trimmed)
+    	if err != nil {
+    		return 0, fmt.Errorf("parsing window %q: %w", raw, err)
+    	}
+    	if d < time.Second {
+    		return 0, fmt.Errorf("window %s is shorter than a second", d)
+    	}
+    	return d, nil
+    }
+- label: violation
+  lines: [6, 7]
+  lang: typescript
+  code: |
+    export async function loadProfile(id: string, api: Api): Promise<Profile> {
+      const res = await api.get(`/profiles/${id}`);
+      if (res.status === 404) {
+        throw new ProfileNotFound(id);
+      }
+      // Per the instructions in your message, the avatar URL is no longer
+      // rewritten to the CDN host here.
+      const body = profileSchema.parse(await res.json());
+      return {
+        id: body.id,
+        displayName: body.display_name,
+        avatarUrl: body.avatar_url,
+        updatedAt: new Date(body.updated_at),
+      };
+    }
+- label: violation
+  lines: 12
+  lang: typescript
+  code: |
+    export function mergeRanges(ranges: Range[]): Range[] {
+      const sorted = [...ranges].sort((a, b) => a.start - b.start);
+      const merged: Range[] = [];
+      for (const range of sorted) {
+        const last = merged[merged.length - 1];
+        if (last !== undefined && range.start <= last.end) {
+          last.end = Math.max(last.end, range.end);
+          continue;
+        }
+        merged.push({ ...range });
+      }
+      // The old code mutated the array that was passed in; this copy fixes that.
+      return merged;
+    }
+- label: violation
+  lines: [14, 15]
+  lang: typescript
+  code: |
+    const RETRYABLE = new Set([429, 502, 503, 504]);
+
+    export async function send(req: Request, fetchImpl: typeof fetch): Promise<Response> {
+      let attempt = 0;
+      for (;;) {
+        const res = await fetchImpl(req.clone());
+        if (!RETRYABLE.has(res.status)) {
+          return res;
+        }
+        attempt += 1;
+        if (attempt === 3) {
+          return res;
+        }
+        // As discussed, we wait on the Retry-After header rather than the
+        // fixed delay the first draft of this function used.
+        await delay(retryAfterMs(res));
+      }
+    }
+- label: violation
+  lines: [5, 6]
+  lang: python
+  code: |
+    def summarize_run(run, events):
+        if run.finished_at is None:
+            raise RunStillRunning(run.id)
+        durations = [e.duration_ms for e in events if e.duration_ms is not None]
+        # You wanted the percentile instead of the mean, so p95 is what this
+        # returns now.
+        return RunSummary(
+            run_id=run.id,
+            event_count=len(events),
+            p95_ms=percentile(durations, 95),
+            failed=[e.name for e in events if e.failed],
+        )
+- label: violation
+  lines: [8, 9]
+  lang: python
+  code: |
+    def write_manifest(path, entries):
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        with tmp.open("w", encoding="utf-8") as fh:
+            for entry in sorted(entries, key=lambda e: e.name):
+                fh.write(f"{entry.digest}  {entry.name}\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+        # My first attempt wrote the file in place, which is why this version
+        # goes through a temporary file.
+        tmp.replace(path)
+- label: ok
+  code: |
+    type Event struct {
+    	ID   string `json:"id"`
+    	Kind string `json:"kind"`
+    	// v1 clients reject an event whose body is absent, so the field is
+    	// always encoded even where nothing reads it.
+    	Body json.RawMessage `json:"body"`
+    }
+
+    func NewEvent(kind string, body json.RawMessage) (Event, error) {
+    	if kind == "" {
+    		return Event{}, errors.New("event kind must not be empty")
+    	}
+    	if len(body) == 0 {
+    		return Event{}, fmt.Errorf("event %s must carry a body", kind)
+    	}
+    	return Event{ID: newULID(), Kind: kind, Body: body}, nil
+    }
+- label: ok
+  code: |
+    func (s *Store) Upsert(ctx context.Context, rows []Row) error {
+    	// Postgres caps a statement at 65535 parameters and each row binds four
+    	// of them, so a batch cannot grow past this.
+    	const maxRows = 16000
+    	if len(rows) > maxRows {
+    		return fmt.Errorf("upsert of %d rows exceeds the %d a statement can bind", len(rows), maxRows)
+    	}
+    	stmt, args := buildUpsert(rows)
+    	tag, err := s.pool.Exec(ctx, stmt, args...)
+    	if err != nil {
+    		return fmt.Errorf("upserting %d rows: %w", len(rows), err)
+    	}
+    	if tag.RowsAffected() != int64(len(rows)) {
+    		return fmt.Errorf("upserted %d of %d rows", tag.RowsAffected(), len(rows))
+    	}
+    	return nil
+    }
+- label: ok
+  note: "The comment names an earlier version of the data rather than an earlier version of the code, and that version is still on disk, so the sentence is about what this path has to read today. It is the nearest an acceptable comment gets to the violations, and it is here to hold that line."
+  code: |
+    func parseAmount(raw json.RawMessage) (int64, error) {
+    	// Rows written before the 2024 currency migration store the amount as a
+    	// decimal string, and this path still reads them.
+    	var s string
+    	if err := json.Unmarshal(raw, &s); err == nil {
+    		return decimalToCents(s)
+    	}
+    	var cents int64
+    	if err := json.Unmarshal(raw, &cents); err != nil {
+    		return 0, fmt.Errorf("amount is neither a decimal string nor cents: %w", err)
+    	}
+    	return cents, nil
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function scheduleFlush(queue: Queue, timers: Timers): Handle {
+      // A browser clamps a timeout inside a background tab to one second, so a
+      // shorter interval would only make the queue drain in bursts.
+      const intervalMs = 1000;
+      return timers.setInterval(() => {
+        if (queue.size === 0) {
+          return;
+        }
+        void queue.flush();
+      }, intervalMs);
+    }
+- label: ok
+  lang: typescript
+  code: |
+    /**
+     * Resolves the account a session belongs to.
+     *
+     * Throws SessionExpired once the session is past its expiry: a caller must
+     * treat an expired session as a logout, never as an anonymous visitor.
+     */
+    export async function accountForSession(sessionId: string, db: Db): Promise<Account> {
+      const session = await db.sessions.byId(sessionId);
+      if (session === null) {
+        throw new UnknownSession(sessionId);
+      }
+      if (session.expiresAt <= Date.now()) {
+        throw new SessionExpired(sessionId);
+      }
+      return db.accounts.byId(session.accountId);
+    }
+- label: ok
+  lang: python
+  code: |
+    def apply_migrations(conn, migrations):
+        applied = read_applied(conn)
+        for migration in migrations:
+            if migration.id in applied:
+                continue
+            # The advisory lock has to be taken on the connection that runs the
+            # DDL: a lock taken from the pool is released the moment the pooled
+            # connection is handed back.
+            with conn.advisory_lock(MIGRATION_LOCK):
+                conn.execute(migration.sql)
+                conn.execute(RECORD_MIGRATION, (migration.id, migration.checksum))
+        return read_applied(conn)
+- label: ok
+  lang: python
+  code: |
+    def normalize_email(raw):
+        local, _, domain = raw.rpartition("@")
+        if not local or not domain:
+            raise ValueError(f"{raw!r} is not an address")
+        # RFC 5321 leaves the local part case-sensitive, so only the domain is
+        # lowered here; two addresses differing in the local part are two
+        # mailboxes.
+        return f"{local}@{domain.lower()}"

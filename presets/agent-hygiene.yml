@@ -6,3 +6,4 @@ rules:
   - no-fallback
   - no-mocking
   - no-defensive-nil
+  - no-transcript-comment
