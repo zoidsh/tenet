@@ -371,6 +371,48 @@ func TestAnExemptLineIsNotOffered(t *testing.T) {
 	}
 }
 
+// A location cached by a run that could report on the whole file is no answer
+// for a run whose diff touched one line of it.
+func TestACachedLineOutsideTheOpenSetIsAskedAgain(t *testing.T) {
+	store, err := cache.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const body = "x := 1\ny := 2\n"
+
+	whole, first, windows := fixture(t, body, nil)
+	whole.Cache = store
+	first.verdict["comment-why"] = 0.9
+	first.verdict["no-fallback"] = 0.1
+	first.where["comment-why"] = map[string]float64{"L001": 0.9}
+	out, err := whole.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Findings) != 1 || out.Findings[0].Line != 1 {
+		t.Fatalf("the first run found %#v", out.Findings)
+	}
+
+	changed, second, windows := fixture(t, body, map[int]bool{2: true})
+	changed.Cache = store
+	second.verdict["comment-why"] = 0.9
+	second.verdict["no-fallback"] = 0.1
+	second.where["comment-why"] = map[string]float64{"L002": 0.9}
+	out, err = changed.Run(context.Background(), windows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second.named("where")) != 1 {
+		t.Errorf("the location was not asked again: %d calls", len(second.named("where")))
+	}
+	if len(second.named("verdict")) != 0 {
+		t.Errorf("the cached verdict was asked again: %d calls", len(second.named("verdict")))
+	}
+	if len(out.Findings) != 1 || out.Findings[0].Line != 2 {
+		t.Errorf("findings are %#v", out.Findings)
+	}
+}
+
 // With every line of the window exempt there is nothing left to report on, so
 // the tenet costs no call at all.
 func TestATenetExemptOnEveryLineIsNotAsked(t *testing.T) {

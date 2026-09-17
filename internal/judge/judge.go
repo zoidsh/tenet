@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -249,6 +250,12 @@ func openLines(w *source.Window, tenet string) []int {
 	return out
 }
 
+// offers reports whether a line label is one this tenet's question offered.
+func (p *pending) offers(label string) bool {
+	id, ok := ParseLineID(label)
+	return ok && slices.Contains(p.open, id)
+}
+
 func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, []NearMiss, Stats, error) {
 	var stats Stats
 	findings, near, err := j.judge(ctx, w, &stats)
@@ -269,7 +276,14 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 		}
 		p := &pending{tenet: t, key: cache.Key(state, t.Hash()), open: open}
 		if e, ok := j.Cache.Get(p.key); ok {
-			p.prob, p.line, p.asked = e.Prob, e.Line, true
+			p.prob, p.asked = e.Prob, true
+			// The key is the window's text, which says nothing about what a
+			// diff touched, so a line cached by a wider run may be one this
+			// run cannot report on. The verdict still holds; the location is
+			// asked again.
+			if p.offers(e.Line) {
+				p.line = e.Line
+			}
 			stats.CacheHits++
 		}
 		work = append(work, p)
