@@ -58,6 +58,75 @@
     		AvatarURL:   r.cdn.Avatar(author.ID),
     	}, nil
     }
+- label: violation
+  lines: [3, 4]
+  lang: python
+  code: |
+    def project_membership(event, roster):
+        items = [membership_from(event)]
+        if not items:
+            return
+        for extra in roster.shadow_members(event.team_id):
+            items.append(membership_from(extra))
+        snapshot = {
+            "team_id": event.team_id,
+            "version": event.version,
+            "members": [i.user_id for i in items],
+            "roles": {i.user_id: i.role for i in items},
+        }
+        roster.write_snapshot(snapshot)
+        return snapshot
+- label: violation
+  lines: [4, 5]
+  lang: python
+  code: |
+    def build_digest(user, window, renderer):
+        entries = collect_entries(user.id, window)
+        digest = Digest(user_id=user.id, window=window)
+        if digest is None:
+            return None
+        for entry in entries:
+            digest.add(entry)
+        digest.subject = f"Your {window.label} digest"
+        digest.body = renderer.render("digest.html", digest.as_context())
+        digest.unsubscribe_url = unsubscribe_url(user)
+        return digest
+- label: violation
+  lines: [4, 5]
+  lang: typescript
+  code: |
+    export function toRow(order: Order, customer: Customer): Row | null {
+      const label = `${customer.lastName}, ${customer.firstName}`;
+      const total = order.amountCents + order.shippingCents;
+      if (customer == null) {
+        return null;
+      }
+      return {
+        id: order.id,
+        label,
+        placedAt: order.placedAt.toISOString(),
+        total: formatMoney(total, order.currency),
+        status: order.status,
+      };
+    }
+- label: violation
+  lines: [3, 4]
+  lang: typescript
+  code: |
+    export function buildSession(user: User, clock: Clock): Session | null {
+      const token = new Token(user.id, clock.now());
+      if (!token) {
+        return null;
+      }
+      const session: Session = {
+        token: token.value,
+        userId: user.id,
+        issuedAt: token.issuedAt,
+        expiresAt: token.issuedAt + SESSION_TTL_MS,
+        scopes: user.roles.flatMap(scopesForRole),
+      };
+      return session;
+    }
 - label: ok
   code: |
     func (c *Catalog) PriceFor(sku string, tier string) (Money, error) {
@@ -109,4 +178,71 @@
     		return w.file.Sync()
     	}
     	return nil
+    }
+- label: ok
+  lang: python
+  code: |
+    def contact_line(person):
+        if person.email is None:
+            return f"{person.name} (no email on file)"
+        domain = person.email.split("@", 1)[1]
+        parts = [person.name, f"<{person.email}>"]
+        if person.phone is not None:
+            parts.append(person.phone)
+        parts.append(f"[{domain}]")
+        if person.timezone is not None:
+            parts.append(person.timezone)
+        return " ".join(parts)
+- label: ok
+  lang: python
+  code: |
+    def parse_version_tag(tag):
+        match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)(?:-(.+))?", tag)
+        if match is None:
+            raise ValueError(f"not a version tag: {tag}")
+        major, minor, patch, pre = match.groups()
+        version = Version(int(major), int(minor), int(patch))
+        if pre is None:
+            return version
+        if pre.startswith("rc."):
+            version.stage = "rc"
+            version.stage_number = int(pre[3:])
+        else:
+            version.stage = pre
+        return version
+- label: ok
+  lang: typescript
+  code: |
+    export function billingAddressOf(account: Account): Address {
+      if (account.billingAddress === undefined) {
+        return account.shippingAddress;
+      }
+      const billing = account.billingAddress;
+      return {
+        line1: billing.line1,
+        line2: billing.line2 ?? "",
+        city: billing.city,
+        region: billing.region,
+        postalCode: billing.postalCode,
+        country: billing.country.toUpperCase(),
+      };
+    }
+- label: ok
+  lang: typescript
+  code: |
+    export function parseFilters(params: URLSearchParams): Filters {
+      const rawSince = params.get("since");
+      if (rawSince === null) {
+        return { since: DEFAULT_SINCE, status: "any", limit: DEFAULT_LIMIT };
+      }
+      const since = Date.parse(rawSince);
+      if (Number.isNaN(since)) {
+        throw new BadRequestError("since must be an ISO-8601 timestamp");
+      }
+      const status = params.get("status") ?? "any";
+      if (!isStatus(status)) {
+        throw new BadRequestError(`unknown status ${status}`);
+      }
+      const limit = Number(params.get("limit") ?? DEFAULT_LIMIT);
+      return { since, status, limit: Math.min(limit, MAX_LIMIT) };
     }
