@@ -8,9 +8,10 @@ import (
 // A rule about code and a rule about prose cannot be asked of the same
 // framing.
 const (
-	KindCode  = "code"
-	KindProse = "prose"
-	KindData  = "data"
+	KindCode   = "code"
+	KindProse  = "prose"
+	KindData   = "data"
+	KindCommit = "commit"
 )
 
 var proseExts = map[string]bool{
@@ -64,6 +65,9 @@ var proseNames = map[string]bool{
 // what those hold is prose however it is serialised.
 func Kind(path string) string {
 	path = filepath.ToSlash(path)
+	if path == CommitMsgPath {
+		return KindCommit
+	}
 	base := strings.ToLower(filepath.Base(path))
 	ext := strings.ToLower(filepath.Ext(base))
 	name := strings.TrimSuffix(base, ext)

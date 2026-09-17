@@ -11,6 +11,7 @@ func TestKind(t *testing.T) {
 		path string
 		want string
 	}{
+		{source.CommitMsgPath, source.KindCommit},
 		{"main.go", source.KindCode},
 		{"internal/source/kind.go", source.KindCode},
 		{"src/app.tsx", source.KindCode},

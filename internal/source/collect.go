@@ -34,12 +34,16 @@ type Skip struct {
 	Reason string `json:"reason"`
 }
 
-// Options select what to collect. Paths win over Base, and with neither the
-// staged changes are linted.
+// Options select what to collect. CommitMsg wins over Paths, which win over
+// Base, and with none of them the staged changes are linted.
 type Options struct {
 	Dir   string
 	Base  string
 	Paths []string
+
+	// CommitMsg is the path of a commit message file to lint on its own, as
+	// git hands it to a commit-msg hook.
+	CommitMsg string
 
 	// Tenets are the ids an ignore directive may name.
 	Tenets []string
@@ -82,6 +86,8 @@ func Collect(ctx context.Context, opts Options) (*Set, error) {
 	}
 
 	switch {
+	case opts.CommitMsg != "":
+		return collectCommitMsg(abs, opts.CommitMsg, known)
 	case len(opts.Paths) > 0:
 		return collectPaths(ctx, abs, root, opts.Paths, known)
 	case opts.Base != "":
@@ -252,7 +258,11 @@ func (s *Set) add(path string, content []byte, reportable map[int]bool, known ma
 // lines a diff touched. known are the tenet ids a directive is allowed to
 // name.
 func NewFile(path string, content []byte, reportable map[int]bool, known map[string]bool) (*File, error) {
-	lines, sup, err := stripDirectives(path, splitLines(content), known)
+	return newFile(path, splitLines(content), reportable, known)
+}
+
+func newFile(path string, lines []string, reportable map[int]bool, known map[string]bool) (*File, error) {
+	lines, sup, err := stripDirectives(path, lines, known)
 	if err != nil {
 		return nil, err
 	}
