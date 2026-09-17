@@ -99,3 +99,33 @@ func TestFindingHashChangesWithTheTenet(t *testing.T) {
 		t.Error("two tenets share a hash on the same line")
 	}
 }
+
+// A finding on the first or the last line has context on one side only, which
+// is the case an off-by-one in the neighbourhood would show up in.
+func TestFindingHashAtTheEdgesOfAFile(t *testing.T) {
+	l := lines(hashed)
+	first, last := judge.FindingHash("t", l, 1), judge.FindingHash("t", l, len(l))
+	if first == "" || last == "" || first == last {
+		t.Fatalf("first line hashes to %q and last to %q", first, last)
+	}
+
+	grown := lines(hashed + "\nfunc noop() {}\n")
+	if judge.FindingHash("t", grown, 1) != first {
+		t.Error("appending to the file changed the first line's hash")
+	}
+	if judge.FindingHash("t", grown, len(grown)) == last {
+		t.Error("the new last line hashes the same as the old one")
+	}
+
+	shifted := lines("// A new line at the top.\n\n" + hashed)
+	if judge.FindingHash("t", shifted, len(shifted)) != last {
+		t.Error("an insertion at the top changed the last line's hash")
+	}
+}
+
+// One line is a whole file, and it is its own only context.
+func TestFindingHashOfASingleLine(t *testing.T) {
+	if judge.FindingHash("t", []string{"x := 1"}, 1) == "" {
+		t.Error("a one-line file hashes to nothing")
+	}
+}

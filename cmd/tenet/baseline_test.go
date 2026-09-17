@@ -505,3 +505,23 @@ func TestLintWithAMissingNamedBaselineAsksNothing(t *testing.T) {
 		t.Fatalf("exit %d, want 2: %s", code, stderr)
 	}
 }
+
+// A file that is gone produces nothing, so prune takes its entries with it.
+func TestBaselinePruneDropsADeletedFile(t *testing.T) {
+	dir := baselineRepo(t)
+	writeBaseline(t)
+	if err := os.Remove(filepath.Join(dir, "inc.go")); err != nil {
+		t.Fatal(err)
+	}
+
+	code, stdout, stderr := runCmd(t, "baseline", "--prune", "--no-cache", ".")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "dropped 1 finding") {
+		t.Errorf("stdout is %q", stdout)
+	}
+	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 0 {
+		t.Errorf("findings are %#v", got.Findings)
+	}
+}
