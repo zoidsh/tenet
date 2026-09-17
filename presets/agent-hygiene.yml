@@ -1,13 +1,30 @@
-# A preset is a promise that every rule in it holds its whole corpus above
-# 0.8, which is the cutoff for every rule and the only one there is.
+# Measured by `tenetlint check --builtin --no-cache --runs 3`, every rule at
+# the 0.8 cutoff, over the corpus in this tree. Accuracy is the share of
+# labelled examples on the right side of 0.8, and the deviation is the largest
+# any one example moved across the three passes.
 #
-# no-defensive-nil ships in the binary and is not listed here. It held
-# fail: 0.75 until that was taken away; at 0.8 it is 0.86 accurate with the
-# AUC at 1.00, so the ranking is right and two violations are short of the
-# line. Both are TypeScript, a language its corpus grew after the criteria
-# were written, and a wording pass over those cases is what it is waiting
-# on. It carries the standalone tag meanwhile, and a config that wants it
-# names it under `rules:`.
+#   comment-why            sharp, 1.00
+#   no-mocking             sharp, 1.00
+#   no-transcript-comment  sharp, 1.00
+#   no-placeholder-phrase  sharp, 1.00
+#   assertion-justified    sharp, 1.00, max sd 0.02
+#   no-fallback            usable, 0.93, max sd 0.03
+#
+# no-fallback is short by one acceptable example, a locale resolver that
+# scores 0.81, a hundredth above the cutoff rather than below it, and moves
+# between 0.77 and 0.81 from pass to pass. Its answer is a false criterion
+# naming what its ok examples share, not a different cutoff.
+#
+# assertion-justified reads sharp on both three-pass runs, and a single pass
+# has read it usable at 0.93 when its weakest violation lands at 0.79. It sits
+# on the line rather than over it.
+#
+# no-defensive-nil is not listed below. At 0.8 it is usable, 0.79 accurate,
+# max sd 0.032, with three violations between 0.78 and 0.79 and two of them
+# crossing the cutoff between passes. Two are TypeScript and one is Python,
+# languages its corpus grew after its criteria were written, and a wording
+# pass over those cases is what it is waiting on. It carries the standalone
+# tag meanwhile, and a config that wants it names it under `rules:`.
 version: 1
 name: agent-hygiene
 description: The habits a coding agent slips into when nobody reads the diff.
