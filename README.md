@@ -369,6 +369,60 @@ Agents that read a repository rather than a plugin get the same instructions fro
 tenet init --agent cursor --agent agents
 ```
 
+## Comparison
+
+This is about fit rather than speed; the timings are under Benchmarks.
+
+| | Rules in plain language | Every commit, locally | Judges a diff without running the code | Findings on a line | Calibrated pass or fail | Prose, commit and PR text | Finds logic bugs | Sees the rest of the repo | Posts review comments |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Static linters (eslint, ruff, golangci-lint) | no, rules are code | yes | type-aware rules need a build | yes | yes, exact match | no | no | package-scoped rules only | if you wire it up |
+| Prose linters (Vale) | word lists and regex | yes | yes | yes | yes, exact match | prose files only | no | no | if you wire it up |
+| AI review bots (CodeRabbit, Copilot code review, Cursor Bugbot) | yes | no, a pull request bot | yes | yes | no, free text | no, code diffs | yes, uncalibrated | yes | yes |
+| An agent asked to review | yes | network call each time | yes | if you wire it up | no, free text | yes | yes, uncalibrated | yes | if you wire it up |
+| tenetlint | yes | yes, one API call | yes | yes | yes | yes | no | no | no |
+
+tenetlint's three no's are the same decision three times: it judges the changed windows against the rule you wrote, never the program's behaviour and never the rest of the tree. So a logic bug, and a contract broken between two files that each look fine, are still a reviewer's job. It has no way to post a comment either, and the GitHub Action's annotations are annotations rather than review comments.
+
+### What to use for what
+
+- A static linter settles what a parser can settle: syntax, types, unused code, the rules whose answer is in the grammar.
+- Vale, or a `grep -nE` in the same hook, settles the mechanical prose checks the presets hand off on purpose, because a regex decides them and a model should not be paid to: em dashes, emoji, curly quotes, buzzword lists, punctuation caps, title case in headings, runs of same-length sentences, subject length caps, conventional-commit prefixes and ticket-id formats.
+- A review bot or an agent takes the reading that needs the whole program: logic, contracts across files, and whether the design is the right one.
+- tenetlint takes the rules you wrote in plain language that a diff is enough to judge, and runs them on every commit rather than once a pull request is open.
+
+## Benchmarks
+
+Every number in this README comes from [bench/results.md](bench/results.md), which `bench/run.sh` generates at a fixed commit, dated in the file itself, and which nobody edits by hand. [bench/README.md](bench/README.md) says what it measures and how to regenerate it.
+
+| Run | Lines or scope | Calls | Cost | Duration |
+| --- | --- | --- | --- | --- |
+| Full sweep, cold cache | the whole tree | 122 | $0.0181 | 5.5 s |
+| Full sweep, warm cache | the same tree, straight after | 0 | $0.0000 | 0.0 s |
+| One staged change | 379 lines staged | 13 | $0.0021 | 1.1 s |
+| A 2,062-line diff | 2,105 lines, 2,062 of them Go, 83,295 bytes of diff | 21 | $0.0036 | 1.5 s |
+| One pull request text | 27 lines of title and description | 1 | <$0.0001 | 0.6 s |
+
+Rule quality is measured the same way, by `tenet check --builtin --no-cache --runs 3` over every rule in the binary: in that run all fourteen rules in a preset read `sharp`, and of the eleven standalone rules ten read `usable` and one reads `sharp`, which is the table in bench/results.md rule by rule.
+
+The same rule, translated, with its examples judged three times each at the 0.80 cutoff:
+
+| Language | Examples | AUC | Accuracy at 0.80 | Location | Largest sd | Crossings | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| English | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.021 | 0 | sharp |
+| German | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.012 | 1 | sharp |
+| Japanese | 14 | 1.00 | 0.86 | 1.00 over 7 | 0.021 | 1 | usable |
+
+And the 2,062-line diff against what one agent call over the same diff would cost and take:
+
+| Reviewer | Input tokens | Output tokens | Cost | Time |
+| --- | --- | --- | --- | --- |
+| tenetlint, measured | 85,440 | n/a | $0.0036 | 1.5 s |
+| Claude Haiku 4.5 | 20,823 | 1,000 | $0.0258 | 12.7 s |
+| Claude Sonnet 5 | 20,823 | 1,000 | $0.0516 | 17.5 s |
+| GPT-5 nano | 20,823 | 1,000 | $0.0014 | n/a |
+
+Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. bench/results.md states the prices, the rates and where each came from.
+
 ## Environment variables
 
 Every one of these can be settled for a single run by a flag, which outranks the variable. The flags are on `tenet` itself and on every subcommand.
