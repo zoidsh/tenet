@@ -90,15 +90,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return fail(err)
 	}
 
-	configPath := o.config
-	if configPath == "" {
-		found, _, err := tenets.Find(dir)
-		if err != nil {
-			return fail(err)
-		}
-		configPath = found
-	}
-	cfg, err := tenets.Load(configPath)
+	cfg, err := openConfig(o.config)
 	if err != nil {
 		return fail(err)
 	}

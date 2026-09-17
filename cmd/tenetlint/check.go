@@ -1,8 +1,8 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
@@ -17,10 +17,36 @@ import (
 
 type checkOptions struct {
 	config      string
+	builtin     bool
 	format      string
 	noCache     bool
 	verbose     bool
 	minExamples int
+}
+
+// builtinConfigPath is what the messages name when the run measures the rules
+// in the binary rather than a file somebody wrote.
+const builtinConfigPath = "the built-in rules"
+
+// configForCheck is what the run measures: the tenets this repository resolves
+// to, or every rule that ships in the binary, which is how the corpus itself
+// is kept honest.
+func configForCheck(o *checkOptions) (*tenets.Config, error) {
+	if !o.builtin {
+		return openConfig(o.config)
+	}
+	if o.config != "" {
+		return nil, errors.New("--builtin measures the rules in the binary, so --config has nothing to say")
+	}
+	rules, err := tenets.BuiltinRules()
+	if err != nil {
+		return nil, err
+	}
+	cfg := &tenets.Config{Version: 1, Path: builtinConfigPath}
+	for _, rule := range rules {
+		cfg.Tenets = append(cfg.Tenets, rule.Tenet)
+	}
+	return cfg, nil
 }
 
 func newCheckCmd() *cobra.Command {
@@ -33,6 +59,7 @@ func newCheckCmd() *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&o.config, "config", "", "path to tenets.yml, searched for by default")
+	f.BoolVar(&o.builtin, "builtin", false, "measure every rule that ships in the binary, whatever the config turns on")
 	f.StringVar(&o.format, "format", report.FormatText, "output format: text or json")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
@@ -48,19 +75,7 @@ func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
 	}
 	out := cmd.OutOrStdout()
 
-	dir, err := os.Getwd()
-	if err != nil {
-		return fail(err)
-	}
-	configPath := o.config
-	if configPath == "" {
-		found, _, err := tenets.Find(dir)
-		if err != nil {
-			return fail(err)
-		}
-		configPath = found
-	}
-	cfg, err := tenets.Load(configPath)
+	cfg, err := configForCheck(o)
 	if err != nil {
 		return fail(err)
 	}
@@ -75,7 +90,7 @@ func runCheck(cmd *cobra.Command, ids []string, o *checkOptions) error {
 		return fail(err)
 	}
 	if len(selected) == 0 {
-		_, err := fmt.Fprintf(out, "no tenet in %s has examples; add examples to one to check it\n", configPath)
+		_, err := fmt.Fprintf(out, "no tenet in %s has examples; add examples to one to check it\n", cfg.Path)
 		return err
 	}
 
