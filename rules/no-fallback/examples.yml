@@ -78,9 +78,9 @@
     	_ = s.audit.Record(ctx, newAuditEntry(from, to, cents, s.clock.Now()))
     	return nil
     }
-- label: violation
-  lines: 5
+- label: ok
   lang: python
+  note: "TAX_RATES.get(customer.billing[\"region\"], Decimal(\"0\")) is byte-for-byte the shape of the optional-field default this corpus accepts, and the tenet nowhere says that a zero rate is a substitute rather than a default. It stays in as the edge the wording has not taken a position on, so that a future wording that does catch it shows up here as a change."
   code: |
     def build_invoice(customer, lines):
         if not lines:

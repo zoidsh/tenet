@@ -43,11 +43,13 @@ Rerun after each edit and keep the numbers. Four attempts is enough to find out 
 `fail` is 0.8 unless the rule says otherwise, and sharpening the criteria is the first answer to a violation that scores under it. A rule may set `fail` lower only when `check` shows no ok example at or above the proposed value with 0.05 to spare: for `fail: 0.75`, nothing acceptable may reach 0.70. The rule.yml then carries a comment naming the highest probability an ok example scored, because that number is the whole of the argument and the next person cannot re-derive it from the file.
 
 ```yaml
-# The highest an ok example scores is 0.39, the locale negotiation, so 0.75
-# clears every acceptable case by 0.36. It is there for the required setting
-# that becomes an empty string, which floats between 0.76 and 0.79.
+# The highest an ok example scores is 0.13, so 0.75 clears every acceptable
+# case by 0.62 and catches the unreachable null check that hovers on 0.80 from
+# one run to the next.
 fail: 0.75
 ```
+
+The condition is a gate, not a preference, and it is rechecked whenever the corpus changes. `no-fallback` held `fail: 0.75` on a highest ok of 0.39 until an example was relabelled `ok`; that example scores 0.77, which is above 0.70, so the rule went back to 0.8 and lost its comment with its cutoff.
 
 To read that highest probability off `check`, point it at a config that overrides the rule's `fail` down to a floor nothing sits under, and every ok example is then listed as misjudged with its probability. `check --runs 3` is the other half of the argument: it says which examples land on both sides of the cutoff from one pass to the next, which is usually what a lower cutoff is really for. Never lower a cutoff to cover a violation that an acceptable example is scoring near: that is a rule asking to be reworded, not recalibrated.
 
