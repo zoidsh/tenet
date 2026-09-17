@@ -6,7 +6,7 @@ tenetlint is a command-line linter for the rules you wrote in English. It reads 
 
 ## Install
 
-The command is `tenet`, and every path below but the one from source installs `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
+The command is `tenet`, and every path below but the one from source installs `tenetlint` beside it as the same program under its old name.
 
 Homebrew, on macOS and on Linux. tenetlint ships as a cask with a `binary` stanza, which a recent Homebrew installs on both:
 

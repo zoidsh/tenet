@@ -4,6 +4,6 @@ tenetlint is a command-line linter for the rules you wrote in English. It reads 
 
 Install it with `npm install -g tenetlint`, or run it with `npx tenetlint`; the binary for your platform comes from an optional dependency, so there is no install script. Set `TYPESAFE_API_KEY` to your key, then run `tenet init` and `tenet`.
 
-The command is `tenet`, with `tenetlint` beside it as the same program under its old name. An unrelated npm package, `@jeikeilim/tenet`, also provides a `tenet` command, so if you have that one installed, call this one `tenetlint`.
+The command is `tenet`, with `tenetlint` beside it as the same program under its old name.
 
 The documentation lives at https://github.com/zoidsh/tenetlint.
