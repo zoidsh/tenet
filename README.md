@@ -122,6 +122,20 @@ A directive only counts inside a comment, so a string, a test fixture or a sente
 
 The directive and its id list are cut out of the line before anything is sent to the model, and the line numbers you are shown are the ones in your file. A mention that does not count is left where it is.
 
+## Adopting on an existing codebase
+
+A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenetlint baseline .` judges the whole tree, writes what it found to `.tenetlint-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds, and `tenetlint --show-baselined` lists the accepted ones alongside, marked `[baselined]` and still passing, when you want to see what is waiting. `--no-baseline` is a run that honours nothing, which is the sweep to do before a release.
+
+An entry is matched by the file, the tenet and a hash of the offending line with the lines around it, so it survives the code above it moving and is gone the moment the line itself is edited. As the old findings get fixed, `tenetlint baseline --prune .` rewrites the file with only the entries the run still produces and says how many it dropped; it never accepts anything new.
+
+```
+$ tenetlint baseline .
+wrote 34 findings to .tenetlint-baseline.json
+
+$ tenetlint .
+0 findings, 34 baselined · 41 windows, 0 calls, 41 cached · $0.0000 · 0.6s
+```
+
 ## Configuration
 
 A `tenets.yml` composes what will run out of the rules that ship inside the binary and the ones you write yourself. `tenet rules` lists the built-in rules with their tags and the presets that include them, `tenet rules comment-why` prints one of them in full, and `tenet presets` lists the presets, each a named list of rule ids. A rule may sit in several presets.
