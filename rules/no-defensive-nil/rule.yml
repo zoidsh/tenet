@@ -8,6 +8,6 @@ source: Kaikei-e/Alt CLAUDE.md
 # case by 0.66. The violations this rule is least sure of are the unreachable
 # checks it has to read across lines to see, and they sit in the seventies.
 fail: 0.75
-include: ["**/*.go"]
+include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
 kind: [code]
 tags: [code, errors]

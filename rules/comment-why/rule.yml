@@ -4,6 +4,6 @@ criteria:
   true: "A comment, inside a function body or attached to a declaration, that a reader of the code learns nothing new from: it narrates the steps below it, names the operation, reads a condition or an operator back in English, repeats the declaration name, its parameters or its return type, records what a past edit changed, or is a section label."
   false: "The comment gives a reason, a constraint, a contract, a workaround for an external system, a reference explaining the choice, or a warning about ordering or invariants that the code does not show; or it is a doc comment telling callers something the declaration does not, such as what the function guarantees, when it fails, or how it must be called."
 source: tim/CLAUDE.md
-include: ["**/*.go"]
+include: ["**/*.go", "**/*.ts", "**/*.tsx", "**/*.py"]
 kind: [code]
 tags: [code, comments]
