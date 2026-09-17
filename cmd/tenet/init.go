@@ -35,6 +35,7 @@ var ruleFiles = []string{
 type initOptions struct {
 	from    []string
 	presets []string
+	agents  []string
 	dryRun  bool
 	force   bool
 	config  string
@@ -54,6 +55,7 @@ func newInitCmd() *cobra.Command {
 	f := cmd.Flags()
 	f.StringArrayVar(&o.from, "from", nil, "read this rule file instead of the ones init looks for; repeatable")
 	f.StringArrayVar(&o.presets, "preset", nil, "start from this built-in preset instead of reading any rule file; repeatable")
+	f.StringArrayVar(&o.agents, "agent", nil, "write the tenet instructions where this agent reads them: cursor, agents or claude; repeatable")
 	f.BoolVar(&o.dryRun, "dry-run", false, "print what would be drafted without writing it")
 	f.BoolVar(&o.force, "force", false, "overwrite an existing tenets.yml")
 	f.StringVar(&o.config, "config", "", "path to write, tenets.yml in the repository root by default")
@@ -80,6 +82,13 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	root, err := initRoot(ctx, dir)
 	if err != nil {
 		return fail(err)
+	}
+
+	// The instructions are about running the lint, not about what it runs, so
+	// asking for them is a whole run of its own and leaves any tenets.yml,
+	// drafted or hand-written, alone.
+	if len(o.agents) > 0 {
+		return o.writeAgents(cmd, root, dir)
 	}
 
 	target, err := o.target(root)
@@ -202,6 +211,52 @@ func (o *initOptions) writePresets(cmd *cobra.Command, presets []string, target,
 	_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s%s%s with the %s preset in it, to %s\n",
 		note, verb, tenets.FileName, strings.Join(presets, " and "), shown)
 	return err
+}
+
+// writeAgents puts the tenet instructions where each named agent reads them.
+// Every name is resolved before anything is written, so that a typo in the
+// second one does not leave the first one written.
+func (o *initOptions) writeAgents(cmd *cobra.Command, root, dir string) error {
+	targets := make([]importer.AgentTarget, 0, len(o.agents))
+	for _, name := range o.agents {
+		target, err := importer.Agent(name)
+		if err != nil {
+			return fail(err)
+		}
+		targets = append(targets, target)
+	}
+	out := cmd.OutOrStdout()
+	for _, target := range targets {
+		path := filepath.Join(root, filepath.FromSlash(target.Path))
+		replaced, err := writeAgentFile(path, target)
+		if err != nil {
+			return fail(err)
+		}
+		shown, err := shortPath(dir, path)
+		if err != nil {
+			return fail(err)
+		}
+		verb := "wrote"
+		if replaced {
+			verb = "replaced"
+		}
+		if _, err := fmt.Fprintf(out, "%s the tenet instructions in %s\n", verb, shown); err != nil {
+			return fail(err)
+		}
+	}
+	return nil
+}
+
+func writeAgentFile(path string, target importer.AgentTarget) (bool, error) {
+	existing, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+	data, replaced := target.Content(existing)
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		return false, err
+	}
+	return replaced, os.WriteFile(path, data, 0o600)
 }
 
 // target is the file to write, absolute because everything downstream of it
