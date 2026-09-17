@@ -67,11 +67,14 @@ type Criteria struct {
 	False string `yaml:"false"`
 }
 
-// Tenet is one rule.
+// Tenet is one rule. Source is where init read the rule from, as file:line;
+// nothing judges with it, it is there so a reader can go back to the sentence
+// the tenet was drafted from.
 type Tenet struct {
 	ID        string    `yaml:"id"`
 	Tenet     string    `yaml:"tenet"`
 	Criteria  *Criteria `yaml:"criteria"`
+	Source    string    `yaml:"source"`
 	Severity  Severity  `yaml:"severity"`
 	Threshold *float64  `yaml:"threshold"`
 	Confident *float64  `yaml:"confident"`

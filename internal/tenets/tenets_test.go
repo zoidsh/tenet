@@ -15,6 +15,7 @@ model: jev-1.13.0
 tenets:
   - id: comment-why
     tenet: A comment says why.
+    source: CLAUDE.md:42
     criteria:
       true: It restates the code.
       false: It gives a reason.
@@ -38,6 +39,9 @@ func TestParseDefaults(t *testing.T) {
 	first, second := cfg.Tenets[0], cfg.Tenets[1]
 	if first.Criteria == nil || first.Criteria.True != "It restates the code." || first.Criteria.False != "It gives a reason." {
 		t.Fatalf("criteria not decoded: %#v", first.Criteria)
+	}
+	if first.Source != "CLAUDE.md:42" || second.Source != "" {
+		t.Errorf("source not decoded: %q, %q", first.Source, second.Source)
 	}
 	if first.Severity != tenets.SeverityError || first.ThresholdValue() != 0.6 || first.ConfidentValue() != 0.8 {
 		t.Errorf("explicit fields lost: %#v", first)
@@ -74,7 +78,7 @@ func TestApplies(t *testing.T) {
 	}
 }
 
-func TestHashIgnoresThresholdAndSeverity(t *testing.T) {
+func TestHashCoversOnlyWhatIsAsked(t *testing.T) {
 	cfg, err := tenets.Parse([]byte(sample))
 	if err != nil {
 		t.Fatal(err)
@@ -97,6 +101,14 @@ func TestHashIgnoresThresholdAndSeverity(t *testing.T) {
 	}
 	if reworded.Tenets[0].Hash() == base {
 		t.Error("rewording the tenet left the hash alone")
+	}
+
+	moved, err := tenets.Parse([]byte(strings.Replace(sample, "CLAUDE.md:42", "AGENTS.md:7", 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moved.Tenets[0].Hash() != base {
+		t.Error("the source line changed the hash")
 	}
 
 	remodelled, err := tenets.Parse([]byte(strings.Replace(sample, "jev-1.13.0", "jev-1.14.0", 1)))
