@@ -65,13 +65,16 @@ func paths(set *Set) []string {
 func TestCollectStaged(t *testing.T) {
 	dir := newRepo(t)
 	write(t, dir, "a.go", "one\ntwo\nthree\n")
+	// git writes the header of a path with whitespace in it differently.
+	write(t, dir, "my file.go", "one\ntwo\nthree\n")
 	run(t, dir, "git", "add", "-A")
 	run(t, dir, "git", "commit", "-qm", "a")
 
 	write(t, dir, "a.go", "one\ntwo changed\nthree\n")
+	write(t, dir, "my file.go", "one\ntwo\nthree changed\n")
 	write(t, dir, "b.go", "new\n")
 	write(t, dir, "unstaged.go", "nope\n")
-	run(t, dir, "git", "add", "a.go", "b.go")
+	run(t, dir, "git", "add", "a.go", "b.go", "my file.go")
 	// The working tree moves on after staging, to prove the index is what is
 	// read.
 	write(t, dir, "a.go", "one\ntwo changed again\nthree\n")
@@ -80,8 +83,15 @@ func TestCollectStaged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := paths(set); len(got) != 2 {
+	if got := paths(set); len(got) != 3 {
 		t.Fatalf("collected %v", got)
+	}
+	spaced := fileByPath(t, set, "my file.go")
+	if !spaced.Reportable(3) {
+		t.Error("the changed line of a path with a space is not reportable")
+	}
+	if spaced.Reportable(1) || spaced.Reportable(2) {
+		t.Error("an unchanged line of a path with a space is reportable")
 	}
 	a := fileByPath(t, set, "a.go")
 	if a.Lines[1] != "two changed" {
@@ -96,6 +106,32 @@ func TestCollectStaged(t *testing.T) {
 	b := fileByPath(t, set, "b.go")
 	if !b.Reportable(1) {
 		t.Error("a new file's line is not reportable")
+	}
+}
+
+func TestCollectStagedContentThatLooksLikeAHeader(t *testing.T) {
+	dir := newRepo(t)
+	body := "one\ntwo\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten\n"
+	write(t, dir, "c.go", body)
+	run(t, dir, "git", "add", "-A")
+	run(t, dir, "git", "commit", "-qm", "c")
+
+	// The first hunk adds a line that reaches the parser as "+++ b/evil.go",
+	// which must not take over from the file the hunks belong to.
+	changed := "one\n++ b/evil.go\nthree\nfour\nfive\nsix\nseven\neight\nnine\nten changed\n"
+	write(t, dir, "c.go", changed)
+	run(t, dir, "git", "add", "-A")
+
+	set, err := Collect(context.Background(), Options{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := paths(set); len(got) != 1 || got[0] != "c.go" {
+		t.Fatalf("collected %v", got)
+	}
+	c := fileByPath(t, set, "c.go")
+	if !c.Reportable(2) || !c.Reportable(10) {
+		t.Errorf("reportable lines are %v, want the two changed ones", c.reportable)
 	}
 }
 

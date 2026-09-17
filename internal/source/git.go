@@ -79,8 +79,14 @@ func changedLines(ctx context.Context, root string, diffArgs []string) (map[stri
 
 	byPath := map[string]map[int]bool{}
 	var current map[int]bool
+	var previous string
 	for _, line := range strings.Split(string(out), "\n") {
-		if after, ok := strings.CutPrefix(line, "+++ "); ok {
+		// An added line whose own text begins "++ " arrives here as "+++ ",
+		// so only the one that follows the matching "--- " is a file header.
+		header := strings.HasPrefix(previous, "--- ")
+		previous = line
+
+		if after, ok := strings.CutPrefix(line, "+++ "); ok && header {
 			path, ok := diffPath(after)
 			if !ok {
 				current = nil
@@ -109,6 +115,9 @@ func changedLines(ctx context.Context, root string, diffArgs []string) (map[stri
 // diffPath reads the file header of a diff, which git quotes when the path
 // holds anything awkward.
 func diffPath(token string) (string, bool) {
+	// git ends an unquoted header with a tab when the name contains
+	// whitespace, so that the name itself stays readable.
+	token = strings.TrimSuffix(token, "\t")
 	if strings.HasPrefix(token, `"`) {
 		unquoted, err := strconv.Unquote(token)
 		if err != nil {
