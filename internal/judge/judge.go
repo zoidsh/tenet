@@ -353,7 +353,7 @@ func topLine(a jev.Answer) string {
 // ask answers every question, over as many calls as the token budget needs,
 // and merges the answers as if one call had been made.
 func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, questions map[string]jev.Question, stats *Stats) (*jev.Response, error) {
-	groups, err := split(state, questions)
+	groups, tokens, err := split(state, questions)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,7 @@ func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, q
 		}
 	}
 	j.logf("%s:%d %s for %d tenets, ~%d estimated tokens, %d calls, %d input tokens",
-		w.Path(), w.First, kind, len(questions), jev.RequestTokens(state, questions), len(groups), merged.Usage.InputTokens)
+		w.Path(), w.First, kind, len(questions), tokens, len(groups), merged.Usage.InputTokens)
 	return merged, nil
 }
 
@@ -383,8 +383,9 @@ func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, q
 var errOversize = errors.New("does not fit the request budget")
 
 // split partitions the questions into requests that each stay within the
-// budget, in name order so that the same window always splits the same way.
-func split(state string, questions map[string]jev.Question) ([]map[string]jev.Question, error) {
+// budget, in name order so that the same window always splits the same way. It
+// also reports what the questions are worth together.
+func split(state string, questions map[string]jev.Question) ([]map[string]jev.Question, int, error) {
 	base := jev.EstimateTokens(state)
 	names := make([]string, 0, len(questions))
 	for name := range questions {
@@ -394,11 +395,14 @@ func split(state string, questions map[string]jev.Question) ([]map[string]jev.Qu
 
 	var groups []map[string]jev.Question
 	group := map[string]jev.Question{}
-	tokens := base
+	total, tokens := base, base
 	for _, name := range names {
-		cost := jev.QuestionTokens(name, questions[name])
+		cost, err := jev.QuestionTokens(name, questions[name])
+		if err != nil {
+			return nil, 0, err
+		}
 		if base+cost > jev.RequestBudget {
-			return nil, fmt.Errorf("%q alone %w: about %d tokens against %d", name, errOversize, base+cost, jev.RequestBudget)
+			return nil, 0, fmt.Errorf("%q alone %w: about %d tokens against %d", name, errOversize, base+cost, jev.RequestBudget)
 		}
 		if len(group) > 0 && tokens+cost > jev.RequestBudget {
 			groups = append(groups, group)
@@ -406,8 +410,9 @@ func split(state string, questions map[string]jev.Question) ([]map[string]jev.Qu
 		}
 		group[name] = questions[name]
 		tokens += cost
+		total += cost
 	}
-	return append(groups, group), nil
+	return append(groups, group), total, nil
 }
 
 func (j *Judge) logf(format string, args ...any) {

@@ -2,6 +2,7 @@ package jev
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 )
 
@@ -25,22 +26,25 @@ func EstimateTokens(s string) int {
 	return int(math.Ceil(float64(len(s)) / charsPerToken))
 }
 
-// QuestionTokens reports what one named question adds to a request.
-func QuestionTokens(name string, q Question) int {
+// QuestionTokens reports what one named question adds to a request, measured
+// on the JSON the request carries.
+func QuestionTokens(name string, q Question) (int, error) {
 	encoded, err := json.Marshal(q)
 	if err != nil {
-		// A question the client cannot encode cannot be sent at all, so it is
-		// charged the whole budget rather than slipped under it.
-		return MaxRequestTokens
+		return 0, fmt.Errorf("jev: question %q cannot be encoded: %w", name, err)
 	}
-	return EstimateTokens(name) + EstimateTokens(string(encoded))
+	return EstimateTokens(name) + EstimateTokens(string(encoded)), nil
 }
 
 // RequestTokens reports what a request is worth, state and questions together.
-func RequestTokens(state string, questions map[string]Question) int {
+func RequestTokens(state string, questions map[string]Question) (int, error) {
 	total := EstimateTokens(state)
 	for name, q := range questions {
-		total += QuestionTokens(name, q)
+		tokens, err := QuestionTokens(name, q)
+		if err != nil {
+			return 0, err
+		}
+		total += tokens
 	}
-	return total
+	return total, nil
 }

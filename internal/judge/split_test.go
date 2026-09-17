@@ -36,6 +36,17 @@ func body(lines int, width int) string {
 	return b.String()
 }
 
+// requestTokens is what a call is worth, or a failed test if the questions
+// cannot be encoded at all.
+func requestTokens(t *testing.T, state string, questions map[string]jev.Question) int {
+	t.Helper()
+	tokens, err := jev.RequestTokens(state, questions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tokens
+}
+
 // questionNames is every question a set of calls asked, and it fails the test
 // if two calls asked the same one.
 func questionNames(t *testing.T, calls []call) map[string]bool {
@@ -72,7 +83,7 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 		t.Fatalf("made %d verdict calls, want the questions split in two", len(verdicts))
 	}
 	for _, c := range verdicts {
-		if over := jev.RequestTokens(c.State, c.Questions); over > jev.RequestBudget {
+		if over := requestTokens(t, c.State, c.Questions); over > jev.RequestBudget {
 			t.Errorf("a call is %d tokens, over the %d budget", over, jev.RequestBudget)
 		}
 	}
@@ -121,9 +132,12 @@ func TestVerboseLineCountsTokensAndCalls(t *testing.T) {
 	if len(logged) != 1 {
 		t.Fatalf("logged %q, want a line for the window's one round", logged)
 	}
-	state := judge.State(windows[0])
+	asked := map[string]jev.Question{}
+	for i := range 4 {
+		asked[fmt.Sprintf("verdict:t%d", i)] = jev.Noul(judge.VerdictInstructions(j.Tenets[i]), strings.Repeat("a", 30000), "")
+	}
 	want := fmt.Sprintf("a.go:1 verdict for 4 tenets, ~%d estimated tokens, 2 calls, 200 input tokens",
-		jev.EstimateTokens(state)+4*jev.QuestionTokens("verdict:t0", jev.Noul(judge.VerdictInstructions(j.Tenets[0]), strings.Repeat("a", 30000), "")))
+		requestTokens(t, judge.State(windows[0]), asked))
 	if logged[0] != want {
 		t.Errorf("logged %q, want %q", logged[0], want)
 	}
@@ -153,7 +167,7 @@ func TestLocationsSplitAcrossCalls(t *testing.T) {
 		t.Fatalf("made %d location calls, want the labels to have split them", len(locations))
 	}
 	for _, c := range locations {
-		if over := jev.RequestTokens(c.State, c.Questions); over > jev.RequestBudget {
+		if over := requestTokens(t, c.State, c.Questions); over > jev.RequestBudget {
 			t.Errorf("a call is %d tokens, over the %d budget", over, jev.RequestBudget)
 		}
 	}
@@ -186,7 +200,8 @@ func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
 	if len(windows) != 1 || len(windows[0].Lines) != lineCount {
 		t.Fatalf("got %d windows", len(windows))
 	}
-	if jev.RequestTokens(judge.State(windows[0]), map[string]jev.Question{"verdict:t0": jev.Noul("", strings.Repeat("a", 59500), "")}) <= jev.RequestBudget {
+	whole := map[string]jev.Question{"verdict:t0": jev.Noul("", strings.Repeat("a", 59500), "")}
+	if requestTokens(t, judge.State(windows[0]), whole) <= jev.RequestBudget {
 		t.Fatal("the fixture fits the budget, so it cannot exercise halving")
 	}
 
@@ -204,7 +219,7 @@ func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
 		t.Errorf("made %d calls, want a verdict and a location call per half", stats.Calls)
 	}
 	for _, c := range f.calls {
-		if over := jev.RequestTokens(c.State, c.Questions); over > jev.RequestBudget {
+		if over := requestTokens(t, c.State, c.Questions); over > jev.RequestBudget {
 			t.Errorf("a call is %d tokens, over the %d budget", over, jev.RequestBudget)
 		}
 	}
