@@ -4,19 +4,21 @@
 
 [![CI](https://github.com/zoidsh/tenet/actions/workflows/ci.yml/badge.svg)](https://github.com/zoidsh/tenet/actions/workflows/ci.yml)
 
-tenet is the review gate for code that agents write. Your AGENTS.md already says that a comment gives a reason rather than narrating the code, that a failure is raised rather than hidden behind a fallback, that a test uses the real dependency rather than a mock, and that no placeholder phrase ships; agents break those rules anyway, and nobody reads every line of a large diff closely enough to catch it. You write each rule once in plain language in a `tenet.yml`, and every commit is judged against it: the staged change measured on this repository took 1.4 s and cost $0.0022, so an agent can fix its own findings before a human sees the diff.
+*Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.*
 
-TypeSafe's jev model answers each rule with a calibrated probability, which is what makes a pass-or-fail cutoff honest rather than one more review comment to skim. On the 2,062-line diff in the tables below, tenet took 1.5 s and cost $0.0036. One estimated call over the same diff is 12.7 s for Claude Haiku 4.5 and 17.5 s for Claude Sonnet 5, so tenet is about 8x faster than the Haiku estimate and about 12x faster than the Sonnet one, dividing each of those times by its 1.5 s. It is cheaper than both, $0.0036 against $0.0258 and $0.0516, and dearer than GPT-5 nano at $0.0014. The Benchmarks section has the tables.
+tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each rule once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
+
+TypeSafe's jev model answers each rule with a calibrated probability, so a tenet is a pass-or-fail cutoff rather than a review comment to skim. On this repository a staged change took 1.4 s and cost $0.0022; a 2,062-line diff took 1.5 s and $0.0036, about 8x faster than one Claude Haiku 4.5 call and about 12x faster than Sonnet 5, and cheaper than both. The tables are under Benchmarks.
 
 ## Install
 
-Homebrew, on macOS and on Linux. tenet ships as a cask with a `binary` stanza, which a recent Homebrew installs on both:
+Homebrew, on macOS and on Linux:
 
 ```
 brew install zoidsh/tap/tenet
 ```
 
-npm, which carries the binary for your platform as an optional dependency and runs no install script:
+npm, which carries the binary for your platform as an optional dependency:
 
 ```
 npm install -g @zoidsh/tenet
@@ -29,7 +31,7 @@ As a devDependency, so everyone working on the repository gets the same tenet:
 npm install --save-dev @zoidsh/tenet
 ```
 
-The installer script, which puts the binary in `~/.local/bin`, or in `TENET_INSTALL_DIR` when you set it, and never asks for sudo:
+The installer script, which puts the binary in `~/.local/bin` and never asks for sudo:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/zoidsh/tenet/main/install.sh | sh
@@ -41,32 +43,9 @@ From source, which needs a Go toolchain:
 go install github.com/zoidsh/tenet/cmd/tenet@latest
 ```
 
-Through the [pre-commit](https://pre-commit.com) framework, which builds tenet from source itself, fetching a Go toolchain of its own if the machine has none:
-
-```yaml
-repos:
-  - repo: https://github.com/zoidsh/tenet
-    rev: main
-    hooks:
-      - id: tenet
-      - id: tenet-commit-msg
-```
-
-In GitHub Actions, where the action downloads the release binary for the runner and lints the pull request against its base:
-
-```yaml
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - uses: zoidsh/tenet@v1
-        with:
-          api-key: ${{ secrets.TYPESAFE_API_KEY }}
-```
-
-Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
-
 Every release tarball, and the `checksums.txt` that covers them, is on [GitHub Releases](https://github.com/zoidsh/tenet/releases).
+
+To have every commit or every pull request linted for you, see pre-commit and GitHub Actions under Commit messages and pull requests.
 
 ## Quick start
 
@@ -78,7 +57,7 @@ From the root of your repository:
    tenet auth
    ```
 
-   The key is typed at a prompt with the echo off and kept in `~/.config/tenet/credentials`, which every repository on the machine then reads. `tenet auth --project` keeps it in `.tenet/credentials` in this repository instead, and adds that file to `.gitignore`. CI saves nothing: `TYPESAFE_API_KEY` in the environment outranks both files. `tenet auth --status` says which one a run is reading, and `tenet auth typesafe` names the provider outright, which is worth doing once there is more than one.
+   Type the key at the prompt; it is kept in `~/.config/tenet/credentials`.
 
 2. Draft a `tenet.yml` from the instruction files your agents already read.
 
@@ -97,6 +76,8 @@ From the root of your repository:
    ```
    tenet
    ```
+
+   `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged.
 
 5. Install the hooks, so every commit is linted from here on.
 
@@ -126,8 +107,6 @@ CLAUDE.md
 
 12 candidates, 3 tenets, nothing written (--dry-run) · 1 calls, 0 cached · $0.0002 · 0.7s
 ```
-
-`tenet` on its own lints your staged changes. `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged. `tenet hook install` writes a pre-commit hook that runs the lint on every commit and a commit-msg hook that lints the message, and `tenet hook uninstall` takes them away again.
 
 ## Pass or fail
 
@@ -322,6 +301,35 @@ The comment lines git strips itself, and everything below a `>8` scissors line, 
     kind: [commit, pr]
 ```
 
+### pre-commit
+
+The [pre-commit](https://pre-commit.com) framework builds tenet from source itself, fetching a Go toolchain of its own if the machine has none:
+
+```yaml
+repos:
+  - repo: https://github.com/zoidsh/tenet
+    rev: main
+    hooks:
+      - id: tenet
+      - id: tenet-commit-msg
+```
+
+### GitHub Actions
+
+The action downloads the release binary for the runner and lints the pull request against its base:
+
+```yaml
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: zoidsh/tenet@v1
+        with:
+          api-key: ${{ secrets.TYPESAFE_API_KEY }}
+```
+
+Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
+
 ## For agents
 
 Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the three commands that report on a run, `tenet` itself, `check` and `init`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
@@ -425,13 +433,13 @@ And the 2,062-line diff against what one agent call over the same diff would cos
 | Claude Sonnet 5 | 20,823 | 1,000 | $0.0516 | 17.5 s |
 | GPT-5 nano | 20,823 | 1,000 | $0.0014 | n/a |
 
-Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. bench/results.md states the prices, the rates and where each came from.
+GPT-5 nano's estimate is the one that undercuts tenet, at $0.0014 against $0.0036. Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. bench/results.md states the prices, the rates and where each came from.
 
 ## Environment variables
 
 Every one of these can be settled for a single run by a flag, which outranks the variable. The flags are on `tenet` itself and on every subcommand.
 
-- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenet/credentials` in the repository, then `~/.config/tenet/credentials`, so exporting it in CI overrides whatever is saved on the machine. `--typesafe-api-key` outranks all three, though a saved key or the variable is better: a flag is in the process list for anyone on the machine to read. A provider added later reads a variable of its own and answers to its own pair of flags, both named after it.
+- `TYPESAFE_API_KEY` is your TypeSafe key, and every command that asks the model needs a key from somewhere. It is read first, then `.tenet/credentials` in the repository, then `~/.config/tenet/credentials`, so exporting it in CI overrides whatever is saved on the machine. `tenet auth --project` saves it to `.tenet/credentials` rather than your home directory and adds that file to `.gitignore`, `tenet auth --status` says which of the three a run is reading, and `tenet auth typesafe` names the provider outright. `--typesafe-api-key` outranks all three, though a saved key or the variable is better: a flag is in the process list for anyone on the machine to read. A provider added later reads a variable of its own and answers to its own pair of flags, both named after it.
 - `TYPESAFE_BASE_URL`, or `--typesafe-base-url`, sends the requests to another host, such as a proxy or a local stand-in.
 - `TENET_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
 - `TENET_SKIP=1` makes the installed hooks exit without linting.
@@ -443,5 +451,3 @@ Every one of these can be settled for a single run by a flag, which outranks the
 ## Development
 
 `CLAUDE.md` in this repository has the toolchain, the test and lint commands, and what to run before a branch is done.
-
-Pre-release: nothing here is stable yet, and the tenet format, the flags and the output may all change without notice.
