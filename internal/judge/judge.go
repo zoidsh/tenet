@@ -366,7 +366,6 @@ func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, q
 		stats.Calls++
 		stats.InputTokens += resp.Usage.InputTokens
 		stats.CostUSD += jev.Cost(resp.Usage)
-		merged.Model, merged.RequestID = resp.Model, resp.RequestID
 		merged.Usage.InputTokens += resp.Usage.InputTokens
 		merged.Usage.OutputTokens += resp.Usage.OutputTokens
 		for name, answer := range resp.Answers {

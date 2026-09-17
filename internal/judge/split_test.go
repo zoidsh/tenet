@@ -14,8 +14,6 @@ import (
 	"github.com/zoidsh/tenetlint/internal/source"
 )
 
-// tenetsConfig writes n tenets, each carrying criteria of the given length, so
-// that a window's questions can be made as expensive as a test needs.
 func tenetsConfig(n, criteria int) string {
 	var b strings.Builder
 	b.WriteString("version: 1\nmodel: jev-1.13.0\ntenets:\n")
@@ -36,8 +34,6 @@ func body(lines int, width int) string {
 	return b.String()
 }
 
-// requestTokens is what a call is worth, or a failed test if the questions
-// cannot be encoded at all.
 func requestTokens(t *testing.T, state string, questions map[string]jev.Question) int {
 	t.Helper()
 	tokens, err := jev.RequestTokens(state, questions)
@@ -47,9 +43,7 @@ func requestTokens(t *testing.T, state string, questions map[string]jev.Question
 	return tokens
 }
 
-// questionNames is every question a set of calls asked, and it fails the test
-// if two calls asked the same one.
-func questionNames(t *testing.T, calls []call) map[string]bool {
+func disjointNames(t *testing.T, calls []call) map[string]bool {
 	t.Helper()
 	names := map[string]bool{}
 	for _, c := range calls {
@@ -87,7 +81,7 @@ func TestVerdictsSplitAcrossCalls(t *testing.T) {
 			t.Errorf("a call is %d tokens, over the %d budget", over, jev.RequestBudget)
 		}
 	}
-	names := questionNames(t, verdicts)
+	names := disjointNames(t, verdicts)
 	for i := range 4 {
 		if !names[fmt.Sprintf("verdict:t%d", i)] {
 			t.Errorf("t%d was never asked about", i)
@@ -171,7 +165,7 @@ func TestLocationsSplitAcrossCalls(t *testing.T) {
 			t.Errorf("a call is %d tokens, over the %d budget", over, jev.RequestBudget)
 		}
 	}
-	names := questionNames(t, locations)
+	names := disjointNames(t, locations)
 	if len(names) != tenetCount {
 		t.Errorf("the location calls asked %d questions, want %d", len(names), tenetCount)
 	}
@@ -186,10 +180,14 @@ func TestLocationsSplitAcrossCalls(t *testing.T) {
 }
 
 func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
-	const lineCount = 200
-	j, f, windows := fixtureWith(t, tenetsConfig(1, 59500), body(lineCount, 200), nil)
+	// 203 lines of 200 characters is a full window, and ten of them give the
+	// workers more than one window each to halve.
+	j, f, windows := fixtureWith(t, tenetsConfig(1, 59500), body(10*203, 200), nil)
+	j.Concurrency = 0
 	f.verdict["t0"] = 0.9
 	f.where["t0"] = map[string]float64{"L001": 0.9}
+	// The windows are halved by workers running at once, so the log they share
+	// needs a lock of its own.
 	var mu sync.Mutex
 	var logged []string
 	j.Log = func(line string) {
@@ -197,8 +195,8 @@ func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
 		defer mu.Unlock()
 		logged = append(logged, line)
 	}
-	if len(windows) != 1 || len(windows[0].Lines) != lineCount {
-		t.Fatalf("got %d windows", len(windows))
+	if len(windows) <= judge.DefaultConcurrency {
+		t.Fatalf("got %d windows, want more than the %d workers", len(windows), judge.DefaultConcurrency)
 	}
 	whole := map[string]jev.Question{"verdict:t0": jev.Noul("", strings.Repeat("a", 59500), "")}
 	if requestTokens(t, judge.State(windows[0]), whole) <= jev.RequestBudget {
@@ -209,13 +207,17 @@ func TestOversizeQuestionHalvesTheWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(findings) != 2 {
-		t.Fatalf("got %d findings, want one per half: %#v", len(findings), findings)
+	if len(findings) != 2*len(windows) {
+		t.Fatalf("got %d findings, want one per half of %d windows", len(findings), len(windows))
 	}
-	if findings[0].Line != 1 || findings[1].Line != lineCount/2+1 {
-		t.Errorf("findings are on lines %d and %d", findings[0].Line, findings[1].Line)
+	for i, w := range windows {
+		first, second := findings[2*i], findings[2*i+1]
+		if first.Line != w.First || second.Line != w.First+len(w.Lines)/2 {
+			t.Errorf("window %d gave findings on lines %d and %d, want %d and %d",
+				i, first.Line, second.Line, w.First, w.First+len(w.Lines)/2)
+		}
 	}
-	if stats.Calls != 4 {
+	if stats.Calls != 4*len(windows) {
 		t.Errorf("made %d calls, want a verdict and a location call per half", stats.Calls)
 	}
 	for _, c := range f.calls {
