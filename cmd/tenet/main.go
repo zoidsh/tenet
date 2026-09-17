@@ -31,7 +31,7 @@ func newRootCmd() *cobra.Command {
 	root.Version = buildinfo.Version()
 	root.SetVersionTemplate("{{.Version}}\n")
 	addLintFlags(root, opts)
-	root.AddCommand(newVersionCmd(), newInitCmd(), newHookCmd(), newCheckCmd(), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd())
+	root.AddCommand(newVersionCmd(), newAuthCmd(), newInitCmd(), newHookCmd(), newCheckCmd(), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd())
 	return root
 }
 
