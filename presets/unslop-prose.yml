@@ -27,3 +27,4 @@ rules:
   - inline-header-detail
   - active-voice
   - no-metaphor-noun
+  - concrete-subject

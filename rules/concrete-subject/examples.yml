@@ -1,0 +1,222 @@
+# Labelled cases for the concrete-subject tenet, measured by `tenetlint check`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Design
+
+    Simplicity drives every decision in the scheduler and refuses to
+    compromise when a feature would complicate the queue.
+
+    A job runs at least once. A job that runs twice must leave the same rows
+    behind, because the runner promises nothing stronger.
+
+    ## Ordering
+
+    Jobs in one queue run in priority order, and ties go to whichever was
+    enqueued first.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Architecture
+
+    The architecture cares deeply about correctness and believes that a
+    failure should be loud rather than quiet.
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from
+    the `jobs` stream in Redis and writes results to Postgres.
+
+    ## Failure modes
+
+    If Redis is unreachable the gateway answers reads from its in-process
+    cache for 60 seconds and then returns 503.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Why another migration tool
+
+    Innovation in this space demands an approach that is willing to
+    question what everybody else has settled on.
+
+    The tool runs the whole batch inside one transaction, so a failure
+    leaves the schema where it started.
+
+    ## Ordering
+
+    The numeric prefix is the whole of the order. Two files that share a
+    prefix are an error at load time.
+- label: violation
+  lang: markdown
+  lines: [6, 7]
+  code: |
+    ## The cache
+
+    The cache keys on the SHA-256 of the request body and the model name.
+    An entry expires 30 days after it was written.
+
+    Complexity has a way of creeping in here and making itself at home,
+    and it never asks permission first.
+
+    ## Pointing it elsewhere
+
+    `--cache-dir` moves it. Two processes writing one directory corrupt it,
+    so give each process its own.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Errors
+
+    Our philosophy believes that a fallback hides a bug, and it would
+    rather see an operation fail than see it quietly return something else.
+
+    A failed call returns an error with the operation and the argument in
+    it. Nothing is retried except a timeout, and that twice.
+
+    ## Logging
+
+    `worker` writes one JSON object per job to stderr, with the job id and
+    the attempt number.
+- label: violation
+  lang: markdown
+  lines: [8, 9]
+  code: |
+    ## Roadmap
+
+    1.1 adds a `--since` flag that reads the chart at a named commit rather
+    than at the branch tip; it is tracked in #214.
+
+    1.2 drops the `charts/` layout assumption, which #187 is about.
+
+    The roadmap wants to see plugins land before 3.0 and is not prepared to
+    wait much longer for them.
+
+    ## Reporting a bug
+
+    Open an issue with the config and the output of `audit --version`.
+- label: violation
+  lang: markdown
+  lines: [3, 4]
+  code: |
+    # Contributing
+
+    Quality is everybody's responsibility here, and it never sleeps, which
+    is why the review bar sits where it does.
+
+    Run `make check` before you open a pull request. CI runs the same
+    target, so a green `make check` is a green CI.
+
+    ## Reviews
+
+    A maintainer reviews your branch. One approval merges a patch, and a
+    change under `internal/wire` needs two.
+- label: ok
+  lang: markdown
+  code: |
+    # Design
+
+    The runner refuses to start a pipeline whose declared reads no earlier
+    step produces.
+
+    A job runs at least once. A job that runs twice must leave the same rows
+    behind, because the runner promises nothing stronger.
+
+    ## Ordering
+
+    Jobs in one queue run in priority order, and ties go to whichever was
+    enqueued first.
+- label: ok
+  note: "Abstract subjects, but the verbs are ones a figure and a cost can perform, so nothing is attributed to them that they cannot do."
+  lang: markdown
+  code: |
+    ## Scaling
+
+    Latency rises with the number of workers, because every worker polls the
+    same table and the poll takes a shared lock.
+
+    The cost grows linearly in the number of examples, since each one is a
+    single call, and `--runs 3` triples it.
+
+    ## Limits
+
+    A queue holds at most 100000 pending jobs. Enqueueing past that returns
+    `ErrQueueFull` rather than blocking the caller.
+- label: ok
+  lang: markdown
+  code: |
+    # Contributing
+
+    Run `make check` before you open a pull request. CI runs the same
+    target, so a green `make check` is a green CI.
+
+    A maintainer reviews your branch. One approval merges a patch, and a
+    change under `internal/wire` needs two, because that package is the only
+    one the compatibility test pins.
+
+    ## Signing
+
+    Sign your commits with `git commit -s`; the DCO bot rejects a pull
+    request whose commits are unsigned.
+- label: ok
+  lang: markdown
+  code: |
+    # Architecture
+
+    `gateway` terminates TLS and routes by Host header. `worker` pulls from
+    the `jobs` stream in Redis and writes results to Postgres.
+
+    `cron` enqueues the nightly reconciliation at 02:00 UTC and nothing else
+    writes to that queue.
+
+    ## Failure modes
+
+    If Redis is unreachable the gateway answers reads from its in-process
+    cache for 60 seconds and then returns 503. Writes fail at once with 503.
+- label: ok
+  note: "The design's reasoning is given as a decision the maintainers made, with the people in the subject position, which is the shape the tenet asks for."
+  lang: markdown
+  code: |
+    # Errors
+
+    We took out the last fallback in 2.2, after a quiet default sent a month
+    of reports to the wrong bucket.
+
+    A failed call returns an error with the operation and the argument in
+    it. Nothing is retried except a timeout, and that twice.
+
+    ## Logging
+
+    `worker` writes one JSON object per job to stderr, with the job id and
+    the attempt number.
+- label: ok
+  lang: markdown
+  code: |
+    ## The wire format
+
+    A frame carries a four-byte big-endian length and that many bytes of
+    CBOR. The format carries no version field and no checksum.
+
+    A peer that needs either negotiates it in the handshake, which is the
+    only place either side may send an unframed message.
+
+    ## Handshake
+
+    The client sends its highest supported version and the server answers
+    with the one it chose, or closes the connection.
+- label: ok
+  lang: markdown
+  code: |
+    ## Roadmap
+
+    1.1 adds a `--since` flag that reads the chart at a named commit rather
+    than at the branch tip; it is tracked in #214.
+
+    1.2 drops the `charts/` layout assumption, which #187 is about.
+
+    We are not planning a plugin API before 3.0, and 3.0 has no date.
+
+    ## Reporting a bug
+
+    Open an issue with the config and the output of `audit --version`.
