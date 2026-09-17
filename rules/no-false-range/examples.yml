@@ -1,4 +1,4 @@
-# Labelled cases for the no-false-range tenet, measured by `tenetlint check`.
+# Labelled cases for the no-false-range tenet, measured by `tenet check`.
 - label: violation
   lang: markdown
   lines: [3, 4]
@@ -66,7 +66,7 @@
 
     ## Editing the draft
 
-    Delete the rules you did not mean and run `tenetlint` against a branch you
+    Delete the rules you did not mean and run `tenet` against a branch you
     know is clean, which is the cheapest way to find a rule that is too broad.
 - label: violation
   lang: markdown

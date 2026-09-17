@@ -1,6 +1,6 @@
 # Adding a rule
 
-A built-in rule is a directory under `rules/<id>/` holding a `rule.yml`, an `examples.yml` beside it and a `README.md` paragraph that `tenetlint rules <id>` prints. The order below is the order the work happens in, and each step exists because skipping it makes the next one meaningless.
+A built-in rule is a directory under `rules/<id>/` holding a `rule.yml`, an `examples.yml` beside it and a `README.md` paragraph that `tenet rules <id>` prints. The order below is the order the work happens in, and each step exists because skipping it makes the next one meaningless.
 
 ## 1. Write the tenet from a real source
 
@@ -25,7 +25,7 @@ When a label is a decision the tenet's sentence does not settle, write it down i
 ## 3. Run check
 
 ```
-tenetlint check no-fallback
+tenet check no-fallback
 ```
 
 Read the verdict, then the misjudged list. `sharp` means nothing landed on the wrong side of the rule's cutoff; anything else names the examples that did, with their probabilities and one line of advice. The AUC says whether the wording separates the two labels at all: an AUC of 1.00 with misses under the cutoff is a wording that ranks perfectly and scores timidly, which the criteria can fix, while a low AUC is a tenet that has not said what it is about.

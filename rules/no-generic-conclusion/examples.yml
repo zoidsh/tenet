@@ -1,4 +1,4 @@
-# Labelled cases for the no-generic-conclusion tenet, measured by `tenetlint check`.
+# Labelled cases for the no-generic-conclusion tenet, measured by `tenet check`.
 - label: violation
   lang: markdown
   lines: [12, 14]

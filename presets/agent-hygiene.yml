@@ -1,4 +1,4 @@
-# Measured by `tenetlint check --builtin --no-cache --runs 3`, every rule at
+# Measured by `tenet check --builtin --no-cache --runs 3`, every rule at
 # the 0.8 cutoff, over the corpus in this tree. Accuracy is the share of
 # labelled examples on the right side of 0.8, and the deviation is the largest
 # any one example moved across the three passes.
