@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/zoidsh/tenetlint/internal/auth"
 	"github.com/zoidsh/tenetlint/internal/importer"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/provider"
@@ -33,15 +35,16 @@ var ruleFiles = []string{
 }
 
 type initOptions struct {
-	from    []string
-	presets []string
-	agents  []string
-	dryRun  bool
-	force   bool
-	config  string
-	format  string
-	noCache bool
-	verbose bool
+	from     []string
+	presets  []string
+	agents   []string
+	dryRun   bool
+	force    bool
+	config   string
+	format   string
+	noCache  bool
+	verbose  bool
+	noPrompt bool
 }
 
 func newInitCmd() *cobra.Command {
@@ -62,7 +65,57 @@ func newInitCmd() *cobra.Command {
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
+	f.BoolVar(&o.noPrompt, "no-prompt", false, "never ask for an API key, even at a terminal")
 	return cmd
+}
+
+// keyForInit asks for a key rather than only naming the variable, because
+// init is the first command most people run and the sort it is about to do
+// needs one. Anything that is not a person at a terminal is told the same
+// thing every other command tells them.
+func keyForInit(cmd *cobra.Command, o *initOptions) (provider.Provider, string, error) {
+	p, err := provider.Lookup(provider.Default)
+	if err != nil {
+		return p, "", err
+	}
+	key, _, err := auth.Resolve(p)
+	if err != nil || key != "" {
+		return p, key, err
+	}
+	if o.noPrompt || !isTerminal(cmd.InOrStdin()) || !isTerminal(cmd.OutOrStdout()) {
+		return p, "", missingKeyError(p)
+	}
+	out := cmd.OutOrStdout()
+	if _, err := fmt.Fprintf(out, "Sorting the rules asks %s's jev model, which needs an API key from https://typesafe.ai.\n", p.Label); err != nil {
+		return p, "", err
+	}
+	if _, err := fmt.Fprint(out, "Enter it now? [Y/n] "); err != nil {
+		return p, "", err
+	}
+	yes, err := confirm(cmd.InOrStdin())
+	if err != nil {
+		return p, "", err
+	}
+	if !yes {
+		return p, "", missingKeyError(p)
+	}
+	key, err = saveKey(cmd, p, &authOptions{})
+	return p, key, err
+}
+
+// confirm reads the answer to a yes-or-no question, where a bare newline is
+// the yes the prompt capitalised and end of input is a no.
+func confirm(r io.Reader) (bool, error) {
+	scanner := bufio.NewScanner(r)
+	if !scanner.Scan() {
+		return false, scanner.Err()
+	}
+	switch strings.ToLower(strings.TrimSpace(scanner.Text())) {
+	case "", "y", "yes":
+		return true, nil
+	default:
+		return false, nil
+	}
 }
 
 func runInit(cmd *cobra.Command, o *initOptions) error {
@@ -135,7 +188,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		candidates = append(candidates, importer.Split(name, data)...)
 	}
 
-	p, key, err := keyFor(&tenets.Config{})
+	p, key, err := keyForInit(cmd, o)
 	if err != nil {
 		return fail(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/zoidsh/tenetlint/internal/auth"
 	"github.com/zoidsh/tenetlint/internal/importer"
 	"github.com/zoidsh/tenetlint/internal/jev"
 	"github.com/zoidsh/tenetlint/internal/tenets"
@@ -269,16 +270,45 @@ func TestInitDryRunToASubdirectory(t *testing.T) {
 	}
 }
 
+// Nothing that is not a person at a terminal is asked anything, so a script
+// or an agent running init gets the same refusal every other command gives.
 func TestInitWithoutAKey(t *testing.T) {
 	initRepo(t)
 	t.Setenv(jev.APIKeyEnv, "")
 
-	code, _, stderr := runInitCmd(t)
+	code, stdout, stderr := runInitCmd(t)
 	if code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}
 	if !strings.Contains(stderr, jev.APIKeyEnv) || !strings.Contains(stderr, SkipEnv) {
 		t.Errorf("stderr %q should name both the key and the escape hatch", stderr)
+	}
+	if strings.Contains(stdout, "Enter it now?") {
+		t.Errorf("a pipe was asked for a key: %q", stdout)
+	}
+}
+
+func TestInitReadsASavedKey(t *testing.T) {
+	dir := initRepo(t)
+	t.Setenv(jev.APIKeyEnv, "")
+	writeCredentials(t, filepath.Join(dir, auth.Dir), "typesafe=saved-key-0123456789abcdef\n")
+
+	code, _, stderr := runInitCmd(t)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if _, err := tenets.Load(filepath.Join(dir, "tenets.yml")); err != nil {
+		t.Errorf("the drafted file does not load: %v", err)
+	}
+}
+
+func writeCredentials(t *testing.T, dir, content string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, auth.FileName), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
