@@ -242,12 +242,17 @@ main[data-vis="0"] { opacity: 0; }
 
 .clock { display: flex; flex-direction: column; }
 
+/* Two stats of the same shape, a number over its caption. They are aligned on
+   the captions rather than on the numbers, which are set at different sizes. */
 .clock .top {
 	display: flex;
-	align-items: baseline;
+	align-items: flex-end;
 	justify-content: space-between;
 	gap: 16px;
 }
+
+.clock .stat { display: flex; flex-direction: column; }
+.clock .stat.cost { align-items: flex-end; text-align: right; }
 
 #counter {
 	font-family: var(--mono);
@@ -517,10 +522,15 @@ footer {
 		<section class="pane right">
 			<div class="clock">
 				<div class="top">
-					<span id="counter">0.00 s</span>
-					<span id="cost" class="xfade"></span>
+					<div class="stat">
+						<span id="counter">0.00 s</span>
+						<span class="caption xfade" id="clock-caption"></span>
+					</div>
+					<div class="stat cost xfade" id="coststat" data-vis="0">
+						<span id="cost"></span>
+						<span class="caption" id="cost-caption">cost</span>
+					</div>
 				</div>
-				<span class="caption xfade" id="clock-caption"></span>
 			</div>
 			<div class="tenets" id="tenets">
 				<div id="cutoff"></div>
@@ -814,6 +824,7 @@ const sublineEl = document.getElementById("subline");
 const fileMetaEl = document.getElementById("filemeta");
 const counterEl = document.getElementById("counter");
 const costEl = document.getElementById("cost");
+const costStatEl = document.getElementById("coststat");
 const clockCaptionEl = document.getElementById("clock-caption");
 const stripEl = document.getElementById("strip");
 const statusEl = document.getElementById("status");
@@ -936,6 +947,18 @@ function renderTenets(rows, order) {
 
 function money(usd) {
 	return "$" + usd.toFixed(6);
+}
+
+// The number and its caption fade as one, so the caption is never left
+// standing over a blank.
+function setCostAt(usd, when) {
+	at(when, function () {
+		costStatEl.dataset.vis = "0";
+	});
+	at(when + T.OUT, function () {
+		costEl.textContent = money(usd);
+		costStatEl.dataset.vis = "1";
+	});
 }
 
 // Everything readable changes the same way: out over T.OUT, swapped, back in.
@@ -1159,7 +1182,7 @@ function scheduleAct(act, start) {
 		fileMetaEl.dataset.vis = "1";
 		counterEl.textContent = "0.00 s";
 		costEl.textContent = "";
-		costEl.dataset.vis = "0";
+		costStatEl.dataset.vis = "0";
 		clockCaptionEl.textContent = "seconds, this " + act.unit;
 		clockCaptionEl.dataset.vis = "0";
 		statusEl.textContent = "";
@@ -1210,7 +1233,7 @@ function scheduleAct(act, start) {
 
 	setHeadlineAt(act.lead, "Blocked in " + seconds(act.blocked.duration_ms) + ".", "bad", verdictAt);
 	setTextAt(sublineEl, sublineText(act, act.blocked.findings), verdictAt);
-	setTextAt(costEl, money(act.blocked.cost_usd) + " per " + act.unit, verdictAt);
+	setCostAt(act.blocked.cost_usd, verdictAt);
 	setTextAt(statusEl, "blocked · " + act.blocked.findings +
 		(act.blocked.findings === 1 ? " finding" : " findings"), verdictAt, "bad");
 
@@ -1227,7 +1250,7 @@ function scheduleAct(act, start) {
 	setTextAt(statusEl, "asking jev…", rebarsAt - T.ASK_LEAD, "asking");
 	at(rebarsAt - T.ASK_LEAD, function () {
 		counterEl.textContent = "0.00 s";
-		costEl.dataset.vis = "0";
+		costStatEl.dataset.vis = "0";
 	});
 	countTo(rebarsAt, passAt - rebarsAt, act.passed.duration_ms);
 
@@ -1239,7 +1262,7 @@ function scheduleAct(act, start) {
 
 	setHeadlineAt(act.fixedLead, "Passed in " + seconds(act.passed.duration_ms) + ".", "good", passAt);
 	setTextAt(sublineEl, sublineText(act, act.passed.findings), passAt);
-	setTextAt(costEl, money(act.passed.cost_usd) + " per " + act.unit, passAt);
+	setCostAt(act.passed.cost_usd, passAt);
 	setTextAt(stripEl, stripText(act.passed), passAt);
 	setTextAt(statusEl, "passed · 0 findings", passAt, "good");
 
