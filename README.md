@@ -157,7 +157,7 @@ Eleven of the twenty-five are standalone. They ship in the binary, and `tenet ru
 
 ## Pass or fail
 
-Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2.
+Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2. A repository with no `tenet.yml` exits 3, so a hook that runs everywhere can let those commits through instead of treating them as a broken run.
 
 There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place.
 
@@ -318,7 +318,7 @@ One line of advice names what usually moves the numbers:
 - a `true` criterion when the violations score low;
 - a rewrite of the sentence itself when both sit in the middle.
 
-`check` reports and never fails: it exits 0 whatever the numbers say, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. `--no-cache` bypasses the cached answers it reads, never the ones it writes, so the run after it is warm rather than cold. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
+`check` reports and never fails: it exits 0 whatever the numbers say, 3 when the repository has no `tenet.yml`, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. `--no-cache` bypasses the cached answers it reads, never the ones it writes, so the run after it is warm rather than cold. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
 
 `--runs 3` judges every example three times, leaving the cache out of it so the passes are independent. It adds a `stability` line per tenet: the largest standard deviation it saw over any one example, and every example whose probability landed on both sides of the cutoff between passes. The numbers above that line are still the first pass's, so asking for several passes does not change what one of them says. It is what tells you whether a verdict sitting near `fail` is a verdict or a coin toss, and it is the evidence a cutoff of its own should rest on.
 
