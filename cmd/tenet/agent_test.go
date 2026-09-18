@@ -8,6 +8,7 @@ import (
 
 	"github.com/zoidsh/tenet/internal/importer"
 	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // agentRepo is a repository with nothing in it, because writing the
@@ -195,14 +196,14 @@ func TestInitAgentUnknownWritesNothing(t *testing.T) {
 
 func TestInitAgentLeavesTheConfigAlone(t *testing.T) {
 	dir := agentRepo(t)
-	writeFile(t, dir, "tenet.yml", "version: 1\npresets: [agent-hygiene]\n")
+	writeConfigFile(t, dir, "version: 1\npresets: [agent-hygiene]\n")
 
 	code, _, stderr := runInitCmd(t, "--agent", "claude")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if got := read(t, filepath.Join(dir, "tenet.yml")); got != "version: 1\npresets: [agent-hygiene]\n" {
-		t.Errorf("tenet.yml is:\n%s", got)
+	if got := read(t, filepath.Join(dir, tenets.FileName)); got != "version: 1\npresets: [agent-hygiene]\n" {
+		t.Errorf("the config is:\n%s", got)
 	}
 }
 

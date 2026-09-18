@@ -102,8 +102,8 @@ tenets:
 		{prose, "README.md", true},
 		{prose, "docs/design.txt", true},
 		{prose, "main.go", false},
-		{prose, "tenet.yml", false},
-		{both, "tenet.yml", true},
+		{prose, "settings.yml", false},
+		{both, "settings.yml", true},
 		{both, "CHANGELOG", true},
 		{both, "main.go", false},
 		{both, "internal/testdata/notes.md", false},
@@ -301,9 +301,7 @@ func TestFind(t *testing.T) {
 	nested := filepath.Join(root, "a", "b")
 	mustMkdir(t, nested)
 	want := filepath.Join(root, tenets.FileName)
-	if err := os.WriteFile(want, []byte(sample), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	write(t, want, sample)
 
 	got, _, err := tenets.Find(nested)
 	if err != nil {
@@ -320,9 +318,7 @@ func TestFind(t *testing.T) {
 
 func TestFindStopsAtGitRoot(t *testing.T) {
 	outer := t.TempDir()
-	if err := os.WriteFile(filepath.Join(outer, tenets.FileName), []byte(sample), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	write(t, filepath.Join(outer, tenets.FileName), sample)
 	repo := filepath.Join(outer, "repo")
 	mustMkdir(t, filepath.Join(repo, ".git"))
 

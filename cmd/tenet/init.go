@@ -51,7 +51,7 @@ func newInitCmd(g *globalOptions) *cobra.Command {
 	o := &initOptions{g: g}
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Draft a tenet.yml from the rule files your agents already read",
+		Short: "Draft a " + tenets.FileName + " from the rule files your agents already read",
 		Args:  cobra.NoArgs,
 		RunE:  func(cmd *cobra.Command, _ []string) error { return runInit(cmd, o) },
 	}
@@ -60,8 +60,8 @@ func newInitCmd(g *globalOptions) *cobra.Command {
 	f.StringArrayVar(&o.presets, "preset", nil, "start from this built-in preset instead of reading any rule file; repeatable")
 	f.StringArrayVar(&o.agents, "agent", nil, "write the tenet instructions where this agent reads them: cursor, agents or claude; repeatable")
 	f.BoolVar(&o.dryRun, "dry-run", false, "print what would be drafted without writing it")
-	f.BoolVar(&o.force, "force", false, "overwrite an existing tenet.yml")
-	f.StringVar(&o.config, "config", "", "path to write, tenet.yml in the repository root by default")
+	f.BoolVar(&o.force, "force", false, "overwrite an existing "+tenets.FileName)
+	f.StringVar(&o.config, "config", "", "path to write, "+tenets.FileName+" in the repository root by default")
 	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
@@ -138,7 +138,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	}
 
 	// The instructions are about running the lint, not about what it runs, so
-	// asking for them is a whole run of its own and leaves any tenet.yml,
+	// asking for them is a whole run of its own and leaves any config,
 	// drafted or hand-written, alone.
 	if len(o.agents) > 0 {
 		return o.writeAgents(cmd, root, dir)
@@ -204,7 +204,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		if err != nil {
 			return fail(err)
 		}
-		if err := os.WriteFile(target, draft, 0o600); err != nil {
+		if err := writeConfig(target, draft); err != nil {
 			return fail(err)
 		}
 		r.Written = shown
@@ -247,7 +247,7 @@ func writeImport(out io.Writer, r importer.Report, format string) error {
 func (o *initOptions) writePresets(cmd *cobra.Command, presets []string, target, shown, note string) error {
 	r := importer.Report{DryRun: o.dryRun}
 	if !o.dryRun {
-		if err := os.WriteFile(target, importer.PresetFile(presets), 0o600); err != nil {
+		if err := writeConfig(target, importer.PresetFile(presets)); err != nil {
 			return fail(err)
 		}
 		r.Written = shown
@@ -264,7 +264,7 @@ func (o *initOptions) writePresets(cmd *cobra.Command, presets []string, target,
 	return err
 }
 
-// draftFlags are about drafting a tenet.yml, which a run that writes agent
+// draftFlags are about drafting a config, which a run that writes agent
 // instructions does not do.
 var draftFlags = []string{"from", "preset", "config", "force"}
 
@@ -345,12 +345,20 @@ func (o *initOptions) writeAgentFile(path string, target importer.AgentTarget) (
 // working directory for what is printed.
 func (o *initOptions) target(root string) (string, error) {
 	if o.config == "" {
-		return filepath.Join(root, tenets.FileName), nil
+		return source.ConfigPath(root), nil
 	}
 	return filepath.Abs(o.config)
 }
 
-// checkTarget refuses to overwrite a tenet.yml somebody has edited. A dry run
+// writeConfig writes the drafted config, making the directory it belongs in.
+func writeConfig(target string, data []byte) error {
+	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+		return err
+	}
+	return os.WriteFile(target, data, 0o600)
+}
+
+// checkTarget refuses to overwrite a config somebody has edited. A dry run
 // writes nothing, so it has nothing to refuse.
 func (o *initOptions) checkTarget(target string) error {
 	if o.dryRun || o.force {
@@ -396,7 +404,7 @@ func (o *initOptions) rulePaths(root string) ([]string, error) {
 	return paths, nil
 }
 
-// initRoot is the repository the rule files and the tenet.yml belong to, or
+// initRoot is the repository the rule files and the config belong to, or
 // the current directory when there is no repository to speak of.
 func initRoot(ctx context.Context, dir string) (string, error) {
 	root, err := source.RepoRoot(ctx, dir)

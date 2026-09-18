@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/zoidsh/tenet/internal/check"
 	"github.com/zoidsh/tenet/internal/jev"
+	"github.com/zoidsh/tenet/internal/source"
 )
 
 const checkConfig = `version: 1
@@ -131,11 +131,8 @@ func checkDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", checkConfig)
-	if err := os.MkdirAll(filepath.Join(dir, "examples"), 0o750); err != nil {
-		t.Fatal(err)
-	}
-	writeFile(t, dir, "examples/comment-why.yml", checkExamplesFile)
+	writeConfigFile(t, dir, checkConfig)
+	writeFile(t, dir, filepath.Join(source.ConfigDir, "examples", "comment-why.yml"), checkExamplesFile)
 	return dir
 }
 

@@ -117,7 +117,7 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f.StringVar(&o.prText, "pr-text", "", "lint the pull request title and description in this file instead of any code")
 	f.StringVar(&o.format, "format", "", "output format: text, json or github (default text on a terminal, json otherwise)")
 	f.BoolVarP(&o.quiet, "quiet", "q", false, "print the findings without the summary line")
-	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" in the repository root")
+	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" beside the config")
 	f.BoolVar(&o.noBaseline, "no-baseline", false, "report every finding, whatever the baseline accepts")
 	f.BoolVar(&o.showBaselined, "show-baselined", false, "list the findings the baseline accepts as well, marked and still passing")
 }
@@ -127,8 +127,8 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 func addRunFlags(cmd *cobra.Command, o *lintOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "lint the working tree against this git ref instead of the staged changes")
-	f.StringVar(&o.config, "config", "", "path to tenet.yml, searched for by default")
-	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in tenet.yml")
+	f.StringVar(&o.config, "config", "", "path to "+tenets.FileName+", searched for by default")
+	f.StringVar(&o.model, "model", "", "jev model to ask, overriding the one in "+tenets.FileName)
 	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
 	f.BoolVarP(&o.verbose, "verbose", "v", false, "report skipped files and what each window costs on stderr")
 }
@@ -171,8 +171,13 @@ func (o *lintOptions) validate(out io.Writer, paths []string) error {
 // decides what to print or write about it. The findings' paths are still the
 // repository-relative ones the tenets were matched against.
 type run struct {
-	dir      string
-	cfg      *tenets.Config
+	dir string
+	cfg *tenets.Config
+
+	// configDir is where tenet's own files for this run live, so that a
+	// baseline sits beside the config it was accepted against.
+	configDir string
+
 	model    string
 	provider provider.Provider
 	key      string
@@ -193,6 +198,10 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	}
 
 	cfg, err := openConfig(o.config)
+	if err != nil {
+		return nil, err
+	}
+	configDir, err := filepath.Abs(filepath.Dir(cfg.Path))
 	if err != nil {
 		return nil, err
 	}
@@ -228,8 +237,10 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 		}
 	}
 	return &run{
-		dir:      dir,
-		cfg:      cfg,
+		dir:       dir,
+		cfg:       cfg,
+		configDir: configDir,
+
 		model:    model,
 		provider: p,
 		key:      key,
@@ -265,7 +276,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	}
 	// The baseline is read before the calls are made, so that a run pointed at
 	// a file that is not there says so instead of billing for the answer first.
-	accepted, err := o.accepted(run.set.Root)
+	accepted, err := o.accepted(run.configDir)
 	if err != nil {
 		return fail(err)
 	}
@@ -323,14 +334,14 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 // accepted is the baseline this run honours, nil when there is none. The
 // default file being absent is how most repositories run, so it is no error,
 // while a named one being absent is a typo worth stopping for.
-func (o *lintOptions) accepted(root string) (*baseline.File, error) {
+func (o *lintOptions) accepted(configDir string) (*baseline.File, error) {
 	if o.noBaseline {
 		return nil, nil
 	}
 	if o.baseline != "" {
 		return baseline.Load(o.baseline)
 	}
-	f, err := baseline.Load(filepath.Join(root, baseline.Name))
+	f, err := baseline.Load(filepath.Join(configDir, baseline.Name))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}

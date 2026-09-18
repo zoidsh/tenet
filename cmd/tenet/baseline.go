@@ -29,7 +29,7 @@ func newBaselineCmd(g *globalOptions) *cobra.Command {
 	}
 	addRunFlags(cmd, lint)
 	f := cmd.Flags()
-	f.StringVar(&o.output, "output", "", "write the baseline here instead of "+baseline.Name+" in the repository root")
+	f.StringVar(&o.output, "output", "", "write the baseline here instead of "+baseline.Name+" beside the config")
 	f.BoolVar(&o.prune, "prune", false, "keep only the entries this run still finds, instead of writing the run out whole")
 	return cmd
 }
@@ -122,7 +122,7 @@ func (o *baselineOptions) baselinePath(run *run) string {
 	if o.output != "" {
 		return o.output
 	}
-	return filepath.Join(run.set.Root, baseline.Name)
+	return filepath.Join(run.configDir, baseline.Name)
 }
 
 func countFindings(n int) string {

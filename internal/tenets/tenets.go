@@ -22,8 +22,8 @@ import (
 	"github.com/zoidsh/tenet/internal/source"
 )
 
-// FileName is the config file Find looks for.
-const FileName = source.ConfigName
+// FileName is the config file Find looks for, relative to a repository root.
+const FileName = source.ConfigFile
 
 // ErrNotFound is what Find wraps, so that a caller can tell a repository that
 // does not use tenet from a run that broke.
@@ -476,7 +476,7 @@ func Find(startDir string) (string, []string, error) {
 	var searched []string
 	for {
 		searched = append(searched, dir)
-		candidate := filepath.Join(dir, FileName)
+		candidate := source.ConfigPath(dir)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, searched, nil
 		}

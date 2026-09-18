@@ -250,8 +250,8 @@ func TestCollectStagedSkips(t *testing.T) {
 	write(t, dir, "vendor/v.go", "package v\n")
 	write(t, dir, "big.go", strings.Repeat("a", MaxFileBytes+1))
 	write(t, dir, "bin.go", "package main\x00\n")
-	write(t, dir, ConfigName, "version: 1\n")
-	write(t, dir, BaselineName, "{}\n")
+	write(t, dir, ConfigFile, "version: 1\n")
+	write(t, dir, ConfigDir+"/"+BaselineName, "{}\n")
 	write(t, dir, "ok.go", "package main\n")
 	run(t, dir, "git", "add", "-Af")
 
@@ -273,8 +273,8 @@ func TestCollectStagedSkips(t *testing.T) {
 		{"vendor/v.go", "in vendor"},
 		{"big.go", "larger than 1MB"},
 		{"bin.go", "binary"},
-		{ConfigName, "tenet's own file"},
-		{BaselineName, "tenet's own file"},
+		{ConfigFile, "in " + ConfigDir},
+		{ConfigDir + "/" + BaselineName, "in " + ConfigDir},
 	} {
 		if reasons[want.file] != want.reason {
 			t.Errorf("%s skipped as %q, want %q", want.file, reasons[want.file], want.reason)
@@ -284,8 +284,8 @@ func TestCollectStagedSkips(t *testing.T) {
 
 func TestCollectPathsSkipsOwnFiles(t *testing.T) {
 	dir := newRepo(t)
-	write(t, dir, ConfigName, "version: 1\n")
-	write(t, dir, BaselineName, "{}\n")
+	write(t, dir, ConfigFile, "version: 1\n")
+	write(t, dir, ConfigDir+"/"+BaselineName, "{}\n")
 	write(t, dir, "ok.go", "package main\n")
 	run(t, dir, "git", "add", "-A")
 	run(t, dir, "git", "commit", "-qm", "files")
@@ -295,17 +295,8 @@ func TestCollectPathsSkipsOwnFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, got := range paths(set) {
-		if got == ConfigName || got == BaselineName {
+		if strings.HasPrefix(got, ConfigDir+"/") {
 			t.Errorf("collected %s", got)
-		}
-	}
-	reasons := map[string]string{}
-	for _, s := range set.Skipped {
-		reasons[s.File] = s.Reason
-	}
-	for _, file := range []string{ConfigName, BaselineName} {
-		if reasons[file] != "tenet's own file" {
-			t.Errorf("%s skipped as %q", file, reasons[file])
 		}
 	}
 }

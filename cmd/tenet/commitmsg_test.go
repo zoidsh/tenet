@@ -55,7 +55,7 @@ func writeCommitMsg(t *testing.T, dir, body string) string {
 func TestLintCommitMsgEndToEnd(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", commitMsgConfig)
+	writeConfigFile(t, dir, commitMsgConfig)
 	path := writeCommitMsg(t, dir, commitMsg)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -92,7 +92,7 @@ func TestLintCommitMsgEndToEnd(t *testing.T) {
 func TestLintCommitMsgText(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", commitMsgIncludeConfig)
+	writeConfigFile(t, dir, commitMsgIncludeConfig)
 	path := writeCommitMsg(t, dir, commitMsg)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -120,7 +120,7 @@ func TestLintCommitMsgText(t *testing.T) {
 func TestLintCommitMsgWithoutATenetForIt(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", testConfig)
+	writeConfigFile(t, dir, testConfig)
 	path := writeCommitMsg(t, dir, commitMsg)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -160,7 +160,7 @@ func TestLintCommitMsgIsAloneOnTheCommandLine(t *testing.T) {
 	} {
 		dir := t.TempDir()
 		git(t, dir, "init", "-q", "-b", "main")
-		writeFile(t, dir, "tenet.yml", commitMsgConfig)
+		writeConfigFile(t, dir, commitMsgConfig)
 		writeCommitMsg(t, dir, commitMsg)
 		t.Chdir(dir)
 		t.Setenv(jev.APIKeyEnv, "test-key")
