@@ -85,8 +85,12 @@ func Accepted(sorted []Sorted) []Sorted {
 // Assign names every accepted candidate. The report prints the ids beside the
 // sentences they came from, so they are settled before the file is drafted and
 // running it twice leaves them as they were.
-func Assign(sorted []Sorted) {
-	taken := map[string]bool{}
+func Assign(sorted []Sorted) { AssignTaken(sorted, map[string]bool{}) }
+
+// AssignTaken names every accepted candidate around ids that are spoken for.
+// A sync draws on a config that already holds tenets and names built-in rules,
+// and an id it handed out twice would not load.
+func AssignTaken(sorted []Sorted, taken map[string]bool) {
 	for _, c := range sorted {
 		if c.ID != "" {
 			taken[c.ID] = true
