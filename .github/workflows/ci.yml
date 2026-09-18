@@ -84,13 +84,18 @@ jobs:
 
       - name: Lint the branch against the repository config
         if: env.TYPESAFE_API_KEY != '' && github.event_name == 'pull_request'
-        run: go run ./cmd/tenet --base origin/${{ github.base_ref }} --format json
+        run: go run ./cmd/tenet --base origin/${{ github.base_ref }} --format github --trace-dir trace
 
       # The account's artifact quota can fill; the jq step above is this job's verdict.
+      # The trace holds the source of every window it judged, so it is kept for
+      # a week rather than the default.
       - uses: actions/upload-artifact@v4
         if: always() && env.TYPESAFE_API_KEY != ''
         continue-on-error: true
         with:
           name: check.json
-          path: check.json
+          path: |
+            check.json
+            trace
+          retention-days: 7
           if-no-files-found: ignore
