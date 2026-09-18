@@ -419,12 +419,14 @@ main[data-vis="0"] { opacity: 0; }
 }
 
 /* One size and one weight in every state; the colour is what says which state
-   the run is in. */
+   the run is in. It never wraps, so every line it shows is written to fit the
+   column, which check.js measures. */
 #status {
 	font-size: var(--t-l);
 	font-weight: 600;
 	line-height: 28px;
 	height: 28px;
+	white-space: nowrap;
 	color: var(--muted);
 	transition: color var(--fast) var(--ease);
 }
@@ -467,7 +469,12 @@ footer {
 
 #session .lines { transition: transform var(--base) var(--ease); }
 
+/* A line is a flex row, so the typed turn's box, which is inline-block and
+   would otherwise sit on the baseline and stretch the line box past --line,
+   leaves the line exactly one row tall. */
 #session .line {
+	display: flex;
+	align-items: center;
 	height: var(--line);
 	white-space: pre;
 	color: var(--ink-2);
@@ -772,7 +779,7 @@ const ACTS = [
 		unit: "commit",
 		lead: "Add discount codes.",
 		fixedLead: "Fixed by the agent.",
-		caption: "the agent fixes its own findings",
+		caption: "fixing its own findings",
 		source: "the AGENTS.md rules",
 		left: CODE_LEFT_BLOCKED,
 		fixedLeft: CODE_LEFT_PASSED,
@@ -799,7 +806,7 @@ const ACTS = [
 		unit: "message",
 		lead: "Commit message.",
 		fixedLead: "Reworded.",
-		caption: "the agent rewords the subject",
+		caption: "rewording the subject",
 		source: "the pr preset",
 		left: COMMIT_BAD,
 		fixedLeft: COMMIT_GOOD,
@@ -822,7 +829,7 @@ const ACTS = [
 		unit: "pull request",
 		lead: "Pull request.",
 		fixedLead: "Rewritten.",
-		caption: "the agent rewrites the description",
+		caption: "rewriting the body",
 		source: "the pr preset",
 		left: PR_BAD,
 		fixedLeft: PR_GOOD,

@@ -438,6 +438,13 @@ for (const [, id, gloss] of glosses) {
 	ok(words <= room, "the gloss for " + id + " needs " + words.toFixed(1) + "px of " + room);
 }
 
+// The status line never wraps: every line it shows, at 24px semibold sans,
+// about 0.58em a glyph, fits the right pane.
+for (const m of src.matchAll(/(?:caption: |setTextAt\(statusEl, )"([^"]+)"/g)) {
+	const width = m[1].length * 24 * 0.58;
+	ok(width <= RIGHT_PANE - PAD, "the status line " + JSON.stringify(m[1]) + " needs " + width.toFixed(0) + "px of " + (RIGHT_PANE - PAD));
+}
+
 const SESSION = 1280 - PAD;
 for (const m of src.matchAll(/arg: "((?:[^"\\]|\\.)*)"/g)) {
 	const arg = JSON.parse('"' + m[1] + '"');
