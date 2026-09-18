@@ -68,12 +68,9 @@ else
 fi
 
 # A cache of its own, so that the developer's is not filled with a benchmark's
-# answers. It only takes effect where os.UserCacheDir reads XDG_CACHE_HOME,
-# which is Linux; on macOS that is ~/Library/Caches and the warm sweep reads
-# the developer's cache. The cold sweep is cold either way, because --no-cache
-# and not the directory is what makes it so.
-export XDG_CACHE_HOME="$tmp/cache"
-mkdir -p "$XDG_CACHE_HOME"
+# answers.
+export TENET_CACHE_DIR="$tmp/cache"
+mkdir -p "$TENET_CACHE_DIR"
 
 if ! "$bin" auth --status >"$tmp/auth.txt" 2>&1; then
 	cat "$tmp/auth.txt" >&2

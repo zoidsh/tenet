@@ -98,6 +98,10 @@ type Report struct {
 	// Quiet drops the summary line, leaving only the findings themselves.
 	Quiet bool
 
+	// Receipt says the run was excused by a receipt: this exact staged tree
+	// was judged clean already, so nothing was collected or asked about.
+	Receipt bool
+
 	// Next is what to do about the findings, Next above when it is empty.
 	Next string
 }
@@ -239,6 +243,9 @@ func (r Report) legend() string {
 }
 
 func (r Report) summary() string {
+	if r.Receipt {
+		return "0 findings · unchanged since the last clean run"
+	}
 	s := r.Stats
 	var baselined string
 	if len(r.Baselined) > 0 {
@@ -269,6 +276,10 @@ type jsonStats struct {
 	InputTokens int     `json:"input_tokens"`
 	CostUSD     float64 `json:"cost_usd"`
 	DurationMS  int64   `json:"duration_ms"`
+
+	// Receipt is written only when it is true, so that every other run's
+	// stats read exactly as they did before receipts existed.
+	Receipt bool `json:"receipt,omitempty"`
 }
 
 // JSON writes the machine-readable report.
@@ -285,6 +296,7 @@ func (r Report) JSON(w io.Writer) error {
 			InputTokens: r.Stats.InputTokens,
 			CostUSD:     jev.RoundCost(r.Stats.CostUSD),
 			DurationMS:  r.Stats.Duration.Milliseconds(),
+			Receipt:     r.Receipt,
 		},
 		Skipped: r.Skipped,
 	}
