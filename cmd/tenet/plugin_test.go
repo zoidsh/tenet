@@ -262,6 +262,21 @@ func TestPreCommitHookAllowsWhenSkipped(t *testing.T) {
 	}
 }
 
+func TestPreCommitHookAllowsWhenTheRepositoryHasNoConfig(t *testing.T) {
+	tenet := fake(t, "echo 'tenet: no tenet.yml found' >&2\nexit 3\n")
+
+	code, _, stderr := runPreCommit(t, tenet, commitInput)
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if !strings.Contains(stderr, "tenet.yml") {
+		t.Errorf("stderr is %q", stderr)
+	}
+	if !tenet.ran() {
+		t.Error("the lint did not run on a commit")
+	}
+}
+
 func TestPreCommitHookAllowsWhenBinaryIsMissing(t *testing.T) {
 	// The subject is a shell script whose contract is what it does with the
 	// tenet it finds on PATH, and the real binary would put a paid call in a
