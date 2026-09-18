@@ -12,7 +12,7 @@ Three acts on a stage of exactly 1280 by 720, each one blocked and then fixed, w
 
 Black covers the stage for 400 ms at each end, so the cut points are clean, and a hairline along the bottom edge fills over the whole clip, which is how you see on the recording where it starts and ends.
 
-Each tenet's row carries its id, a few plain words for what the rule asks, the bar, and the file and line of its finding. The code act shows the four rules that fire; `no-transcript-comment`, `no-placeholder-phrase` and `assertion-justified` also ran and stayed under 0.14, and their numbers are in `data/cutoff-sweep.txt`.
+Each tenet's row carries its id, a few plain words for what the rule asks, the bar, and the file and line of its finding. The code act shows the four rules that fire; `no-transcript-comment`, `no-placeholder-phrase` and `assertion-justified` also ran and stayed at or under 0.13, and their numbers are in `data/cutoff-sweep.txt`.
 
 ## The numbers
 

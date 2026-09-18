@@ -392,7 +392,7 @@ steps:
           api-key: ${{ secrets.TYPESAFE_API_KEY }}
 ```
 
-The version is pinned to a release, because the release workflow moves the `v1` tag only on a 1.x release; a `v1` to follow the major exists once 1.0 is out. Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
+The version is pinned to a release. The release workflow moves a `v1` tag only on a 1.x release, so `@v1` works once 1.0 is out. Each finding is annotated on the line of the diff it was raised on. `PULL_REQUEST` is no file in the diff, so a finding about the title or the description is in the check run's annotation list rather than against a line. The paths are relative to the repository root, which is where `actions/checkout` puts it unless you gave it a `path` of its own. `annotate: false` turns the annotations off, and the step then prints one JSON document per lint, two of them on a pull request.
 
 ## For agents
 

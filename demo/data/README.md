@@ -29,6 +29,6 @@ sed 's/{fail: 0.01}/{fail: 0.2}/' below-cutoff.yml > sweep.yml   # then 0.4, 0.6
 tenet --config sweep.yml --verbose                               # near misses on stderr
 ```
 
-It costs nothing and asks nothing again: the cache is keyed by the question rather than by the cutoff, so the sweep reads the answers the six runs above already paid for.
+Every verdict it prints is the cached one, because the cache is keyed by the question rather than by the cutoff. The only calls it makes are location questions: a lower cutoff turns answers into findings, and a finding is asked which line it lands on.
 
 The sample's own code is clean before the patch is applied: `tenet .` over it reports 0 findings across 6 windows, and `go vet` and `go test` pass on it and on the fixed state.

@@ -485,7 +485,7 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	main, .xfade, .layer, .fill, .value, .row, .marker, .tenet, #session, #session .line, #blackout {
+	main, .xfade, .layer, .fill, .value, .row, .row.hit, .marker, .tenet, #session, #session .line, #blackout {
 		transition-duration: 1ms;
 	}
 
@@ -561,7 +561,7 @@ const GLOSS = {
 // The code act's four rows are the four that fire, which is what the frame has
 // room for. The three of agent-hygiene left out stayed well under the cutoff
 // in both runs: no-transcript-comment at 0.09 and 0.13, no-placeholder-phrase
-// and assertion-justified under 0.10 in each.
+// and assertion-justified at or under 0.10 in each.
 const CODE_BLOCKED = [
 	{ id: "no-fallback", p: 0.94, at: "billing.go:28" },
 	{ id: "money-in-cents", p: 0.95, at: "billing.go:34" },
@@ -577,23 +577,23 @@ const CODE_PASSED = [
 ];
 
 // Verbatim from demo/sample/agent-change.patch and agent-fix.patch, cut to the
-// lines the findings name and their context, with a gap row wherever lines are
-// left out.
+// lines the findings name and the lines around them, contiguous within each
+// hunk, with a gap row wherever lines are left out. A line of more than 56
+// columns wraps rather than being cut, and the pane holds fifteen lines, which
+// is what the test file is down to one line for.
 const CODE_DIFF_BLOCKED = [
 	{ k: "file", t: "billing.go" },
 	{ k: "add", t: "\tif err != nil {" },
+	{ k: "add", t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
 	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback" },
-	{ k: "add", t: "\t}" },
 	{ k: "gap", t: "…" },
 	{ k: "add", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
 	{ k: "add", t: "\t// divide the cents by 100 to get dollars" },
 	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
-	{ k: "add", t: "\treturn dollars - dollars*discount.Percent/100" },
+	{ k: "add", t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
 	{ k: "gap", t: "…" },
 	{ k: "file", t: "billing_test.go" },
-	{ k: "add", t: "func TestDiscountedTotal(t *testing.T) {" },
-	{ k: "add", t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" },
-	{ k: "add", t: "\t\tID:    \"INV-1042\"," }
+	{ k: "add", t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" }
 ];
 
 const CODE_DIFF_PASSED = [
@@ -763,7 +763,8 @@ const ACTS = [
 // back: the left pane is fully in a second before jev is asked, a verdict
 // stands for four seconds in the code act and three in the other two, the
 // caption shows for 1.2 s, the swapped text is in for a second before the bars
-// re-run, and a pass holds for three seconds, three and a half at the end.
+// re-run, and a pass holds for 3.08 s, which is where the next act's round
+// number falls, and for 3.5 s at the end.
 const T = {
 	PRE: 400,
 	POST: 400,
@@ -912,7 +913,7 @@ function renderTenets(rows, order) {
 }
 
 function money(usd) {
-	return "$" + usd.toFixed(5);
+	return "$" + usd.toFixed(6);
 }
 
 // Everything readable changes the same way: out over T.OUT, swapped, back in.
@@ -953,11 +954,10 @@ function setHeadline(lead, tail, tone) {
 }
 
 function sublineText(act, findings) {
-	const calls = act.blocked.windows === 1 ? "one jev call" : "one jev call per window";
 	const head = findings === null
 		? "judged against " + act.source
 		: findings + (findings === 1 ? " finding from " : " findings from ") + act.source;
-	return head + " · " + calls + " · cutoff 0.80";
+	return head + " · cutoff 0.80";
 }
 
 function stripText(stats) {
