@@ -1,7 +1,7 @@
 {
   "name": "tenet",
   "description": "Lints the changed lines against the repository's tenets before every commit, and says what to do with a finding.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "author": {
     "name": "zoid",
     "url": "https://github.com/zoidsh/tenet"
