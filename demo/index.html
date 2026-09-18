@@ -702,13 +702,17 @@ const ACTS = [
 		fixedRows: CODE_PASSED,
 		blocked: { findings: 4, duration_ms: 893, input_tokens: 7575, cost_usd: 0.000318, calls: 4, windows: 2 },
 		passed: { findings: 0, duration_ms: 795, input_tokens: 4530, cost_usd: 0.000190, calls: 2, windows: 2 },
+		// One commit runs through the strip, which is what git does: the
+		// pre-commit hook judges the code, then the commit-msg hook judges the
+		// message of that same commit, so the subject typed here is the bad one
+		// act 2 goes on to reword.
 		session: [
 			{ when: "open", kind: "user", t: "Add discount codes to invoice totals" },
-			{ when: "call", kind: "tool", name: "Bash", arg: "git commit -m \"Add discount codes\"" },
+			{ when: "call", kind: "tool", name: "Bash", arg: "git commit -m \"Update billing.go and billing_test.go\"" },
 			{ when: "verdict", kind: "result", t: "tenet: 4 findings · commit blocked" },
 			{ when: "caption", kind: "agent", t: "fixing billing.go:28, :34, :36 and billing_test.go:36" },
-			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Add discount codes\"" },
-			{ when: "pass", kind: "result good", t: "tenet: 0 findings · committed" }
+			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Update billing.go and billing_test.go\"" },
+			{ when: "pass", kind: "result good", t: "tenet: code passed · 0 findings" }
 		]
 	},
 	{
@@ -727,12 +731,12 @@ const ACTS = [
 		fixedRows: [{ id: "subject-says-what-changed", p: 0.14, at: null }],
 		blocked: { findings: 1, duration_ms: 781, input_tokens: 891, cost_usd: 0.000037, calls: 2, windows: 1 },
 		passed: { findings: 0, duration_ms: 545, input_tokens: 573, cost_usd: 0.000024, calls: 1, windows: 1 },
+		// The commit act opens with no prompt and no tool line: it is the same
+		// command act 1 ran, now past the code and stopped on its message.
 		session: [
-			{ when: "open", kind: "user", t: "Commit it" },
-			{ when: "call", kind: "tool", name: "Bash", arg: "git commit" },
-			{ when: "verdict", kind: "result", t: "tenet: 1 finding · reword the message" },
+			{ when: "verdict", kind: "result", t: "tenet: commit message · 1 finding · reword it" },
 			{ when: "caption", kind: "agent", t: "rewording the subject" },
-			{ when: "again", kind: "tool", name: "Bash", arg: "git commit" },
+			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Add discount codes, rounding half cents to the house\"" },
 			{ when: "pass", kind: "result good", t: "tenet: 0 findings · committed" }
 		]
 	},
