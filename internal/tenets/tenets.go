@@ -137,6 +137,10 @@ type Tenet struct {
 	Examples     []Example `yaml:"examples"`
 	ExamplesFrom string    `yaml:"examples_from"`
 
+	// ExamplesPath is the file the examples beside the config were read from,
+	// empty for a tenet whose examples are all inline or built in.
+	ExamplesPath string `yaml:"-"`
+
 	// Origin is where the tenet reached the resolved config from: the name of
 	// a preset, OriginRules or OriginLocal.
 	Origin string `yaml:"-"`
@@ -345,16 +349,24 @@ func validateExamples(id string, kinds []string, examples []Example) error {
 }
 
 // resolveExamples appends the examples each tenet keeps in a sibling file,
-// named relative to dir, to the ones written inline.
+// named relative to dir, to the ones written inline. The file is
+// examples/<id>.yml by convention, and examples_from names another instead.
 func (c *Config) resolveExamples(dir string) error {
 	for _, t := range c.Tenets {
-		if t.ExamplesFrom == "" {
-			continue
+		named := t.ExamplesFrom != ""
+		path := filepath.Join(dir, "examples", t.ID+".yml")
+		if named {
+			path = filepath.Join(dir, filepath.FromSlash(t.ExamplesFrom))
 		}
-		path := filepath.Join(dir, filepath.FromSlash(t.ExamplesFrom))
 		data, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("tenet %q: examples_from: %w", t.ID, err)
+			if !named && errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			if named {
+				return fmt.Errorf("tenet %q: examples_from: %w", t.ID, err)
+			}
+			return fmt.Errorf("tenet %q: %w", t.ID, err)
 		}
 		var examples []Example
 		decoder := yaml.NewDecoder(bytes.NewReader(data))
@@ -366,6 +378,7 @@ func (c *Config) resolveExamples(dir string) error {
 			return fmt.Errorf("%s: %w", path, err)
 		}
 		t.Examples = append(t.Examples, examples...)
+		t.ExamplesPath = path
 	}
 	return nil
 }
