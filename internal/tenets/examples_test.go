@@ -86,13 +86,13 @@ func TestExamplesFromASiblingFile(t *testing.T) {
 tenets:
   - id: comment-why
     tenet: A comment says why.
-    examples_from: examples/comment-why.yml
+    examples_from: calibration/comment-why.yml
     examples:
       - label: ok
         code: |
           x = 1
 `)
-	write(t, filepath.Join(filepath.Dir(config), "examples", "comment-why.yml"), `- label: violation
+	write(t, filepath.Join(filepath.Dir(config), "calibration", "comment-why.yml"), `- label: violation
   lines: 1
   code: |
     // add one
@@ -109,6 +109,123 @@ tenets:
 	}
 	if got[0].Label != tenets.LabelOK || got[1].Label != tenets.LabelViolation || !got[1].Lines.Contains(1) {
 		t.Errorf("examples are %#v", got)
+	}
+	if want := filepath.Join(filepath.Dir(config), "calibration", "comment-why.yml"); cfg.Tenets[0].ExamplesPath != want {
+		t.Errorf("examples path is %q, want %q", cfg.Tenets[0].ExamplesPath, want)
+	}
+}
+
+const bareTenet = `version: 1
+tenets:
+  - id: comment-why
+    tenet: A comment says why.
+`
+
+const conventionExamples = `- label: violation
+  lines: 1
+  code: |
+    // add one
+    x = x + 1
+`
+
+func TestExamplesFromTheConventionFile(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, tenets.FileName)
+	write(t, config, bareTenet)
+	examples := filepath.Join(filepath.Dir(config), "examples", "comment-why.yml")
+	write(t, examples, conventionExamples)
+
+	cfg, err := tenets.Load(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.Tenets[0]
+	if len(got.Examples) != 1 || got.Examples[0].Label != tenets.LabelViolation {
+		t.Fatalf("examples are %#v", got.Examples)
+	}
+	if got.ExamplesPath != examples {
+		t.Errorf("examples path is %q, want %q", got.ExamplesPath, examples)
+	}
+}
+
+func TestInlineExamplesKeepTheConventionFile(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, tenets.FileName)
+	write(t, config, `version: 1
+tenets:
+  - id: comment-why
+    tenet: A comment says why.
+    examples:
+      - label: ok
+        code: |
+          x = 1
+`)
+	write(t, filepath.Join(filepath.Dir(config), "examples", "comment-why.yml"), conventionExamples)
+
+	cfg, err := tenets.Load(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.Tenets[0].Examples
+	if len(got) != 2 {
+		t.Fatalf("got %d examples, want the inline one and the one from the file", len(got))
+	}
+	if got[0].Label != tenets.LabelOK || got[1].Label != tenets.LabelViolation {
+		t.Errorf("examples are %#v", got)
+	}
+}
+
+func TestExamplesFromOverridesTheConventionFile(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, tenets.FileName)
+	write(t, config, `version: 1
+tenets:
+  - id: comment-why
+    tenet: A comment says why.
+    examples_from: calibration/comment-why.yml
+`)
+	write(t, filepath.Join(filepath.Dir(config), "calibration", "comment-why.yml"), `- label: ok
+  code: |
+    x = 1
+`)
+	write(t, filepath.Join(filepath.Dir(config), "examples", "comment-why.yml"), conventionExamples)
+
+	cfg, err := tenets.Load(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.Tenets[0].Examples
+	if len(got) != 1 || got[0].Label != tenets.LabelOK {
+		t.Fatalf("examples are %#v, want only the ones examples_from names", got)
+	}
+}
+
+func TestTheConventionFileIsValidated(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, tenets.FileName)
+	write(t, config, bareTenet)
+	write(t, filepath.Join(filepath.Dir(config), "examples", "comment-why.yml"), "- label: nope\n  code: \"y = 1\"\n")
+
+	_, err := tenets.Load(config)
+	if err == nil {
+		t.Fatal("want an error")
+	}
+	if !strings.Contains(err.Error(), "comment-why.yml") || !strings.Contains(err.Error(), "label must be") {
+		t.Errorf("error %q should name the file and the problem", err)
+	}
+}
+
+func TestNoExamplesFileAndNoField(t *testing.T) {
+	dir := t.TempDir()
+	config := filepath.Join(dir, tenets.FileName)
+	write(t, config, bareTenet)
+
+	cfg, err := tenets.Load(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Tenets[0]; len(got.Examples) != 0 || got.ExamplesPath != "" {
+		t.Errorf("tenet is %#v", got)
 	}
 }
 
