@@ -7,7 +7,7 @@
           {
             "type": "command",
             "if": "Bash(git commit *)",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/pre-commit.sh",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}\"/hooks/pre-commit.sh",
             "statusMessage": "Linting the staged changes against the tenets"
           }
         ]
