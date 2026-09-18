@@ -120,9 +120,10 @@ type Criteria struct {
 	False string `yaml:"false"`
 }
 
-// Tenet is one rule. Source is where init read the rule from, as file:line;
-// nothing judges with it, it is there so a reader can go back to the sentence
-// the tenet was drafted from.
+// Tenet is one rule. Source is where init read the rule from, as the file
+// followed by the sentence that file wrote; nothing judges with it, it is
+// there so a reader can go back to the sentence the tenet was drafted from and
+// so sync can tell a reworded rule from a deleted one.
 type Tenet struct {
 	ID       string    `yaml:"id"`
 	Tenet    string    `yaml:"tenet"`

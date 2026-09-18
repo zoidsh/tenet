@@ -136,7 +136,7 @@ func Draft(sorted []Sorted, presets []string) ([]byte, error) {
 			ID:     c.ID,
 			Tenet:  c.Text,
 			Kind:   draftKind(c.Kind),
-			Source: fmt.Sprintf("%s:%d", c.File, c.Line),
+			Source: SourceLine(c.File, c.Text),
 		})
 	}
 

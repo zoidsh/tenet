@@ -5,15 +5,15 @@ tenets:
   - id: comment-says-why-code-exists
     tenet: A comment says why the code exists, not what it does.
     kind: [code]
-    source: CLAUDE.md:42
+    source: 'CLAUDE.md: A comment says why the code exists, not what it does.'
   - id: comment-says-why-written-way
     tenet: A comment says why it is written this way.
     kind: [code]
-    source: AGENTS.md:7
+    source: 'AGENTS.md: A comment says why it is written this way.'
   - id: commit-subject-says-changed-reader
     tenet: The commit subject says what changed for a reader.
     kind: [commit]
-    source: AGENTS.md:9
+    source: 'AGENTS.md: The commit subject says what changed for a reader.'
   - id: never-leave-branch-without-running
     tenet: Never leave a branch without running the tests.
-    source: AGENTS.md:11
+    source: 'AGENTS.md: Never leave a branch without running the tests.'
