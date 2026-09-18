@@ -110,6 +110,7 @@ type jsonReport struct {
 		InputTokens int     `json:"input_tokens"`
 		CostUSD     float64 `json:"cost_usd"`
 		DurationMS  int64   `json:"duration_ms"`
+		Receipt     bool    `json:"receipt"`
 	} `json:"stats"`
 	Skipped []struct {
 		File   string `json:"file"`

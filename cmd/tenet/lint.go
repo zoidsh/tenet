@@ -18,6 +18,7 @@ import (
 	"github.com/zoidsh/tenet/internal/jev"
 	"github.com/zoidsh/tenet/internal/judge"
 	"github.com/zoidsh/tenet/internal/provider"
+	"github.com/zoidsh/tenet/internal/receipt"
 	"github.com/zoidsh/tenet/internal/report"
 	"github.com/zoidsh/tenet/internal/source"
 	"github.com/zoidsh/tenet/internal/tenets"
@@ -191,7 +192,21 @@ type run struct {
 // against the files it covers, and settling that after the calls would have
 // paid for them.
 func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error) {
-	ctx := cmd.Context()
+	r, err := openRun(o)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.collect(cmd, paths, o); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+// openRun settles the config, where tenet's files live and which model will be
+// asked. It is what a receipt is judged against, and it is separate from the
+// collecting because a run a receipt excuses asks the model nothing and so
+// needs no API key.
+func openRun(o *lintOptions) (*run, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -215,11 +230,17 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	}
 	cfg.SetModel(model)
 
-	p, key, err := keyFor(o.g, cfg)
+	return &run{dir: dir, cfg: cfg, configDir: configDir, model: model, set: &source.Set{}}, nil
+}
+
+func (r *run) collect(cmd *cobra.Command, paths []string, o *lintOptions) error {
+	ctx := cmd.Context()
+	p, key, err := keyFor(o.g, r.cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	cfg := r.cfg
 	ids := make([]string, 0, len(cfg.Tenets))
 	for _, t := range cfg.Tenets {
 		ids = append(ids, t.ID)
@@ -231,22 +252,16 @@ func collectRun(cmd *cobra.Command, paths []string, o *lintOptions) (*run, error
 	// where they would be relative to.
 	set := &source.Set{}
 	if text := textPath(o); text == "" || applies(cfg, text) {
-		set, err = source.Collect(ctx, source.Options{Dir: dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, PRText: o.prText, Tenets: ids})
+		set, err = source.Collect(ctx, source.Options{Dir: r.dir, Base: o.base, Paths: paths, CommitMsg: o.commitMsg, PRText: o.prText, Tenets: ids})
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return &run{
-		dir:       dir,
-		cfg:       cfg,
-		configDir: configDir,
-
-		model:    model,
-		provider: p,
-		key:      key,
-		set:      set,
-		outcome:  judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}},
-	}, nil
+	r.provider = p
+	r.key = key
+	r.set = set
+	r.outcome = judge.Outcome{Stats: judge.Stats{Files: len(set.Files)}}
+	return nil
 }
 
 // judge asks the model about everything collected.
@@ -270,7 +285,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return fail(err)
 	}
 
-	run, err := collectRun(cmd, paths, o)
+	run, err := openRun(o)
 	if err != nil {
 		return fail(err)
 	}
@@ -278,6 +293,14 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	// a file that is not there says so instead of billing for the answer first.
 	accepted, err := o.accepted(run.configDir)
 	if err != nil {
+		return fail(err)
+	}
+	receiptPath, receiptKey := receiptFor(cmd, run, paths, o)
+	if receiptKey != "" && receipt.Load(receiptPath) == receiptKey {
+		return reportExcused(cmd, o)
+	}
+
+	if err := run.collect(cmd, paths, o); err != nil {
 		return fail(err)
 	}
 	if err := run.judge(cmd, o); err != nil {
@@ -328,24 +351,126 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	if code := r.ExitCode(); code != report.ExitOK {
 		return &exitError{code: code}
 	}
+	if receiptKey != "" {
+		saveReceipt(cmd, o, receiptPath, receiptKey)
+	}
 	return nil
+}
+
+// reportExcused reports the run a receipt excused, which found nothing because
+// this staged tree was judged clean already.
+func reportExcused(cmd *cobra.Command, o *lintOptions) error {
+	out := cmd.OutOrStdout()
+	color, err := report.Colored(out, o.g.color)
+	if err != nil {
+		return fail(err)
+	}
+	r := report.Report{Quiet: o.quiet, Receipt: true, ShowBaselined: o.showBaselined}
+	if err := r.Write(out, o.format, color); err != nil {
+		return fail(err)
+	}
+	return nil
+}
+
+// receiptFor is the receipt this run may be excused by and would leave behind,
+// empty when there is none to be had. Only the default staged run has one: the
+// index is what it reads every file's content out of, so the tree the index
+// writes says exactly what would be judged. --no-cache asks for fresh answers,
+// which is also a run that wants no receipt, neither read nor written.
+//
+// Whatever goes wrong here leaves the run without a receipt rather than
+// stopping it, because a receipt only ever saves a call, and a commit must
+// never fail over one.
+func receiptFor(cmd *cobra.Command, r *run, paths []string, o *lintOptions) (path, key string) {
+	if len(paths) > 0 || o.base != "" || o.commitMsg != "" || o.prText != "" || o.noCache {
+		return "", ""
+	}
+	ctx := cmd.Context()
+	path, err := receipt.Path(ctx, r.dir)
+	if err != nil {
+		logReceipt(cmd, o, err)
+		return "", ""
+	}
+	in, err := receiptInputs(ctx, r, o)
+	if err != nil {
+		logReceipt(cmd, o, err)
+		return "", ""
+	}
+	return path, receipt.Key(in)
+}
+
+func receiptInputs(ctx context.Context, r *run, o *lintOptions) (receipt.Inputs, error) {
+	head, err := receipt.Head(ctx, r.dir)
+	if err != nil {
+		return receipt.Inputs{}, err
+	}
+	tree, err := receipt.Tree(ctx, r.dir)
+	if err != nil {
+		return receipt.Inputs{}, err
+	}
+	config, err := os.ReadFile(r.cfg.Path)
+	if err != nil {
+		return receipt.Inputs{}, err
+	}
+	in := receipt.Inputs{Head: head, Tree: tree, Config: config, Model: r.model}
+	for _, t := range r.cfg.Tenets {
+		if t.ExamplesFrom == "" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(filepath.Dir(r.cfg.Path), filepath.FromSlash(t.ExamplesFrom)))
+		if err != nil {
+			return receipt.Inputs{}, err
+		}
+		in.Examples = append(in.Examples, receipt.Example{Name: t.ExamplesFrom, Data: data})
+	}
+	if path := o.baselinePath(r.configDir); path != "" {
+		data, err := os.ReadFile(path)
+		switch {
+		case err == nil:
+			in.Baseline, in.HasBaseline = data, true
+		case !errors.Is(err, fs.ErrNotExist):
+			return receipt.Inputs{}, err
+		}
+	}
+	return in, nil
+}
+
+func saveReceipt(cmd *cobra.Command, o *lintOptions, path, key string) {
+	if err := receipt.Save(path, key); err != nil {
+		logReceipt(cmd, o, err)
+	}
+}
+
+func logReceipt(cmd *cobra.Command, o *lintOptions, err error) {
+	if o.verbose {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "no receipt: %s\n", err)
+	}
 }
 
 // accepted is the baseline this run honours, nil when there is none. The
 // default file being absent is how most repositories run, so it is no error,
 // while a named one being absent is a typo worth stopping for.
 func (o *lintOptions) accepted(configDir string) (*baseline.File, error) {
-	if o.noBaseline {
+	path := o.baselinePath(configDir)
+	if path == "" {
 		return nil, nil
 	}
-	if o.baseline != "" {
-		return baseline.Load(o.baseline)
-	}
-	f, err := baseline.Load(filepath.Join(configDir, baseline.Name))
-	if errors.Is(err, fs.ErrNotExist) {
+	f, err := baseline.Load(path)
+	if o.baseline == "" && errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
 	return f, err
+}
+
+// baselinePath is the file the run honours, empty when it honours none.
+func (o *lintOptions) baselinePath(configDir string) string {
+	switch {
+	case o.noBaseline:
+		return ""
+	case o.baseline != "":
+		return o.baseline
+	}
+	return filepath.Join(configDir, baseline.Name)
 }
 
 func textPath(o *lintOptions) string {

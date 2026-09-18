@@ -52,8 +52,16 @@ func (c *Cache) WriteOnly() {
 	c.noRead = true
 }
 
+// DirEnv names the cache directory outright. os.UserCacheDir reads
+// XDG_CACHE_HOME on Linux alone, so it is no way for a test or a benchmark to
+// keep its answers out of the developer's own cache everywhere.
+const DirEnv = "TENET_CACHE_DIR"
+
 // Open prepares the cache directory, defaulting to the user's cache home.
 func Open(dir string) (*Cache, error) {
+	if dir == "" {
+		dir = os.Getenv(DirEnv)
+	}
 	if dir == "" {
 		base, err := os.UserCacheDir()
 		if err != nil {
