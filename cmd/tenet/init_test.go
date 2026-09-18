@@ -112,7 +112,7 @@ func TestInitEndToEnd(t *testing.T) {
 	if got.ID != "comment-says-why-code-exists" || got.Tenet != commentRule {
 		t.Errorf("tenet is %#v", got)
 	}
-	if got.Source != "CLAUDE.md:5" || got.FailValue() != tenets.DefaultFail {
+	if got.Source != importer.SourceLine("CLAUDE.md", commentRule) || got.FailValue() != tenets.DefaultFail {
 		t.Errorf("source is %q, cutoff %v", got.Source, got.FailValue())
 	}
 
@@ -314,7 +314,8 @@ func writeCredentials(t *testing.T, dir, content string) {
 
 func TestInitFromNamedFiles(t *testing.T) {
 	dir := initRepo(t)
-	writeFile(t, dir, "other.md", "- Never mock a comment in a test file.\n")
+	const rule = "Never mock a comment in a test file."
+	writeFile(t, dir, "other.md", "- "+rule+"\n")
 
 	if code, _, stderr := runInitCmd(t, "--from", "other.md"); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
@@ -323,7 +324,7 @@ func TestInitFromNamedFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Tenets) != 1 || cfg.Tenets[0].Source != "other.md:1" {
+	if len(cfg.Tenets) != 1 || cfg.Tenets[0].Source != importer.SourceLine("other.md", rule) {
 		t.Errorf("drafted %#v", cfg.Tenets)
 	}
 }
