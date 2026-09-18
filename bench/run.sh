@@ -213,7 +213,6 @@ prices() {
 	' bench/prices.yml
 }
 
-
 # One call per model, all made before the table is written so that a failure
 # stops the run rather than leaving a half-measured table behind. The working
 # directory is the throwaway one rather than the repository, so that no project
@@ -224,6 +223,16 @@ agent_runs() {
 		git -C "$tmp/repo" diff "$BASE"
 	} >"$tmp/prompt.txt"
 	prices >"$tmp/prices.tsv"
+	# Every entry is checked before the first call, so that a half-written one
+	# costs nothing rather than being found out four calls in.
+	while IFS=$'\t' read -r id _ inp outp _ _ _; do
+		for field in "$id" "$inp" "$outp"; do
+			if [ -z "$field" ] || [ "$field" = null ]; then
+				echo "bench/run.sh: the bench/prices.yml entry for '${id:-an entry with no id}' is missing an id, an input price or an output price" >&2
+				exit 2
+			fi
+		done
+	done <"$tmp/prices.tsv"
 	while IFS=$'\t' read -r id _ _ _ _ _ _; do
 		if ! (cd "$tmp" && claude -p --model "$id" --tools "" --system-prompt "" \
 			--strict-mcp-config --setting-sources "" --output-format json \
@@ -231,13 +240,13 @@ agent_runs() {
 			echo "bench/run.sh: the claude CLI exited non-zero for $id" >&2
 			exit 2
 		fi
+		if ! jq -e '.usage.input_tokens and .usage.output_tokens' "$tmp/agent-$id.json" >/dev/null 2>&1; then
+			echo "bench/run.sh: the claude call for $id returned no usable JSON, so it cannot be priced" >&2
+			exit 2
+		fi
 		if [ "$(jq -r '.is_error' "$tmp/agent-$id.json")" != false ]; then
 			echo "bench/run.sh: the claude call for $id reported an error:" >&2
 			jq -r '.result // "no result field"' "$tmp/agent-$id.json" >&2
-			exit 2
-		fi
-		if [ "$(jq -r 'has("usage")' "$tmp/agent-$id.json")" != true ]; then
-			echo "bench/run.sh: the claude call for $id returned no usage, so it cannot be priced" >&2
 			exit 2
 		fi
 	done <"$tmp/prices.tsv"
@@ -380,7 +389,7 @@ agent_runs
 		agent_row "$id" "$name" "$inp" "$outp"
 	done <"$tmp/prices.tsv"
 	echo
-	echo "Every row here is measured. Each agent row is one \`claude -p\` call through the Claude Code CLI, with an empty system prompt, no tools, no MCP servers and no settings of any kind, so that nothing but the model differs between them. All four were sent the identical prompt: one instruction line, then the $(group "$base_bytes") bytes of \`git diff $BASE\`. Input tokens are what the API counted for that call, including any cache reads; output tokens include the model's thinking tokens, which the per-model lines below give on their own. Cost is those token counts priced at the list prices in bench/prices.yml rather than the figure the CLI reports for the call. Time is the call's wall clock as the CLI reports it, so it carries the CLI's own startup with it. tenet's row is measured the same way it is elsewhere in this file, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
+	echo "Every row here is measured. Each agent row is one \`claude -p\` call through the Claude Code CLI, with an empty system prompt, no tools, no MCP servers and no settings of any kind, so that nothing but the model differs between them. All four were sent the identical prompt: one instruction line, then the $(group "$base_bytes") bytes of \`git diff $BASE\`. Input tokens are what the API counted for that call, including any cache reads; output tokens include the model's thinking tokens, which the per-model lines below give on their own. Cost is those token counts at the list prices in bench/prices.yml, all input tokens at the input price, rather than the figure the CLI reports for the call. Time is the turn's wall clock, from the start of the turn to the result, so it is more than the API time alone. tenet's row is measured the same way it is elsewhere in this file, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
 	echo
 	echo "Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. A reviewer that opens the files around the diff, or that is asked again about what it missed, costs more than this and takes longer."
 	while IFS=$'\t' read -r id _ _ _ src day note; do

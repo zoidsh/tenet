@@ -1,6 +1,7 @@
 # The one file under bench/ that is edited by hand. bench/run.sh reads it for
-# the agent-reviewer comparison and prints n/a for any field that is still
-# null, so a missing number never fails the run or turns into a guess.
+# the agent-reviewer comparison: every entry here is a call it makes and a row
+# it writes, and an entry without an id or a price stops the run before it
+# spends anything.
 #
 # The prices are the vendors' own published per-million-token prices, read from
 # their pricing pages, and each entry carries its source and the date it was
