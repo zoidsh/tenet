@@ -25,3 +25,5 @@ A file URL is enough: `open demo/index.html`, or `xdg-open`. The page needs the 
 Record a window of at least 1280 by 720 at 30 fps, capturing the stage rather than the whole screen; it scales down to fit a smaller window, so give it room. Reload or press space to start the take. The page is dark whatever the system theme is, and honours `prefers-reduced-motion` by keeping the beats and dropping the transitions, which is not the take to record.
 
 The acts start at the milliseconds in `T.AT` at the top of the script, and each act's own beats are in its `off`. The console logs the act, verdict and pass times on load.
+
+`node demo/check.js` plays the page where there is no browser, under a DOM stub and a virtual clock, and fails if a beat, a marker, a session line or a stylesheet token has moved.
