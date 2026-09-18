@@ -751,7 +751,7 @@ const ACTS = [
 			{ when: "verdict", kind: "result", t: "tenet: 4 findings · commit blocked" },
 			{ when: "caption", kind: "agent", t: "fixing billing.go:28, :34, :36 and billing_test.go:36" },
 			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Update billing.go and billing_test.go\"" },
-			{ when: "pass", kind: "result good", t: "tenet: code passed · 0 findings" }
+			{ when: "pass", kind: "result good", t: "tenet: 0 findings · code passed" }
 		]
 	},
 	{
@@ -773,7 +773,7 @@ const ACTS = [
 		// The commit act opens with no prompt and no tool line: it is the same
 		// command act 1 ran, now past the code and stopped on its message.
 		session: [
-			{ when: "verdict", kind: "result", t: "tenet: commit message · 1 finding · reword it" },
+			{ when: "verdict", kind: "result", t: "tenet: 1 finding · reword the message" },
 			{ when: "caption", kind: "agent", t: "rewording the subject" },
 			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Add discount codes, rounding half cents to the house\"" },
 			{ when: "pass", kind: "result good", t: "tenet: 0 findings · committed" }
