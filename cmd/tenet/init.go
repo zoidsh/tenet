@@ -33,13 +33,12 @@ var ruleFiles = []string{
 	"BUGBOT.md",
 }
 
-type initOptions struct {
+// draftOptions are what init and sync both read: which rule files to split,
+// what the sort may do and where the answer goes.
+type draftOptions struct {
 	g        *globalOptions
 	from     []string
-	presets  []string
-	agents   []string
 	dryRun   bool
-	force    bool
 	config   string
 	format   string
 	noCache  bool
@@ -47,33 +46,49 @@ type initOptions struct {
 	noPrompt bool
 }
 
+type initOptions struct {
+	draftOptions
+	presets []string
+	agents  []string
+	force   bool
+}
+
+// addDraftFlags gives a command the flags init and sync share, worded the same
+// way in both because they do the same thing in both.
+func addDraftFlags(cmd *cobra.Command, o *draftOptions, dryRun, config string) {
+	f := cmd.Flags()
+	f.StringArrayVar(&o.from, "from", nil, "read this rule file instead of the ones "+cmd.Name()+" looks for; repeatable")
+	f.BoolVar(&o.dryRun, "dry-run", false, dryRun)
+	f.StringVar(&o.config, "config", "", config)
+	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
+	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
+	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
+	f.BoolVar(&o.noPrompt, "no-prompt", false, "never ask for an API key, even at a terminal")
+}
+
 func newInitCmd(g *globalOptions) *cobra.Command {
-	o := &initOptions{g: g}
+	o := &initOptions{draftOptions: draftOptions{g: g}}
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Draft a " + tenets.FileName + " from the rule files your agents already read",
 		Args:  cobra.NoArgs,
 		RunE:  func(cmd *cobra.Command, _ []string) error { return runInit(cmd, o) },
 	}
+	addDraftFlags(cmd, &o.draftOptions,
+		"print what would be drafted without writing it",
+		"path to write, "+tenets.FileName+" in the repository root by default")
 	f := cmd.Flags()
-	f.StringArrayVar(&o.from, "from", nil, "read this rule file instead of the ones init looks for; repeatable")
 	f.StringArrayVar(&o.presets, "preset", nil, "start from this built-in preset instead of reading any rule file; repeatable")
 	f.StringArrayVar(&o.agents, "agent", nil, "write the tenet instructions where this agent reads them: cursor, agents or claude; repeatable")
-	f.BoolVar(&o.dryRun, "dry-run", false, "print what would be drafted without writing it")
 	f.BoolVar(&o.force, "force", false, "overwrite an existing "+tenets.FileName)
-	f.StringVar(&o.config, "config", "", "path to write, "+tenets.FileName+" in the repository root by default")
-	f.StringVar(&o.format, "format", "", "output format: text or json (default text on a terminal, json otherwise)")
-	f.BoolVar(&o.noCache, "no-cache", false, "ask the model again instead of reusing cached answers, which are still written")
-	f.BoolVarP(&o.verbose, "verbose", "v", false, "report every call on stderr")
-	f.BoolVar(&o.noPrompt, "no-prompt", false, "never ask for an API key, even at a terminal")
 	return cmd
 }
 
-// keyForInit asks for a key rather than only naming the variable, because
+// keyForDraft asks for a key rather than only naming the variable, because
 // init is the first command most people run and the sort it is about to do
 // needs one. Anything that is not a person at a terminal is told the same
 // thing every other command tells them.
-func keyForInit(cmd *cobra.Command, o *initOptions) (provider.Provider, string, error) {
+func keyForDraft(cmd *cobra.Command, o *draftOptions) (provider.Provider, string, error) {
 	p, err := provider.Lookup(provider.Default)
 	if err != nil {
 		return p, "", err
@@ -158,7 +173,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		}
 	}
 
-	paths, err := o.rulePaths(root)
+	paths, err := rulePaths(root, o.from)
 	if err != nil {
 		return fail(err)
 	}
@@ -175,24 +190,16 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 		return o.writePresets(cmd, []string{importer.DefaultPreset}, target, shown, "found no rule files to read; ")
 	}
 
-	var candidates []importer.Candidate
-	for _, path := range paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fail(err)
-		}
-		name, err := sourceName(root, dir, path)
-		if err != nil {
-			return fail(err)
-		}
-		candidates = append(candidates, importer.Split(name, data)...)
-	}
-
-	p, key, err := keyForInit(cmd, o)
+	candidates, _, err := splitRules(root, dir, paths)
 	if err != nil {
 		return fail(err)
 	}
-	sorted, stats, err := sortCandidates(ctx, cmd, o, p, key, candidates)
+
+	p, key, err := keyForDraft(cmd, &o.draftOptions)
+	if err != nil {
+		return fail(err)
+	}
+	sorted, stats, err := sortCandidates(ctx, cmd, &o.draftOptions, p, key, candidates)
 	if err != nil {
 		return fail(err)
 	}
@@ -212,7 +219,7 @@ func runInit(cmd *cobra.Command, o *initOptions) error {
 	return writeImport(out, r, o.format)
 }
 
-func sortCandidates(ctx context.Context, cmd *cobra.Command, o *initOptions, p provider.Provider, key string, candidates []importer.Candidate) ([]importer.Sorted, importer.Stats, error) {
+func sortCandidates(ctx context.Context, cmd *cobra.Command, o *draftOptions, p provider.Provider, key string, candidates []importer.Candidate) ([]importer.Sorted, importer.Stats, error) {
 	sorter := &importer.Sorter{
 		Asker: p.Client(key, jev.DefaultModel, o.g.clientOptions(p)...),
 		Model: jev.DefaultModel,
@@ -343,7 +350,7 @@ func (o *initOptions) writeAgentFile(path string, target importer.AgentTarget) (
 // target is the file to write, absolute because everything downstream of it
 // is stated relative to somewhere: the repository root for a source line, the
 // working directory for what is printed.
-func (o *initOptions) target(root string) (string, error) {
+func (o *draftOptions) target(root string) (string, error) {
 	if o.config == "" {
 		return source.ConfigPath(root), nil
 	}
@@ -374,16 +381,38 @@ func (o *initOptions) checkTarget(target string) error {
 	}
 }
 
+// splitRules turns every rule file into the candidates the sort decides on,
+// each naming the file by the path a tenet's source will quote. The names come
+// back as well, because a file that was read and held no rule still says
+// something about the rules drafted from it before.
+func splitRules(root, dir string, paths []string) ([]importer.Candidate, []string, error) {
+	var candidates []importer.Candidate
+	names := make([]string, 0, len(paths))
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, nil, err
+		}
+		name, err := sourceName(root, dir, path)
+		if err != nil {
+			return nil, nil, err
+		}
+		names = append(names, name)
+		candidates = append(candidates, importer.Split(name, data)...)
+	}
+	return candidates, names, nil
+}
+
 // rulePaths are the files to draft from: the ones named on the command line,
 // or every well-known instruction file in the repository.
-func (o *initOptions) rulePaths(root string) ([]string, error) {
-	if len(o.from) > 0 {
-		for _, path := range o.from {
+func rulePaths(root string, from []string) ([]string, error) {
+	if len(from) > 0 {
+		for _, path := range from {
 			if _, err := os.Stat(path); err != nil {
 				return nil, err
 			}
 		}
-		return o.from, nil
+		return from, nil
 	}
 	var paths []string
 	for _, pattern := range ruleFiles {
