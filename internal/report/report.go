@@ -20,6 +20,9 @@ const (
 	ExitOK      = 0
 	ExitFinding = 1
 	ExitError   = 2
+	// A hook that runs on every commit in every repository needs to tell a
+	// repository that does not use tenet from a run that broke.
+	ExitNoConfig = 3
 )
 
 // Formats a report can be printed in.

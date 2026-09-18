@@ -39,7 +39,12 @@ func (e *exitError) Error() string {
 
 func (e *exitError) Unwrap() error { return e.err }
 
-func fail(err error) error { return &exitError{code: report.ExitError, err: err} }
+func fail(err error) error {
+	if errors.Is(err, tenets.ErrNotFound) {
+		return &exitError{code: report.ExitNoConfig, err: err}
+	}
+	return &exitError{code: report.ExitError, err: err}
+}
 
 // openCache is the cache every command that asks the model writes to.
 // --no-cache is a run that wants fresh answers, not one that leaves the next
