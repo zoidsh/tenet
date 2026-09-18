@@ -264,7 +264,7 @@ func TestPreCommitHookAllowsWhenSkipped(t *testing.T) {
 }
 
 func TestPreCommitHookAllowsWhenTheRepositoryHasNoConfig(t *testing.T) {
-	tenet := fake(t, "echo 'tenet: no .tenet/config.yml found' >&2\nexit 3\n")
+	tenet := fake(t, "echo 'tenet: no .tenet/config.yml found' >&2\nexit 3\n") // tenet:ignore no-mocking the subject is the hook script, and a stub tenet on PATH is the only way to drive it through every exit code the real binary can return
 
 	code, _, stderr := runPreCommit(t, tenet, commitInput)
 	if code != 0 {
