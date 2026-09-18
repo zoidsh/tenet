@@ -549,3 +549,135 @@ func TestAPIErrorAbortsTheRun(t *testing.T) {
 		t.Errorf("partial findings survived: %#v", out.Findings)
 	}
 }
+
+// traced collects what the hook was handed, which several goroutines call.
+type traced struct {
+	mu   sync.Mutex
+	seen []judge.Trace
+}
+
+func (c *traced) record(t judge.Trace) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.seen = append(c.seen, t)
+}
+
+func TestTraceRecordsTheExchange(t *testing.T) {
+	j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
+	f.verdict["comment-why"] = 0.95
+	f.verdict["no-fallback"] = 0.1
+	f.where["comment-why"] = map[string]float64{"L001": 0.9, "L002": 0.1}
+	c := &traced{}
+	j.Trace = c.record
+
+	if _, err := j.Run(context.Background(), windows); err != nil {
+		t.Fatal(err)
+	}
+	if len(c.seen) != 1 {
+		t.Fatalf("traced %d windows, want 1", len(c.seen))
+	}
+	got := c.seen[0]
+	if got.Seq != 1 || got.File != "a.go" || got.First != 1 || got.Last != 2 {
+		t.Errorf("traced %d %s:%d-%d, want 1 a.go:1-2", got.Seq, got.File, got.First, got.Last)
+	}
+	if len(got.Tenets) != 2 {
+		t.Errorf("traced tenets %v, want both", got.Tenets)
+	}
+	if !strings.Contains(got.State, "x := 1") {
+		t.Errorf("the traced state does not hold the window's lines:\n%s", got.State)
+	}
+	for _, name := range []string{"verdict:comment-why", "verdict:no-fallback", "where:comment-why"} {
+		if _, ok := got.Questions[name]; !ok {
+			t.Errorf("question %q was asked but not traced", name)
+		}
+		if _, ok := got.Answers[name]; !ok {
+			t.Errorf("answer %q came back but was not traced", name)
+		}
+	}
+	if got.Answers["verdict:comment-why"].Prob() != 0.95 {
+		t.Errorf("traced verdict %v, want the answer 0.95", got.Answers["verdict:comment-why"])
+	}
+	if got.Cached {
+		t.Error("a window that was asked about traced as cached")
+	}
+	if got.Model != "jev-1.13.0" || got.InputTokens == 0 {
+		t.Errorf("traced model %q and %d tokens, want what the answers carried", got.Model, got.InputTokens)
+	}
+}
+
+func TestTraceSequenceFollowsWindowOrder(t *testing.T) {
+	var b strings.Builder
+	for i := 0; i < 900; i++ {
+		b.WriteString("x := 1\n")
+	}
+	j, f, windows := fixture(t, b.String(), nil)
+	j.Concurrency = 8
+	f.verdict["comment-why"] = 0.1
+	f.verdict["no-fallback"] = 0.1
+	c := &traced{}
+	j.Trace = c.record
+
+	if _, err := j.Run(context.Background(), windows); err != nil {
+		t.Fatal(err)
+	}
+	if len(windows) < 2 {
+		t.Fatalf("the fixture made %d windows, want several to order", len(windows))
+	}
+	if len(c.seen) != len(windows) {
+		t.Fatalf("traced %d windows, want %d", len(c.seen), len(windows))
+	}
+	first := map[int]int{}
+	for _, got := range c.seen {
+		if _, ok := first[got.Seq]; ok {
+			t.Fatalf("sequence %d was handed out twice", got.Seq)
+		}
+		first[got.Seq] = got.First
+	}
+	for i, w := range windows {
+		if first[i+1] != w.First {
+			t.Errorf("sequence %d traced line %d, want the %d of the window dispatched %d", i+1, first[i+1], w.First, i+1)
+		}
+	}
+}
+
+func TestTraceOfACachedWindow(t *testing.T) {
+	store, err := cache.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, f, windows := fixture(t, "x := 1\ny := 2\n", nil)
+	j.Cache = store
+	f.verdict["comment-why"] = 0.95
+	f.verdict["no-fallback"] = 0.1
+	f.where["comment-why"] = map[string]float64{"L001": 0.9, "L002": 0.1}
+	if _, err := j.Run(context.Background(), windows); err != nil {
+		t.Fatal(err)
+	}
+
+	again, f2, windows2 := fixture(t, "x := 1\ny := 2\n", nil)
+	again.Cache = store
+	c := &traced{}
+	again.Trace = c.record
+	if _, err := again.Run(context.Background(), windows2); err != nil {
+		t.Fatal(err)
+	}
+	if len(f2.calls) != 0 {
+		t.Fatalf("the second run made %d calls, want none", len(f2.calls))
+	}
+	if len(c.seen) != 1 {
+		t.Fatalf("traced %d windows, want the cached one", len(c.seen))
+	}
+	got := c.seen[0]
+	if !got.Cached {
+		t.Error("a window answered from the cache traced as asked")
+	}
+	if got.Answers["verdict:comment-why"].Prob() != 0.95 {
+		t.Errorf("traced verdict %v, want the cached 0.95", got.Answers["verdict:comment-why"])
+	}
+	if got.Answers["where:comment-why"].Choice != "L001" {
+		t.Errorf("traced location %q, want the cached L001", got.Answers["where:comment-why"].Choice)
+	}
+	if _, ok := got.Questions["verdict:comment-why"]; !ok {
+		t.Error("a cached window traced no question, so there is nothing to read the answer against")
+	}
+}
