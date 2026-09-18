@@ -23,7 +23,6 @@ tenets:
   - id: comment-why
     tenet: A comment says why.
     include: ["**/*.go"]
-    examples_from: examples/comment-why.yml
     examples:
       - label: violation
         lines: [2, 3]
@@ -37,7 +36,9 @@ tenets:
     include: ["**/*.go"]
 `
 
-// Five more examples, so that the tenet reaches the six a verdict needs.
+// Five more examples, so that the tenet reaches the six a verdict needs. The
+// config above names no path to them: check finds them under the id, which is
+// what this fixture is here to prove.
 const checkExamplesFile = `- label: violation
   code: |
     // bump the counter
