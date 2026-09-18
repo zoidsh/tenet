@@ -114,6 +114,28 @@ CLAUDE.md
 12 candidates, 3 tenets, nothing written (--dry-run) · 1 calls, 0 cached · $0.0002 · 0.7s
 ```
 
+### Keeping the config in step
+
+`tenet init` runs once. Afterwards `tenet sync` re-reads the same instruction files and brings `.tenet/config.yml` back in step with them, without throwing away anything you wrote.
+
+```sh
+tenet sync
+```
+
+A sentence your files have gained is appended to `tenets:` as a draft. A rule one of them reworded has its `source` brought up to date, and its `tenet` sentence with it where you had not edited that sentence yourself; the criteria, examples and cutoff stay as they are, so the report asks you to run `tenet check` on it again. A rule no instruction file says any more is reported as stale and left exactly where it stands: sync deletes nothing, because only you know whether a rule you stopped writing down is a rule you stopped keeping.
+
+A tenet's `source` names the file the rule was read from and the sentence that file wrote, as `source: 'CLAUDE.md: Never hard-wrap prose in markdown files.'`, which is how sync tells a rewording from a deletion. A `source` written as `CLAUDE.md:12` by an earlier version still reads, resolved against the file as it now stands, and sync restates it the first time it writes the config.
+
+sync edits the config rather than rewriting it, so your comments, key order and blank lines survive, including the comment above a `rules:` entry that says which sentence the built-in rule stands in for. Two things it does not keep, on the one run that writes: CRLF line endings become LF, and a leading `---` goes, because it writes the file through a YAML encoder that carries neither. `--from`, `--config`, `--dry-run`, `--format`, `--no-cache` and `--verbose` mean for it what they mean for `init`, and it takes none of the flags that draft a file from nothing: `--preset`, `--agent` and `--force`.
+
+```text
+added    never-print-key-commit  CLAUDE.md: Never print the key or commit it.
+changed  comment-why             CLAUDE.md: A comment says only what the code cannot.  re-run tenet check comment-why
+stale    rules no-mocking        CLAUDE.md: Never mock anything in tests.
+
+1 added, 1 changed, 1 stale, written to .tenet/config.yml · 12 sentences, 2 calls, 10 cached · $0.0003 · 0.9s
+```
+
 ## Built-in rules
 
 Twenty-five rules ship inside the binary, each with the criteria that say what a violation looks like and a labelled corpus measured by `tenet check --builtin --no-cache --runs 3`. A preset is a named list of them, and one line of `.tenet/config.yml` turns the list on.
@@ -400,7 +422,7 @@ The version is pinned to a release. The release workflow moves a `v1` tag only o
 
 ## For agents
 
-Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the three commands that report on a run, `tenet` itself, `check` and `init`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one. `stats` holds `receipt: true` on a staged run a receipt excused, described under Pass or fail, and leaves the field out of every other run.
+Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the four commands that report on a run, `tenet` itself, `check`, `init` and `sync`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one. `stats` holds `receipt: true` on a staged run a receipt excused, described under Pass or fail, and leaves the field out of every other run.
 
 ```json
 {
@@ -449,7 +471,7 @@ tenet init --agent cursor --agent agents
 
 Setting tenet up is one instruction to the agent, as Quick start says. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
 
-The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It then wires tenet into whatever already runs the repository's git hooks, or runs `tenet hook install` when nothing does, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `.tenet/examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
+The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It then wires tenet into whatever already runs the repository's git hooks, or runs `tenet hook install` when nothing does, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `.tenet/examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Keeping the config in step afterwards is `tenet sync`, which re-reads the instruction files and hands it what they have gained, reworded and dropped.
 
 ## Comparison
 
