@@ -3,7 +3,7 @@ tenet: "Do not open responses or sections with fluff."
 criteria:
   true: "A paragraph occupies the place where the section's first fact belongs, and what it is about is the reading rather than the thing being documented: it previews the explanation to come, or it rates the subject as important, difficult or misunderstood. Deleting it costs the page nothing. The same fault at the foot wears a heading: a closing section that opens on a marker of recapitulation and whose sentences then repeat what a section above said, or assert that the material has now been covered. One such paragraph is a violation on its own, wherever in the document it sits."
   false: "The opening sentence is already carrying information a reader can act on. A closing section earns its place by saying something the body did not: a caveat, an interaction between the parts above it, or what to run or read next."
-source: maxgoff/unslop SKILL.md; the chatbot phrases are cursor/plugins pstack/skills/unslop/SKILL.md #20
+source: cursor/plugins pstack/skills/unslop/SKILL.md #20
 include: ["**/*.md", "**/*.mdx", "**/*.rst", "**/*.txt", "docs/**"]
 kind: [prose]
 tags: [prose, docs, standalone]

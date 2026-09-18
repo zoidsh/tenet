@@ -531,7 +531,6 @@ The built-in rules quote sentences other people wrote for their own repositories
 
 - [cursor/plugins](https://github.com/cursor/plugins/blob/HEAD/pstack/skills/unslop/SKILL.md), the pstack unslop skill, for nine prose rules: no-false-contrast, no-false-range, no-connector-colon, inline-header-detail, no-hedging, no-generic-conclusion, no-metaphor-noun, project-specific and active-voice, and for the chatbot phrases in no-throat-clearing.
 - [mattpocock/skills](https://github.com/mattpocock/skills/blob/HEAD/skills/in-progress/pr/SKILL.md), the pr skill, for five pull request rules: body-says-why, body-states-door, body-few-visuals, body-names-blast-radius and body-shows-evidence.
-- [maxgoff/unslop](https://github.com/maxgoff/unslop/blob/HEAD/skills/unslop/SKILL.md) for no-throat-clearing, and for the commit rules subject-says-what-changed was drafted from.
 - [hardikpandya/stop-slop](https://github.com/hardikpandya/stop-slop/blob/HEAD/SKILL.md) for concrete-subject.
 - [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop/blob/HEAD/src/rules/require-safety-comment-for-type-assertion.ts) for assertion-justified.
 - The AGENTS.md of [vitest-dev/vitest](https://github.com/vitest-dev/vitest/blob/HEAD/AGENTS.md) for no-mocking.
