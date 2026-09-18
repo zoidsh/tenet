@@ -1,0 +1,54 @@
+name: Publish npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag to publish from, e.g. v0.1.0
+        required: true
+
+permissions:
+  contents: read
+  # npm provenance is signed against this workflow's OIDC identity.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Unpack the release binaries into the layout stage.sh reads
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p dist
+          gh release download "$TAG" --pattern 'tenet_*.tar.gz' --dir dist
+          for archive in dist/tenet_*.tar.gz; do
+            stem=$(basename "$archive" .tar.gz)
+            # The archive is named tenet_<version>_<os>_<goarch>, and stage.sh
+            # looks for the binary under dist/tenet_<os>_<goarch>.
+            os_arch=$(echo "$stem" | cut -d_ -f3-)
+            mkdir -p "dist/tenet_$os_arch"
+            tar -xzf "$archive" -C "dist/tenet_$os_arch" tenet
+          done
+
+      - name: Stage the npm packages at the tag's version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: sh npm/stage.sh dist "${TAG#v}"
+
+      - name: Publish the npm packages
+        env:
+          # npm publish authenticates with this, not with the GitHub token.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: sh npm/publish.sh "${TAG#v}"
