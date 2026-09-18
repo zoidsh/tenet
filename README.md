@@ -161,6 +161,8 @@ Eleven of the twenty-five are standalone. They ship in the binary, and `tenet ru
 
 Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2. A repository with no `.tenet/config.yml` exits 3, so a hook that runs everywhere can let those commits through instead of treating them as a broken run.
 
+A clean staged run leaves a receipt under `.git`, which is the identity of what it judged: the tree the index writes, `.tenet/config.yml`, every `examples_from` file beside it, the model, the baseline and the version of the binary. The next staged run whose inputs are all the same exits 0 at once, saying `0 findings · unchanged since the last clean run` without asking the model anything, so the plugin's hook and the repository's git hook do not both pay for one commit, and neither does a person who runs `tenet`, watches it pass and then commits. Stage anything else, edit any of those files, and the run goes back to the model; `--no-cache` asks for fresh answers, so it bypasses the receipt and writes none.
+
 There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place.
 
 `tenet check` is where you find that place: it measures a tenet against examples you have labelled and tells you what each cutoff would cost you, and `fail` in the tenet or in an `override` (see Configuration) is where you write the answer down. `--verbose` lists the near misses, every tenet that came within 0.2 under its cutoff on a window.
@@ -398,7 +400,7 @@ The version is pinned to a release. The release workflow moves a `v1` tag only o
 
 ## For agents
 
-Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the three commands that report on a run, `tenet` itself, `check` and `init`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one.
+Without `--format`, output is text on a terminal and JSON anywhere else, because what reads a pipe is a script or an agent. That applies to the three commands that report on a run, `tenet` itself, `check` and `init`; `config`, `baseline`, `hook`, `rules` and `presets` print text wherever they are pointed, because what they print is a listing rather than a result. The JSON carries `findings`, the `next` line that says what to do about them, `stats`, `skipped`, and a `baselined` array when `--show-baselined` asked for one. `stats` holds `receipt: true` on a staged run a receipt excused, described under Pass or fail, and leaves the field out of every other run.
 
 ```json
 {
@@ -519,6 +521,7 @@ Every one of these can be settled for a single run by a flag, which outranks the
 - `TYPESAFE_BASE_URL`, or `--typesafe-base-url`, sends the requests to another host, such as a proxy or a local stand-in.
 - `TENET_FORMAT`, `text` or `json`, settles the output format whatever the terminal says.
 - `TENET_SKIP=1` makes the installed hooks exit without linting.
+- `TENET_CACHE_DIR` is where the answers are cached, `~/.cache/tenet` by default. It is what a test or a benchmark points somewhere else to leave your own cache alone, since `XDG_CACHE_HOME` does that on Linux and nowhere else.
 - `TENET_INSTALL_DIR` is where the installer script puts the binary, `~/.local/bin` by default.
 - `TENET_VERSION` is the release the installer script fetches, `latest` by default, with or without the leading `v`.
 - `TENET_BINARY` points the npm wrapper at a binary of your own instead of the one its platform package carries.
