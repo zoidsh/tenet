@@ -18,6 +18,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The marketplace serves the plugin straight from this repository and
+      # Claude Code caches an install under the manifest's version, so a stale
+      # field hides the release from everyone who already installed the plugin.
+      - name: Check the plugin version matches the tag
+        run: |
+          plugin=$(jq -r .version plugin/.claude-plugin/plugin.json)
+          tag=${GITHUB_REF_NAME#v}
+          if [ "$plugin" != "$tag" ]; then
+            echo "plugin.json is $plugin but the tag is $tag; bump plugin/.claude-plugin/plugin.json and retag" >&2
+            exit 1
+          fi
+
       - uses: jdx/mise-action@v2
 
       - uses: actions/setup-node@v4
