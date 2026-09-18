@@ -40,13 +40,7 @@ jobs:
         env:
           # npm publish authenticates with this, not with the GitHub token.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # The platform packages go first: the entry package depends on them, and
-        # an install that reaches npm between the two would find them missing.
-        run: |
-          for platform in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
-            npm publish --provenance --access public "npm/platforms/$platform"
-          done
-          npm publish --provenance --access public npm/tenet
+        run: sh npm/publish.sh "${GITHUB_REF_NAME#v}"
 
       - name: Move the v1 tag to this release
         if: startsWith(github.ref_name, 'v1.')
