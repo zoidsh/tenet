@@ -620,21 +620,15 @@ const CODE_PASSED = [
 // hunk, with a gap row wherever lines are left out. A line of more than 56
 // columns wraps rather than being cut, and the pane holds fifteen lines, which
 // is what the test file is down to one line for.
-//
-// spanUp is how many lines above the measured one the offence reads as: jev
-// lands a finding on the code line, but a viewer reads the narrating comment
-// above it as part of the same fault, so the highlight covers both and the
-// marker sits on the top line. It is stated per line rather than guessed from
-// the text.
 const CODE_DIFF_BLOCKED = [
 	{ k: "file", t: "billing.go" },
 	{ k: "add", t: "\tif err != nil {" },
 	{ k: "add", t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
-	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback", spanUp: 1 },
+	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback" },
 	{ k: "gap", t: "…" },
 	{ k: "add", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
 	{ k: "add", t: "\t// divide the cents by 100 to get dollars" },
-	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why", spanUp: 1 },
+	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
 	{ k: "add", t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
 	{ k: "gap", t: "…" },
 	{ k: "file", t: "billing_test.go" },
@@ -901,7 +895,6 @@ function renderLines(layer, lines, order, staggered) {
 		const row = document.createElement("div");
 		row.className = "row " + line.k + (textOnly ? " text-only" : "") + (staggered ? "" : " in");
 		if (line.hit) row.dataset.hit = line.hit;
-		if (line.spanUp) row.dataset.spanUp = String(line.spanUp);
 
 		const marker = document.createElement("div");
 		marker.className = "marker";
@@ -924,14 +917,6 @@ function renderLines(layer, lines, order, staggered) {
 		layer.append(row);
 		rows.push(row);
 	}
-	lines.forEach(function (line, i) {
-		if (!line.hit || !line.spanUp) return;
-		const top = rows[i - line.spanUp];
-		if (!top) return;
-		const from = rows[i].querySelector(".marker");
-		top.querySelector(".marker").textContent = from.textContent;
-		from.textContent = "";
-	});
 	return rows;
 }
 
@@ -1070,18 +1055,8 @@ function setBar(row, duration) {
 function light(id) {
 	const line = blockedLayer.querySelector('[data-hit="' + id + '"]');
 	if (!line) return;
-	let top = line;
-	for (let i = Number(line.dataset.spanUp || 0); i > 0; i--) {
-		if (!top.previousElementSibling) break;
-		top = top.previousElementSibling;
-	}
-	let row = top;
-	while (row) {
-		row.classList.add("hit");
-		if (row === line) break;
-		row = row.nextElementSibling;
-	}
-	const marker = top.querySelector(".marker");
+	line.classList.add("hit");
+	const marker = line.querySelector(".marker");
 	if (marker) marker.dataset.shown = "1";
 }
 

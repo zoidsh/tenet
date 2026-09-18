@@ -167,32 +167,21 @@ starts.slice(1).forEach((s, i) => {
 	});
 });
 
-// item 1: the two comment-led findings highlight a two-line span, marker on top.
-checkAt(starts[0] + 8000, "code act spans", () => {
+// A finding marks the one line it was measured on, and no other.
+checkAt(starts[0] + 8000, "code act markers", () => {
 	const rows = rowsOf("layer-blocked");
-	const hit = (id) => rows.findIndex((r) => r.dataset.hit === id);
-	const lit = rows.map((r, i) => (r.classes.has("hit") ? i : -1)).filter((i) => i >= 0);
-	eq(lit, [2, 3, 5, 6, 7, 11], "the wrong rows are highlighted in the code act");
-
-	const fb = hit("no-fallback");
-	ok(rows[fb - 1].classes.has("hit"), "no-fallback's comment line is not highlighted");
-	eq(rows[fb - 1].querySelector(".marker").textContent, "1", "no-fallback's marker is not on its comment line");
-	eq(rows[fb - 1].querySelector(".marker").dataset.shown, "1", "no-fallback's marker is not shown");
-	eq(rows[fb].querySelector(".marker").textContent, "", "no-fallback's own line still carries a marker");
-	eq(rows[fb].querySelector(".marker").dataset.shown, "0", "no-fallback's own line shows an empty marker");
-
-	const cw = hit("comment-why");
-	ok(rows[cw - 1].classes.has("hit"), "comment-why's comment line is not highlighted");
-	eq(rows[cw - 1].querySelector(".marker").textContent, "3", "comment-why's marker is not on its comment line");
-	eq(rows[cw].querySelector(".marker").textContent, "", "comment-why's own line still carries a marker");
-
-	const mc = hit("money-in-cents");
-	ok(!rows[mc - 1].classes.has("hit"), "money-in-cents highlighted a line above it");
-	eq(rows[mc].querySelector(".marker").textContent, "2", "money-in-cents' marker is not on its own line");
-
-	const nm = hit("no-mocking");
-	ok(!rows[nm - 1].classes.has("hit"), "no-mocking highlighted the file row above it");
-	eq(rows[nm].querySelector(".marker").textContent, "4", "no-mocking's marker is not on its own line");
+	const lit = rows.filter((r) => r.classes.has("hit"));
+	eq(lit.map((r) => r.dataset.hit), ["no-fallback", "money-in-cents", "comment-why", "no-mocking"],
+		"the lines lit in the code act are not exactly the measured ones");
+	eq(lit.map((r) => r.querySelector(".marker").textContent), ["1", "2", "3", "4"],
+		"a marker is not on the line its finding was measured on");
+	for (const row of lit) {
+		eq(row.querySelector(".marker").dataset.shown, "1", "a marker on a lit line is not shown");
+	}
+	for (const row of rows) {
+		if (row.classes.has("hit")) continue;
+		eq(row.querySelector(".marker").dataset.shown, "0", "a marker is shown on a line with no finding");
+	}
 
 	eq(el("filemeta").textContent, "northwind/invoicing · 2 files changed, +52", "act 1 file meta");
 });
