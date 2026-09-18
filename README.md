@@ -8,7 +8,7 @@
 
 tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each tenet once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
 
-TypeSafe's jev model answers each rule with a calibrated probability, so a tenet is a pass-or-fail cutoff rather than a review comment to skim. On this repository a staged change took 1.4 s and cost $0.0022; a 2,062-line diff took 1.5 s and $0.0036, about 8x faster than one Claude Haiku 4.5 call and about 12x faster than Sonnet 5, and cheaper than both. The tables are under Benchmarks.
+TypeSafe's jev model answers each rule with a calibrated probability, so a tenet is a pass-or-fail cutoff rather than a review comment to skim. On this repository a staged change took 1.1 s and cost $0.0022; a 2,062-line diff took 1.5 s and $0.0036, against a measured 50.3 s and $0.0535 for one Claude Haiku 4.5 call over the same diff and 121.4 s and $0.1943 for Sonnet 5, so about 34x faster and 15x cheaper than Haiku and about 81x faster and 54x cheaper than Sonnet. The tables are under Benchmarks.
 
 ## Install
 
@@ -480,32 +480,33 @@ Every number in this README comes from [bench/results.md](bench/results.md), whi
 
 | Run | Lines or scope | Calls | Cost | Duration |
 | --- | --- | --- | --- | --- |
-| Full sweep, cold cache | the whole tree | 122 | $0.0183 | 5.2 s |
+| Full sweep, cold cache | the whole tree | 122 | $0.0183 | 4.8 s |
 | Full sweep, warm cache | the same tree, straight after | 0 | $0.0000 | 0.0 s |
-| One staged change | 379 lines staged | 13 | $0.0022 | 1.4 s |
+| One staged change | 379 lines staged | 13 | $0.0022 | 1.1 s |
 | A 2,062-line diff | 2,105 lines, 2,062 of them Go, 83,295 bytes of diff | 21 | $0.0036 | 1.5 s |
-| One pull request text | 27 lines of title and description | 1 | <$0.0001 | 1.0 s |
+| One pull request text | 27 lines of title and description | 1 | <$0.0001 | 0.6 s |
 
-Rule quality is measured the same way, by `tenet check --builtin --no-cache --runs 3` over every rule in the binary. In that run all fourteen rules in a preset read `sharp`, and of the eleven standalone rules ten read `usable` and one reads `sharp`. bench/results.md has it rule by rule.
+Rule quality is measured the same way, by `tenet check --builtin --no-cache --runs 3` over every rule in the binary. In that run all fourteen rules in a preset read `sharp`, and of the eleven standalone rules nine read `usable` and two read `sharp`. bench/results.md has it rule by rule.
 
 The same rule, translated, with its examples judged three times each at the 0.80 cutoff. Location is the share of violations whose named line was hit, and Crossings counts examples that landed on both sides of the cutoff across the three passes.
 
 | Language | Examples | AUC | Accuracy at 0.80 | Location | Largest sd | Crossings | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| English | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.015 | 0 | sharp |
-| German | 14 | 1.00 | 0.93 | 1.00 over 7 | 0.015 | 0 | usable |
-| Japanese | 14 | 1.00 | 0.79 | 1.00 over 7 | 0.023 | 0 | usable |
+| English | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.023 | 0 | sharp |
+| German | 14 | 1.00 | 1.00 | 1.00 over 7 | 0.020 | 1 | sharp |
+| Japanese | 14 | 1.00 | 0.79 | 1.00 over 7 | 0.051 | 1 | usable |
 
-And the 2,062-line diff against what one agent call over the same diff would cost and take:
+And the 2,062-line diff against one agent call over the same diff, every row measured:
 
 | Reviewer | Input tokens | Output tokens | Cost | Time |
 | --- | --- | --- | --- | --- |
 | tenet, measured | 86,343 | n/a | $0.0036 | 1.5 s |
-| Claude Haiku 4.5 | 20,823 | 1,000 | $0.0258 | 12.7 s |
-| Claude Sonnet 5 | 20,823 | 1,000 | $0.0516 | 17.5 s |
-| GPT-5 nano | 20,823 | 1,000 | $0.0014 | n/a |
+| Claude Haiku 4.5 | 32,888 | 4,123 | $0.0535 | 50.3 s |
+| Claude Sonnet 5 | 40,911 | 11,245 | $0.1943 | 121.4 s |
+| Claude Opus 5 | 40,841 | 12,661 | $0.5207 | 60.4 s |
+| Claude Fable 5.1 | 40,846 | 11,643 | $0.9906 | 156.6 s |
 
-GPT-5 nano's estimate is the one that undercuts tenet, at $0.0014 against $0.0036. Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. bench/results.md states the prices, the rates and where each came from.
+The cheapest of the four costs 15x what tenet does and takes 34x as long, and the dearest costs 275x and takes 104x. Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. bench/results.md says how each call was made and where the prices came from.
 
 ## Environment variables
 
