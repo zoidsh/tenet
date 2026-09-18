@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -92,6 +93,8 @@ func TestPluginHooksSchema(t *testing.T) {
 	}
 }
 
+var semver = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
 func TestPluginManifest(t *testing.T) {
 	var manifest struct {
 		Name        string `json:"name"`
@@ -102,8 +105,13 @@ func TestPluginManifest(t *testing.T) {
 		} `json:"author"`
 	}
 	readJSON(t, filepath.Join(repoDir, "plugin", ".claude-plugin", "plugin.json"), &manifest)
-	if manifest.Name != "tenet" || manifest.Version != "0.0.0" {
+	if manifest.Name != "tenet" {
 		t.Errorf("manifest is %#v", manifest)
+	}
+	// The tag is not compared here: the test has to pass in a shallow checkout
+	// and on the bump commit, which is written before its tag exists.
+	if !semver.MatchString(manifest.Version) || manifest.Version == "0.0.0" {
+		t.Errorf("manifest version is %q", manifest.Version)
 	}
 	if manifest.Description == "" || manifest.Author.Name == "" {
 		t.Errorf("manifest is %#v", manifest)
