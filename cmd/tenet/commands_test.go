@@ -9,6 +9,7 @@ import (
 
 	"github.com/zoidsh/tenet/internal/jev"
 	"github.com/zoidsh/tenet/internal/report"
+	"github.com/zoidsh/tenet/internal/source"
 	"github.com/zoidsh/tenet/internal/tenets"
 )
 
@@ -86,6 +87,21 @@ func TestConfigListing(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
 	golden(t, "config.txt", stdout)
+}
+
+func TestConfigListingShowsTheExamplesFile(t *testing.T) {
+	dir := t.TempDir()
+	writeConfigFile(t, dir, "version: 1\ntenets:\n  - id: comment-why\n    tenet: A comment says why.\n")
+	writeFile(t, dir, filepath.Join(source.ConfigDir, "examples", "comment-why.yml"), "- label: ok\n  code: \"x = 1\"\n")
+	t.Chdir(dir)
+
+	code, stdout, stderr := runCmd(t, "config")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "examples/comment-why.yml") {
+		t.Errorf("listing does not name the examples file:\n%s", stdout)
+	}
 }
 
 func TestRuleShown(t *testing.T) {

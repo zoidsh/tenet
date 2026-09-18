@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -26,10 +27,11 @@ func newConfigCmd() *cobra.Command {
 			var b strings.Builder
 			b.WriteString(cfg.Path + "\n\n")
 			table := tabwriter.NewWriter(&b, 0, 0, 2, ' ', 0)
-			_, _ = fmt.Fprint(table, "id\torigin\tkind\tfail\tinclude\n")
+			_, _ = fmt.Fprint(table, "id\torigin\tkind\tfail\texamples\tinclude\n")
+			dir := filepath.Dir(cfg.Path)
 			for _, t := range cfg.Tenets {
-				_, _ = fmt.Fprintf(table, "%s\t%s\t%s\t%.2f\t%s\n",
-					t.ID, t.Origin, list(t.Kind), t.FailValue(), list(t.Include))
+				_, _ = fmt.Fprintf(table, "%s\t%s\t%s\t%.2f\t%s\t%s\n",
+					t.ID, t.Origin, list(t.Kind), t.FailValue(), examplesCell(dir, t.ExamplesPath), list(t.Include))
 			}
 			if err := table.Flush(); err != nil {
 				return fail(err)
@@ -40,6 +42,19 @@ func newConfigCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&path, "config", "", "path to "+tenets.FileName+", searched for by default")
 	return cmd
+}
+
+// examplesCell names the examples file the way the config does, so that a
+// tenet using examples_from shows the value it wrote.
+func examplesCell(dir, path string) string {
+	if path == "" {
+		return ""
+	}
+	rel, err := filepath.Rel(dir, path)
+	if err != nil {
+		return path
+	}
+	return filepath.ToSlash(rel)
 }
 
 // openConfig reads the config a command was pointed at, or the one the
