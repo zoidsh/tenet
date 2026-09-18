@@ -583,14 +583,14 @@ footer {
 
 <script>
 // Every id, path, line number and number below is copied out of demo/data: six
-// runs of the sample project in demo/sample against its own tenet.yml,
+// runs of the sample project in demo/sample against its own config,
 // measured on 2026-09-18 with an empty cache. A run prints a probability only
 // for a finding or for a near miss within 0.2 of its cutoff, so the numbers
 // under 0.80 were read off the same cached answers by moving the cutoff, which
 // is cutoff-sweep.txt. Where a tenet was asked about two windows, p is the
 // higher of its two answers, which is the one its verdict rests on. Each gloss
 // is the rule's own sentence in a handful of words, from rules/<id>/rule.yml
-// and, for money-in-cents, demo/sample/tenet.yml.
+// and, for money-in-cents, demo/sample/.tenet/config.yml.
 const GLOSS = {
 	"comment-why": "a comment says why, not what",
 	"no-mocking": "tests use the real dependency",

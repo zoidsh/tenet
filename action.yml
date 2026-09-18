@@ -1,5 +1,5 @@
 name: tenet
-description: Lint a pull request against the tenets in its tenet.yml
+description: Lint a pull request against the tenets in its .tenet/config.yml
 branding:
   icon: check-square
   color: purple

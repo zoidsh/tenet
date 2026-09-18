@@ -1,6 +1,6 @@
 - id: tenet
   name: tenet
-  description: Lint the staged changes against tenet.yml
+  description: Lint the staged changes against .tenet/config.yml
   entry: tenet
   language: golang
   pass_filenames: false
@@ -8,7 +8,7 @@
 
 - id: tenet-commit-msg
   name: tenet commit message
-  description: Lint the commit message against tenet.yml
+  description: Lint the commit message against .tenet/config.yml
   entry: tenet --commit-msg
   language: golang
   pass_filenames: true
