@@ -1,3 +1,4 @@
+// tenet:ignore-file comment-why the fixtures below are narrating comments on purpose
 package jev
 
 import (
@@ -37,7 +38,7 @@ func TestLive(t *testing.T) {
 
 		// The narrating comment in the state below is the fixture this test
 		// expects jev to catch, so it has to stay as it is written.
-		state := "L001 func total(items []int) int {\nL002 \tsum := 0 // set sum to zero\n" // tenet:ignore comment-why
+		state := "L001 func total(items []int) int {\nL002 \tsum := 0 // set sum to zero\n"
 		where, err := Choice("Which line holds a comment that says what the code does rather than why?", map[string]any{
 			"L001": "the function signature line",
 			"L002": "the line declaring sum",
