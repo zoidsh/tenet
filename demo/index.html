@@ -782,6 +782,9 @@ const T = {
 	END_HOLD: 3500,
 	FADE: 700,
 	MAIN_FADE: 500,
+	// A frame before the act starts, by which point the main area's fade-out
+	// has run, is when the two layers are emptied.
+	BLANK: 16,
 	ASK_LEAD: 400,
 	BAR_STAGGER: 200,
 	BAR_DUR: 800,
@@ -1138,11 +1141,17 @@ function scheduleAct(act, start) {
 		});
 	}
 
-	// The act opens behind a fade: the main area goes out, is refilled with
-	// this act's two states, and comes back in, its left pane a line at a time.
+	// The act opens behind a fade: the main area goes out, both layers are
+	// emptied once it has gone, and it comes back in refilled, its left pane a
+	// line at a time. Between those two moments neither act's text exists, so
+	// nothing of the one just finished can be caught under the one arriving.
 	if (start > 0) {
 		at(start - T.MAIN_FADE, function () {
 			mainEl.dataset.vis = "0";
+		});
+		at(start - T.BLANK, function () {
+			blockedLayer.textContent = "";
+			passedLayer.textContent = "";
 		});
 	}
 	at(start, function () {
@@ -1155,14 +1164,24 @@ function scheduleAct(act, start) {
 		clockCaptionEl.dataset.vis = "0";
 		statusEl.textContent = "";
 		statusEl.className = "xfade";
+		// The crossfade belongs to the swap inside an act. Resetting the two
+		// states here has to happen with no transition at all, or the layer
+		// that was showing fades out over the act that is opening.
+		blockedLayer.style.setProperty("--fade", "0ms");
+		passedLayer.style.setProperty("--fade", "0ms");
 		blockedLayer.dataset.state = "shown";
 		passedLayer.dataset.state = "hidden";
 		const rows = renderLines(blockedLayer, act.left, order, true);
-		renderLines(passedLayer, act.fixedLeft, new Map(), false);
+		const fixedRows = renderLines(passedLayer, act.fixedLeft, new Map(), true);
 		renderTenets(act.rows, order);
 		mainEl.dataset.vis = "1";
 		rows.forEach(function (row, i) {
 			at(start + off.textIn + i * off.stagger, function () {
+				row.classList.add("in");
+			});
+		});
+		at(start + T.MAIN_FADE, function () {
+			fixedRows.forEach(function (row) {
 				row.classList.add("in");
 			});
 		});
