@@ -21,6 +21,11 @@ func TestMain(m *testing.M) {
 	if err := os.Setenv(report.FormatEnv, report.FormatText); err != nil {
 		panic(err)
 	}
+	// A test run inside GitHub Actions would otherwise append every --format
+	// github report it makes to the job's real summary.
+	if err := os.Unsetenv(report.StepSummaryEnv); err != nil {
+		panic(err)
+	}
 	// The config home is moved somewhere empty so that a key saved on the
 	// machine running the tests is not the key a test that saved none finds.
 	empty, err := os.MkdirTemp("", "tenet-config")
