@@ -34,8 +34,6 @@
 	--quiet-bar: #4a6f8f;
 	--add-wash: rgba(63, 185, 80, 0.07);
 	--add-ink: #a8d8ae;
-	--del-wash: var(--fail-tint);
-	--del-ink: #e5a3a3;
 	/* Claude Code's own dots: amber for a tool call, green for the agent. */
 	--tool-dot: #d4a72c;
 	--agent-dot: #3fb950;
@@ -100,6 +98,9 @@ body {
 	position: relative;
 	width: 1280px;
 	height: 720px;
+	/* The code is shown as the file has it: no ligature joins != or := into
+	   one glyph. */
+	font-feature-settings: "liga" 0, "calt" 0;
 	flex: 0 0 auto;
 	transform-origin: center center;
 	background: var(--surface);
@@ -160,13 +161,15 @@ header .left { display: flex; align-items: baseline; }
 	margin: 0;
 }
 
-/* The left column is as wide as the longest line of the patches needs, so no
-   line wraps or is cut: 66 columns of JetBrains Mono at 16px is 633.6px, plus
-   the 48px gutter a row carries and the pane's 48px of padding. The right
-   column is what is left. */
+/* The left column holds 76 columns of JetBrains Mono at 16px once the pane's
+   inset and a row's gutter are taken out. The face advances 9.6px a glyph,
+   but Chrome on Linux rounds that to a whole 10px, so the column is 760px;
+   every line of the two patches that a finding lands on or sits beside is 74
+   columns or fewer. The right column is what is left, and its widest line is
+   a tenet id at 18px beside its marker. */
 main {
 	display: grid;
-	grid-template-columns: 732px 1fr;
+	grid-template-columns: 888px 1fr;
 	min-height: 0;
 	transition: opacity var(--base) var(--ease);
 }
@@ -183,19 +186,13 @@ main[data-vis="0"] { opacity: 0; }
 
 .pane.left { border-right: 1px solid var(--hairline); background: var(--pane); }
 
-#filemeta {
-	font-family: var(--mono);
-	font-size: var(--t-xs);
-	line-height: 20px;
-	color: var(--muted);
-	margin: 0;
-	font-variant-numeric: tabular-nums;
-}
-
+/* The body is cut at its edge: it holds 18 rows of --line, and check.js holds
+   every act to that many, so nothing it shows can run on into the session. */
 .body {
 	position: relative;
 	flex: 1 1 auto;
 	min-height: 0;
+	overflow: hidden;
 	font-family: var(--mono);
 	font-size: var(--t-xs);
 	line-height: var(--line);
@@ -210,38 +207,45 @@ main[data-vis="0"] { opacity: 0; }
 
 .layer[data-state="hidden"] { opacity: 0; }
 
-/* Nothing wraps and nothing is cut: the pane is cut to hold the longest line
-   the data has, so every character shown is the file's own and every line is
-   one row tall. */
+/* A row is the file's own line under its own number: a marker column, the
+   number, then the text, which is verbatim. A line longer than the text
+   column would wrap onto a second row under its number rather than be cut,
+   and check.js counts it twice against the pane; none does today. Rows align
+   at their top rather than their baseline, because an empty marker has no
+   baseline to give and would push its row taller than --line. */
 .row {
 	display: grid;
-	grid-template-columns: var(--s5) var(--s4) 1fr;
-	align-items: baseline;
+	grid-template-columns: var(--s5) var(--s5) 1fr;
+	column-gap: var(--s3);
+	align-items: start;
 	min-height: var(--line);
 	/* The rule a hit line carries is part of its 8px inset, so a line does not
 	   move sideways when it lights up. */
 	border-left: 2px solid transparent;
 	padding-left: calc(var(--s2) - 2px);
-	white-space: pre;
-	overflow: hidden;
 	opacity: 0;
 	transform: translateY(var(--s1));
 	transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
 }
 
-.row.text-only { grid-template-columns: var(--s5) 1fr; }
-
 .row.in { opacity: 1; transform: none; }
 
-.row .sign { color: var(--muted); }
-.row .text { color: var(--ink-2); white-space: pre; overflow: hidden; }
+.row .num {
+	color: var(--muted);
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.row .text {
+	color: var(--ink-2);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
 
 .row.file .text { color: var(--ink); font-weight: 700; }
-.row.gap .text { color: var(--muted); }
+.row.file .stat { color: var(--muted); font-weight: 400; }
 .row.add { background: var(--add-wash); }
-.row.add .sign, .row.add .text { color: var(--add-ink); }
-.row.del { background: var(--del-wash); }
-.row.del .sign, .row.del .text { color: var(--del-ink); }
+.row.add .text { color: var(--add-ink); }
 
 .row.hit {
 	background: var(--fail-wash);
@@ -307,8 +311,11 @@ main[data-vis="0"] { opacity: 0; }
 	color: var(--muted);
 }
 
-/* The four tenets fill what is left between the clock and the status line
-   exactly: four rows of 62px with 12px between them. */
+/* The four tenets fill what is left between the clock and the status line:
+   four rows of 60px with 12px between them, in 284px. A row is the marker and
+   the id, the gloss under them, then the bar; where the finding landed is in
+   the left pane's gutter, on the numbered line itself, so the row does not
+   say it again. */
 .tenets {
 	position: relative;
 	flex: 1 1 auto;
@@ -347,11 +354,9 @@ main[data-vis="0"] { opacity: 0; }
 .tenet .gloss {
 	font-size: var(--t-xs);
 	line-height: var(--line);
+	height: var(--line);
+	padding-left: calc(var(--line) + var(--s2));
 	color: var(--muted);
-	margin-left: var(--s1);
-	flex: 1 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
@@ -360,7 +365,6 @@ main[data-vis="0"] { opacity: 0; }
 .track {
 	position: relative;
 	height: var(--s4);
-	margin-top: var(--s1);
 	background: var(--rail);
 	border-radius: 2px;
 }
@@ -402,26 +406,13 @@ main[data-vis="0"] { opacity: 0; }
 	color: var(--on-fail);
 }
 
-.tenet .at {
-	font-family: var(--mono);
-	font-size: var(--t-xs);
-	line-height: var(--s4);
-	height: var(--s4);
-	margin-top: var(--s1);
-	color: var(--fail-text);
-	font-variant-numeric: tabular-nums;
-	opacity: 0;
-	transition: opacity var(--base) var(--ease);
-}
-
-.tenet .at[data-vis="1"] { opacity: 1; }
-
-/* One cutoff for every bar, so the rows are read against a single scale. The
-   subline names it, so the mark carries no label of its own. */
-#cutoff {
+/* One cutoff for every bar, at the same place on every track, so the rows are
+   read against a single scale. The subline names it, so the mark carries no
+   label of its own. */
+.cut {
 	position: absolute;
-	top: 0;
-	bottom: 0;
+	top: calc(-1 * var(--s1));
+	bottom: calc(-1 * var(--s1));
 	width: 1px;
 	background: var(--grid);
 	pointer-events: none;
@@ -461,15 +452,20 @@ footer {
 	border-top: 1px solid var(--hairline);
 	background: var(--pane);
 	padding: var(--s3) var(--s5);
-	overflow: hidden;
 }
 
+/* The strip shows four lines and clips at their edge, not at the padding's,
+   so a line scrolling off the top is gone rather than left showing in the
+   inset above the first line. */
 #session {
+	height: calc(4 * var(--line));
+	overflow: hidden;
 	font-family: var(--mono);
 	font-size: var(--t-xs);
 	line-height: var(--line);
-	transition: transform var(--base) var(--ease);
 }
+
+#session .lines { transition: transform var(--base) var(--ease); }
 
 #session .line {
 	height: var(--line);
@@ -524,7 +520,7 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	main, .xfade, .layer, .fill, .value, .row, .row.hit, .marker, .tenet, .tenet .id, .tenet .at, #status, #session, #session .line, #blackout {
+	main, .xfade, .layer, .fill, .value, .row, .row.hit, .marker, .tenet, .tenet .id, #status, #session .lines, #session .line, #blackout {
 		transition-duration: 1ms;
 	}
 
@@ -546,7 +542,6 @@ footer {
 
 	<main id="main">
 		<section class="pane left">
-			<p id="filemeta" class="xfade"></p>
 			<div class="body">
 				<div class="layer" id="layer-blocked"></div>
 				<div class="layer" id="layer-passed" data-state="hidden"></div>
@@ -566,14 +561,12 @@ footer {
 					</div>
 				</div>
 			</div>
-			<div class="tenets" id="tenets">
-				<div id="cutoff"></div>
-			</div>
+			<div class="tenets" id="tenets"></div>
 			<div id="status" class="xfade"></div>
 		</section>
 	</main>
 
-	<div class="session"><div id="session"></div></div>
+	<div class="session"><div id="session"><div class="lines" id="session-lines"></div></div></div>
 
 	<footer><span id="strip" class="xfade"></span></footer>
 
@@ -604,120 +597,169 @@ const GLOSS = {
 
 // The code act's four rows are the four that fire, which is what the frame has
 // room for. The three of agent-hygiene left out stayed well under the cutoff
-// in both runs: no-transcript-comment at 0.09 and 0.13, no-placeholder-phrase
-// and assertion-justified at or under 0.10 in each.
+// in both runs: no-transcript-comment at 0.11 and 0.09, no-placeholder-phrase
+// and assertion-justified at or under 0.11 in each.
 const CODE_BLOCKED = [
-	{ id: "no-fallback", p: 0.94, at: "billing.go:28" },
-	{ id: "money-in-cents", p: 0.95, at: "billing.go:34" },
-	{ id: "comment-why", p: 0.88, at: "billing.go:36" },
-	{ id: "no-mocking", p: 0.90, at: "billing_test.go:36" }
+	{ id: "no-fallback", p: 0.94 },
+	{ id: "money-in-cents", p: 0.95 },
+	{ id: "comment-why", p: 0.88 },
+	{ id: "no-mocking", p: 0.89 }
 ];
 
 const CODE_PASSED = [
-	{ id: "no-fallback", p: 0.28, at: null },
-	{ id: "money-in-cents", p: 0.08, at: null },
-	{ id: "comment-why", p: 0.30, at: null },
-	{ id: "no-mocking", p: 0.34, at: null }
+	{ id: "no-fallback", p: 0.36 },
+	{ id: "money-in-cents", p: 0.09 },
+	{ id: "comment-why", p: 0.13 },
+	{ id: "no-mocking", p: 0.35 }
 ];
 
-// Verbatim from demo/sample/agent-change.patch and agent-fix.patch, cut to the
-// lines the findings name and their context, contiguous within each hunk, with
-// a gap row wherever lines are left out. No line wraps or is cut: the left
-// pane is as wide as the longest line here needs, and the two narrating
-// comments the patch puts above the fallback and the division are left out
-// because they are longer than that and neither is a line a finding names.
-const CODE_DIFF_BLOCKED = [
-	{ k: "file", t: "billing.go" },
-	{ k: "add", t: "\tif err != nil {" },
-	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback" },
-	{ k: "add", t: "\t}" },
-	{ k: "gap", t: "…" },
-	{ k: "add", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
-	{ k: "add", t: "\t// divide the cents by 100 to get dollars" },
-	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
-	{ k: "gap", t: "…" },
-	{ k: "file", t: "billing_test.go" },
-	{ k: "add", t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" }
+// The left pane shows files: a name row, then the file's own lines under
+// their own numbers, verbatim, and check.js reads them back out of the
+// patches. `hit` names the tenet whose finding the run put on that line, and
+// `add` marks the lines the patch adds, all of them in the blocked state and
+// only the ones the fix touched in the passed state, which is what the
+// crossfade then shows.
+function file(name, stat) {
+	return { k: "file", t: name, stat: stat };
+}
+
+function lines(from, texts, opts) {
+	const hit = (opts && opts.hit) || {};
+	const add = opts && opts.add;
+	return texts.map(function (t, i) {
+		const n = from + i;
+		const line = { k: "line", n: n, t: t };
+		if (hit[n]) line.hit = hit[n];
+		if (add === true || (Array.isArray(add) && add.indexOf(n) >= 0)) line.add = true;
+		return line;
+	});
+}
+
+// demo/sample/agent-change.patch as staged: billing.go from ParseDiscount to
+// the end of the file, and the one line of billing_test.go a finding names.
+const CODE_LEFT_BLOCKED = [
+	file("billing.go", "+29"),
+	...lines(22, [
+		"func ParseDiscount(code string) Discount {",
+		"\tpercent, err := strconv.ParseFloat(strings.TrimPrefix(code, \"SAVE\"), 64)",
+		"\tif err != nil {",
+		"\t\t// default to 0 on a parse error so that checkout keeps working",
+		"\t\tpercent = 0",
+		"\t}",
+		"\treturn Discount{Code: code, Percent: percent}",
+		"}",
+		"",
+		"func DiscountedTotal(totalCents int, discount Discount) float64 {",
+		"\t// divide the cents by 100 to get dollars",
+		"\tdollars := float64(totalCents) / 100",
+		"\t// take the percent off the dollars",
+		"\treturn dollars - dollars*discount.Percent/100",
+		"}"
+	], { add: true, hit: { 26: "no-fallback", 31: "money-in-cents", 32: "comment-why" } }),
+	file("billing_test.go", "+23"),
+	...lines(36, [
+		"\trepo := stubRepository{invoice: Invoice{"
+	], { add: true, hit: { 36: "no-mocking" } })
 ];
 
-const CODE_DIFF_PASSED = [
-	{ k: "file", t: "billing.go" },
-	{ k: "del", t: "\tPercent float64" },
-	{ k: "add", t: "\tPercent int" },
-	{ k: "gap", t: "…" },
-	{ k: "del", t: "\t\tpercent = 0" },
-	{ k: "gap", t: "…" },
-	{ k: "add", t: "func DiscountedTotalCents(totalCents int, discount Discount) int {" },
-	{ k: "add", t: "\treturn totalCents - (totalCents*discount.Percent+99)/100" },
-	{ k: "file", t: "billing_test.go" },
-	{ k: "del", t: "type stubRepository struct {" },
-	{ k: "gap", t: "…" },
-	{ k: "del", t: "\trepo := stubRepository{invoice: Invoice{" },
-	{ k: "add", t: "\trepo := NewMemoryRepository(Invoice{" }
+// The same two files after demo/sample/agent-fix.patch, the same two windows.
+const CODE_LEFT_PASSED = [
+	file("billing.go", "+10 −11"),
+	...lines(23, [
+		"func ParseDiscount(code string) (Discount, error) {",
+		"\tpercent, err := strconv.Atoi(strings.TrimPrefix(code, \"SAVE\"))",
+		"\tif err != nil {",
+		"\t\treturn Discount{}, fmt.Errorf(\"discount code %q: %w\", code, err)",
+		"\t}",
+		"\treturn Discount{Code: code, Percent: percent}, nil",
+		"}",
+		"",
+		"// Rounding goes to the house: half a cent of discount is dropped rather",
+		"// than given away, because the ledger reconciles in whole cents.",
+		"func DiscountedTotalCents(totalCents int, discount Discount) int {",
+		"\treturn totalCents - totalCents*discount.Percent/100",
+		"}"
+	], { add: [23, 24, 26, 28, 31, 32, 33, 34] }),
+	file("billing_test.go", "+12 −15"),
+	...lines(28, [
+		"\trepo := NewMemoryRepository(Invoice{"
+	], { add: [28] })
 ];
 
 // demo/sample/commit-msg-bad.txt and commit-msg-good.txt, line for line. The
 // finding lands on COMMIT_EDITMSG:1.
 const COMMIT_BAD = [
-	{ k: "plain", t: "Update billing.go and billing_test.go", hit: "subject-says-what-changed" }
+	file("COMMIT_EDITMSG"),
+	...lines(1, [
+		"Update billing.go and billing_test.go"
+	], { hit: { 1: "subject-says-what-changed" } })
 ];
 
 const COMMIT_GOOD = [
-	{ k: "plain", t: "Add discount codes, rounding half cents to the house" },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "The sales team keyed discounted totals in by hand, and" },
-	{ k: "plain", t: "that is where most invoice corrections came from." }
+	file("COMMIT_EDITMSG"),
+	...lines(1, [
+		"Add discount codes, rounding half cents to the house",
+		"",
+		"The sales team keyed discounted totals in by hand, and",
+		"that is where most invoice corrections came from."
+	])
 ];
 
 // demo/sample/pr-bad.txt and pr-good.txt, line for line. The findings land on
 // PULL_REQUEST lines 1, 5, 10 and 13.
 const PR_BAD = [
-	{ k: "plain", t: "Update billing.go and billing_test.go", hit: "subject-says-what-changed" },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "Changes in this pull request:" },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "- billing.go: adds Discount, ParseDiscount and", hit: "body-says-why" },
-	{ k: "plain", t: "  DiscountedTotal" },
-	{ k: "plain", t: "- billing_test.go: adds stubRepository and" },
-	{ k: "plain", t: "  TestDiscountedTotal" },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "![before](before.png)", hit: "body-few-visuals" },
-	{ k: "plain", t: "![after](after.png)" },
-	{ k: "plain", t: "![terminal](terminal.png)" },
-	{ k: "plain", t: "![coverage](coverage.png)", hit: "body-states-door" }
+	file("PULL_REQUEST"),
+	...lines(1, [
+		"Update billing.go and billing_test.go",
+		"",
+		"Changes in this pull request:",
+		"",
+		"- billing.go: adds Discount, ParseDiscount and",
+		"  DiscountedTotal",
+		"- billing_test.go: adds stubRepository and",
+		"  TestDiscountedTotal",
+		"",
+		"![before](before.png)",
+		"![after](after.png)",
+		"![terminal](terminal.png)",
+		"![coverage](coverage.png)"
+	], { hit: { 1: "subject-says-what-changed", 5: "body-says-why", 10: "body-few-visuals", 13: "body-states-door" } })
 ];
 
 const PR_GOOD = [
-	{ k: "plain", t: "Add discount codes to invoice totals" },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "Sales has been giving discounts over the phone and" },
-	{ k: "plain", t: "keying the reduced total in by hand, which is where" },
-	{ k: "plain", t: "most of this month's invoice corrections came from." },
-	{ k: "plain", t: "A code on the invoice carries the discount itself." },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "Rounding goes to the house: half a cent of discount" },
-	{ k: "plain", t: "is dropped rather than given away, because the" },
-	{ k: "plain", t: "ledger reconciles in whole cents." },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "A two-way door. The field is additive and nothing" },
-	{ k: "plain", t: "outside DiscountedTotalCents reads it, so reverting" },
-	{ k: "plain", t: "this commit walks the change back." },
-	{ k: "plain", t: "" },
-	{ k: "plain", t: "Look at the rounding in DiscountedTotalCents first." }
+	file("PULL_REQUEST"),
+	...lines(1, [
+		"Add discount codes to invoice totals",
+		"",
+		"Sales has been giving discounts over the phone and",
+		"keying the reduced total in by hand, which is where",
+		"most of this month's invoice corrections came from.",
+		"A code on the invoice carries the discount itself.",
+		"",
+		"Rounding goes to the house: half a cent of discount",
+		"is dropped rather than given away, because the",
+		"ledger reconciles in whole cents.",
+		"",
+		"A two-way door. The field is additive and nothing",
+		"outside DiscountedTotalCents reads it, so reverting",
+		"this commit walks the change back.",
+		"",
+		"Look at the rounding in DiscountedTotalCents first."
+	])
 ];
 
 const PR_ROWS_BLOCKED = [
-	{ id: "subject-says-what-changed", p: 0.94, at: "PULL_REQUEST:1" },
-	{ id: "body-says-why", p: 0.94, at: "PULL_REQUEST:5" },
-	{ id: "body-few-visuals", p: 0.97, at: "PULL_REQUEST:10" },
-	{ id: "body-states-door", p: 0.88, at: "PULL_REQUEST:13" }
+	{ id: "subject-says-what-changed", p: 0.94 },
+	{ id: "body-says-why", p: 0.93 },
+	{ id: "body-few-visuals", p: 0.97 },
+	{ id: "body-states-door", p: 0.88 }
 ];
 
 const PR_ROWS_PASSED = [
-	{ id: "subject-says-what-changed", p: 0.14, at: null },
-	{ id: "body-says-why", p: 0.13, at: null },
-	{ id: "body-few-visuals", p: 0.13, at: null },
-	{ id: "body-states-door", p: 0.17, at: null }
+	{ id: "subject-says-what-changed", p: 0.14 },
+	{ id: "body-says-why", p: 0.13 },
+	{ id: "body-few-visuals", p: 0.13 },
+	{ id: "body-states-door", p: 0.19 }
 ];
 
 // One scene per act. Each carries the two states it plays: what the left pane
@@ -732,14 +774,12 @@ const ACTS = [
 		fixedLead: "Fixed by the agent.",
 		caption: "the agent fixes its own findings",
 		source: "the AGENTS.md rules",
-		meta: "northwind/invoicing · 2 files changed, +52",
-		fixedMeta: "northwind/invoicing · 2 files changed, +22 −28",
-		left: CODE_DIFF_BLOCKED,
-		fixedLeft: CODE_DIFF_PASSED,
+		left: CODE_LEFT_BLOCKED,
+		fixedLeft: CODE_LEFT_PASSED,
 		rows: CODE_BLOCKED,
 		fixedRows: CODE_PASSED,
-		blocked: { findings: 4, duration_ms: 893, input_tokens: 7575, cost_usd: 0.000318, calls: 4, windows: 2 },
-		passed: { findings: 0, duration_ms: 795, input_tokens: 4530, cost_usd: 0.000190, calls: 2, windows: 2 },
+		blocked: { findings: 4, duration_ms: 1073, input_tokens: 7356, cost_usd: 0.000309, calls: 4, windows: 2 },
+		passed: { findings: 0, duration_ms: 684, input_tokens: 4509, cost_usd: 0.000189, calls: 2, windows: 2 },
 		// One commit runs through the strip, which is what git does: the
 		// pre-commit hook judges the code, then the commit-msg hook judges the
 		// message of that same commit, so the subject typed here is the bad one
@@ -748,7 +788,7 @@ const ACTS = [
 			{ when: "open", kind: "user", t: "Add discount codes to invoice totals" },
 			{ when: "call", kind: "tool", name: "Bash", arg: "git commit -m \"Update billing.go and billing_test.go\"" },
 			{ when: "verdict", kind: "result", t: "tenet: 4 findings · commit blocked" },
-			{ when: "caption", kind: "agent", t: "fixing billing.go:28, :34, :36 and billing_test.go:36" },
+			{ when: "caption", kind: "agent", t: "fixing billing.go:26, :31, :32 and billing_test.go:36" },
 			{ when: "again", kind: "tool", name: "Bash", arg: "git commit -m \"Update billing.go and billing_test.go\"" },
 			{ when: "pass", kind: "result good", t: "tenet: 0 findings · code passed" }
 		]
@@ -761,14 +801,12 @@ const ACTS = [
 		fixedLead: "Reworded.",
 		caption: "the agent rewords the subject",
 		source: "the pr preset",
-		meta: "COMMIT_EDITMSG · the message this commit carries",
-		fixedMeta: "COMMIT_EDITMSG · the message this commit carries",
 		left: COMMIT_BAD,
 		fixedLeft: COMMIT_GOOD,
-		rows: [{ id: "subject-says-what-changed", p: 0.96, at: "COMMIT_EDITMSG:1" }],
-		fixedRows: [{ id: "subject-says-what-changed", p: 0.14, at: null }],
-		blocked: { findings: 1, duration_ms: 781, input_tokens: 891, cost_usd: 0.000037, calls: 2, windows: 1 },
-		passed: { findings: 0, duration_ms: 545, input_tokens: 573, cost_usd: 0.000024, calls: 1, windows: 1 },
+		rows: [{ id: "subject-says-what-changed", p: 0.96 }],
+		fixedRows: [{ id: "subject-says-what-changed", p: 0.13 }],
+		blocked: { findings: 1, duration_ms: 956, input_tokens: 891, cost_usd: 0.000037, calls: 2, windows: 1 },
+		passed: { findings: 0, duration_ms: 533, input_tokens: 573, cost_usd: 0.000024, calls: 1, windows: 1 },
 		// The commit act opens with no prompt and no tool line: it is the same
 		// command act 1 ran, now past the code and stopped on its message.
 		session: [
@@ -786,14 +824,12 @@ const ACTS = [
 		fixedLead: "Rewritten.",
 		caption: "the agent rewrites the description",
 		source: "the pr preset",
-		meta: "PULL_REQUEST · the title and description",
-		fixedMeta: "PULL_REQUEST · the title and description",
 		left: PR_BAD,
 		fixedLeft: PR_GOOD,
 		rows: PR_ROWS_BLOCKED,
 		fixedRows: PR_ROWS_PASSED,
-		blocked: { findings: 4, duration_ms: 726, input_tokens: 2840, cost_usd: 0.000119, calls: 2, windows: 1 },
-		passed: { findings: 0, duration_ms: 554, input_tokens: 1749, cost_usd: 0.000073, calls: 1, windows: 1 },
+		blocked: { findings: 4, duration_ms: 786, input_tokens: 2840, cost_usd: 0.000119, calls: 2, windows: 1 },
+		passed: { findings: 0, duration_ms: 549, input_tokens: 1749, cost_usd: 0.000073, calls: 1, windows: 1 },
 		session: [
 			{ when: "open", kind: "user", t: "Open the pull request" },
 			{ when: "call", kind: "tool", name: "Bash", arg: "gh pr create --fill" },
@@ -836,6 +872,7 @@ const T = {
 };
 
 const CUTOFF = 0.8;
+const CUTOFF_LEFT = (CUTOFF * 100).toFixed(1).replace(/\.0$/, "") + "%";
 
 function barsEnd(act, start) {
 	return start + (act.rows.length - 1) * T.BAR_STAGGER + T.BAR_DUR;
@@ -851,7 +888,6 @@ const stage = document.getElementById("stage");
 const mainEl = document.getElementById("main");
 const headlineEl = document.getElementById("headline");
 const sublineEl = document.getElementById("subline");
-const fileMetaEl = document.getElementById("filemeta");
 const counterEl = document.getElementById("counter");
 const costEl = document.getElementById("cost");
 const costStatEl = document.getElementById("coststat");
@@ -859,22 +895,15 @@ const clockCaptionEl = document.getElementById("clock-caption");
 const stripEl = document.getElementById("strip");
 const statusEl = document.getElementById("status");
 const tenetsEl = document.getElementById("tenets");
-const cutoffEl = document.getElementById("cutoff");
 const blackoutEl = document.getElementById("blackout");
 const progressEl = document.getElementById("progress");
-const sessionEl = document.getElementById("session");
+const sessionEl = document.getElementById("session-lines");
 const blockedLayer = document.getElementById("layer-blocked");
 const passedLayer = document.getElementById("layer-passed");
 
 function fit() {
 	const scale = Math.min(1, window.innerWidth / 1280, window.innerHeight / 720);
 	stage.style.transform = "scale(" + scale + ")";
-}
-
-function signOf(kind) {
-	if (kind === "add") return "+";
-	if (kind === "del") return "-";
-	return " ";
 }
 
 // order is the marker number a firing tenet carries, 1 upwards in the order
@@ -895,11 +924,12 @@ function markerOrder(rows) {
 function renderLines(layer, lines, order, staggered) {
 	layer.textContent = "";
 	const rows = [];
-	const textOnly = lines.length > 0 && lines[0].k === "plain";
 	for (const line of lines) {
 		const row = document.createElement("div");
-		row.className = "row " + line.k + (textOnly ? " text-only" : "") + (staggered ? "" : " in");
+		row.className = "row " + line.k + (line.add ? " add" : "") + (staggered ? "" : " in");
 		if (line.hit) row.dataset.hit = line.hit;
+		if (line.k === "file") row.dataset.file = line.t;
+		if (line.k === "line") row.dataset.line = String(line.n);
 
 		const marker = document.createElement("div");
 		marker.className = "marker";
@@ -907,16 +937,20 @@ function renderLines(layer, lines, order, staggered) {
 		if (line.hit && order.has(line.hit)) marker.textContent = String(order.get(line.hit));
 		row.append(marker);
 
-		if (!textOnly) {
-			const sign = document.createElement("span");
-			sign.className = "sign";
-			sign.textContent = signOf(line.k);
-			row.append(sign);
-		}
+		const num = document.createElement("span");
+		num.className = "num";
+		num.textContent = line.k === "line" ? String(line.n) : "";
+		row.append(num);
 
 		const text = document.createElement("span");
 		text.className = "text";
 		text.textContent = line.t;
+		if (line.stat) {
+			const stat = document.createElement("span");
+			stat.className = "stat";
+			stat.textContent = " " + line.stat;
+			text.append(stat);
+		}
 		row.append(text);
 
 		layer.append(row);
@@ -929,7 +963,6 @@ const bars = new Map();
 
 function renderTenets(rows, order) {
 	tenetsEl.textContent = "";
-	tenetsEl.append(cutoffEl);
 	bars.clear();
 	for (const row of rows) {
 		const el = document.createElement("div");
@@ -944,10 +977,11 @@ function renderTenets(rows, order) {
 		const id = document.createElement("span");
 		id.className = "id";
 		id.textContent = row.id;
-		const gloss = document.createElement("span");
+		label.append(marker, id);
+
+		const gloss = document.createElement("div");
 		gloss.className = "gloss";
 		gloss.textContent = GLOSS[row.id];
-		label.append(marker, id, gloss);
 
 		const track = document.createElement("div");
 		track.className = "track";
@@ -955,14 +989,14 @@ function renderTenets(rows, order) {
 		fill.className = "fill";
 		const value = document.createElement("span");
 		value.className = "value";
-		track.append(fill, value);
+		const cut = document.createElement("span");
+		cut.className = "cut";
+		cut.style.left = CUTOFF_LEFT;
+		track.append(fill, value, cut);
 
-		const at = document.createElement("div");
-		at.className = "at";
-
-		el.append(label, track, at);
+		el.append(label, gloss, track);
 		tenetsEl.append(el);
-		bars.set(row.id, { el: el, fill: fill, value: value, at: at, marker: marker });
+		bars.set(row.id, { el: el, fill: fill, value: value, marker: marker });
 	}
 }
 
@@ -1052,8 +1086,6 @@ function setBar(row, duration) {
 	bar.value.dataset.vis = "1";
 	bar.value.classList.toggle("inside", p >= 0.7);
 	bar.el.classList.toggle("over", over);
-	bar.at.textContent = over ? row.at : "";
-	bar.at.dataset.vis = over ? "1" : "0";
 	bar.marker.dataset.shown = over ? "1" : "0";
 }
 
@@ -1191,12 +1223,10 @@ function scheduleAct(act, start) {
 		});
 	}
 	at(start, function () {
-		fileMetaEl.textContent = act.meta;
-		fileMetaEl.dataset.vis = "1";
 		counterEl.textContent = "0.00 s";
 		costEl.textContent = "";
 		costStatEl.dataset.vis = "0";
-		clockCaptionEl.textContent = "seconds, this " + act.unit;
+		clockCaptionEl.textContent = "this " + act.unit;
 		clockCaptionEl.dataset.vis = "0";
 		statusEl.textContent = "";
 		statusEl.className = "xfade";
@@ -1258,7 +1288,6 @@ function scheduleAct(act, start) {
 		blockedLayer.dataset.state = "hidden";
 		passedLayer.dataset.state = "shown";
 	});
-	setTextAt(fileMetaEl, act.fixedMeta, start + off.swap);
 
 	setTextAt(statusEl, "asking jev…", rebarsAt - T.ASK_LEAD, "asking");
 	at(rebarsAt - T.ASK_LEAD, function () {
@@ -1312,7 +1341,6 @@ function play() {
 	return marks;
 }
 
-cutoffEl.style.left = (CUTOFF * 100).toFixed(1).replace(/\.0$/, "") + "%";
 fit();
 window.addEventListener("resize", fit);
 window.addEventListener("keydown", function (e) {

@@ -144,11 +144,11 @@ const starts = AT.map((a) => PRE + a);
 
 const rowsOf = (id) => el(id).children.filter((c) => c.classes.has("row"));
 const allRows = () => rowsOf("layer-blocked").concat(rowsOf("layer-passed"));
-const sessionLines = () => el("session").children.map((c) => c.textContent);
+const sessionLines = () => el("session-lines").children.map((c) => c.textContent);
 
 // Between the acts the layers are blanked; from there until main is visible
 // again no row may carry `in`, or it is on screen while the pane is empty.
-// Every row that exists is measured against the pane it has to fit.
+// Every layer that exists is held to the rows the pane has.
 let blanked = true;
 function invariant() {
 	const rows = allRows();
@@ -158,7 +158,8 @@ function invariant() {
 		const early = rows.filter((r) => r.classes.has("in"));
 		ok(early.length === 0, "a row carried `in` at " + now + " ms, before main's data-vis was 1");
 	}
-	rows.forEach(fits);
+	budget("layer-blocked");
+	budget("layer-passed");
 }
 
 starts.slice(1).forEach((s, i) => {
@@ -183,8 +184,6 @@ checkAt(starts[0] + 8000, "code act markers", () => {
 		if (row.classes.has("hit")) continue;
 		eq(row.querySelector(".marker").dataset.shown, "0", "a marker is shown on a line with no finding");
 	}
-
-	eq(el("filemeta").textContent, "northwind/invoicing · 2 files changed, +52", "act 1 file meta");
 });
 
 // item 2: one flow, pre-commit then commit-msg on the same commit.
@@ -193,7 +192,7 @@ checkAt(starts[1] - 1, "act 1 session", () => {
 		"> Add discount codes to invoice totals",
 		"● Bash(git commit -m \"Update billing.go and billing_test.go\")",
 		"  ⎿  tenet: 4 findings · commit blocked",
-		"● fixing billing.go:28, :34, :36 and billing_test.go:36",
+		"● fixing billing.go:26, :31, :32 and billing_test.go:36",
 		"● Bash(git commit -m \"Update billing.go and billing_test.go\")",
 		"  ⎿  tenet: 0 findings · code passed"
 	], "act 1's session strip");
@@ -221,28 +220,28 @@ checkAt(starts[2] + 12000, "act 3 session", () => {
 
 // the sweep: the headline tail shows the number the counter stopped on.
 checkAt(starts[0] + 5000, "blocked numbers agree", () => {
-	eq(el("counter").textContent, "0.89 s", "the counter at the verdict");
-	ok(/Blocked in 0\.89 s\./.test(el("headline").textContent), "the headline tail disagrees with the counter: " + el("headline").textContent);
+	eq(el("counter").textContent, "1.07 s", "the counter at the verdict");
+	ok(/Blocked in 1\.07 s\./.test(el("headline").textContent), "the headline tail disagrees with the counter: " + el("headline").textContent);
 	eq(el("status").textContent, "4 findings · blocked", "the status line");
 	ok(/^4 findings from /.test(el("subline").textContent), "the subline disagrees on the count: " + el("subline").textContent);
 });
 
 checkAt(starts[0] + 15000, "passed numbers agree", () => {
-	eq(el("counter").textContent, "0.80 s", "the counter at the pass");
-	ok(/Passed in 0\.80 s\./.test(el("headline").textContent), "the headline tail disagrees with the counter: " + el("headline").textContent);
+	eq(el("counter").textContent, "0.68 s", "the counter at the pass");
+	ok(/Passed in 0\.68 s\./.test(el("headline").textContent), "the headline tail disagrees with the counter: " + el("headline").textContent);
 	eq(el("status").textContent, "0 findings · passed", "the status line");
 });
 
 // item 4: the cost is a stat of its own, six decimals, no "per" anything.
 checkAt(starts[0] + 5000, "cost stat", () => {
-	eq(el("cost").textContent, "$0.000318", "the blocked cost");
+	eq(el("cost").textContent, "$0.000309", "the blocked cost");
 	eq(el("cost-caption").textContent, "cost", "the cost caption");
-	eq(el("clock-caption").textContent, "seconds, this commit", "the seconds caption");
+	eq(el("clock-caption").textContent, "this commit", "the seconds caption");
 	ok(!/per/.test(el("cost").textContent), "the cost line still says \"per\"");
 });
 
 checkAt(starts[0] + 15000, "passed cost stat", () => {
-	eq(el("cost").textContent, "$0.000190", "the passed cost");
+	eq(el("cost").textContent, "$0.000189", "the passed cost");
 });
 
 // ---- the stylesheet and the widths it has to hold ----
@@ -273,13 +272,21 @@ for (const m of below.matchAll(/(padding|margin|gap|padding-left|margin-top|marg
 	}
 }
 
-// A JetBrains Mono glyph at 16px is 9.6px wide and a tab stops every second
-// column; a sans glyph at 16px averages about 0.52em and at 18px 0.6em.
-const MONO = 9.6;
+// A JetBrains Mono glyph at 16px advances 9.6px, which Chrome on Linux rounds
+// to 10; a tab stops every second column; a sans glyph at 16px averages about
+// 0.52em and at 18px 0.6em.
+const MONO = 10;
+const LINE = 22;
 const LEFT_PANE = Number(/grid-template-columns:\s*(\d+)px/.exec(css)[1]);
 const RIGHT_PANE = 1280 - LEFT_PANE;
 const PAD = 24 * 2;
-const INSET = 8 + 24;
+// The row's 8px inset, the marker column, the number column and the two
+// column gaps between them and the text.
+const GUTTER = 8 + 24 + 12 + 24 + 12;
+const COLUMNS = Math.floor((LEFT_PANE - PAD - GUTTER) / MONO);
+// The main area's height less the pane's padding, in rows.
+const MAIN = 720 - 52 - 88 - 112 - 40;
+const ROWS = Math.floor((MAIN - 24) / LINE);
 
 function columns(t) {
 	let c = 0;
@@ -287,26 +294,148 @@ function columns(t) {
 	return c;
 }
 
-// Nothing wraps: every line of every act, in both of its states, fits the left
-// pane's text column.
-const overflowed = new Set();
-function fits(row) {
-	const text = row.querySelector(".text").textContent;
-	const gutter = INSET + (row.classes.has("text-only") ? 0 : 16);
-	const room = LEFT_PANE - PAD - gutter;
-	const width = columns(text) * MONO;
-	if (width <= room || overflowed.has(text)) return;
-	overflowed.add(text);
-	failures.push("a line needs " + width.toFixed(1) + "px of the " + room +
-		"px text column: " + JSON.stringify(text));
+function rowsNeeded(row) {
+	if (row.classes.has("file")) return 1;
+	return Math.max(1, Math.ceil(columns(row.querySelector(".text").textContent) / COLUMNS));
 }
 
-// Every tenet label row fits the right pane: marker, gap, id, gap, margin, gloss.
+// Every act, in both states, fits the pane: a line longer than the text
+// column wraps and takes two rows, and the rows of a layer never exceed what
+// the pane holds. A line a finding lands on is never one that wraps, so its
+// marker sits on one row.
+const budgeted = new Set();
+function budget(layerId) {
+	const rows = rowsOf(layerId);
+	if (rows.length === 0) return;
+	const key = layerId + ":" + rows.map((r) => r.textContent).join("\n");
+	if (budgeted.has(key)) return;
+	budgeted.add(key);
+	const total = rows.reduce((n, r) => n + rowsNeeded(r), 0);
+	ok(total <= ROWS, layerId + " holds " + total + " rows of the " + ROWS + " the pane has, starting " + JSON.stringify(rows[0].textContent));
+	for (const row of rows) {
+		if (row.dataset.hit && rowsNeeded(row) > 1) failures.push("a line with a finding wraps: " + JSON.stringify(row.querySelector(".text").textContent));
+		if (row.dataset.line !== undefined && Number(row.dataset.line) > 99) failures.push("a line number wider than its column: " + row.dataset.line);
+	}
+}
+
+// ---- the sample: every numbered line is the file's own, at that number ----
+
+const SAMPLE = path.join(__dirname, "sample");
+const read = (name) => fs.readFileSync(path.join(SAMPLE, name), "utf8");
+
+// Applies a unified diff to the files it names, the way `git apply` does for
+// the two patches, so the numbered lines can be read back from the result.
+function applyPatch(files, patch) {
+	const out = Object.assign({}, files);
+	let name = null;
+	let old = null;
+	let fresh = null;
+	let at = 0;
+	const flush = () => {
+		if (name === null) return;
+		fresh.push(...old.slice(at));
+		out[name] = fresh.join("\n");
+	};
+	for (const line of patch.split("\n")) {
+		let m;
+		if ((m = /^diff --git a\/(\S+) b\/(\S+)$/.exec(line))) {
+			flush();
+			name = m[2];
+			old = out[name].split("\n");
+			fresh = [];
+			at = 0;
+		} else if ((m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line))) {
+			const from = Number(m[1]) - 1;
+			fresh.push(...old.slice(at, from));
+			at = from;
+		} else if (name !== null && (line.startsWith(" ") || line === "")) {
+			if (line === "" && !/^(---|\+\+\+|index )/.test(line) && at >= old.length) continue;
+			fresh.push(old[at]);
+			at += 1;
+		} else if (line.startsWith("-") && !line.startsWith("---")) {
+			if (old[at] !== line.slice(1)) failures.push("the patch does not apply at " + name + ":" + (at + 1) + ": " + JSON.stringify(line));
+			at += 1;
+		} else if (line.startsWith("+") && !line.startsWith("+++")) {
+			fresh.push(line.slice(1));
+		}
+	}
+	flush();
+	return out;
+}
+
+const base = { "billing.go": read("billing.go"), "billing_test.go": read("billing_test.go") };
+const changed = applyPatch(base, read("agent-change.patch"));
+const fixed = applyPatch(changed, read("agent-fix.patch"));
+// The lines a patch adds, by file, because the same text can be context in
+// one file and new in the other.
+function added(patch) {
+	const byFile = {};
+	let name = null;
+	for (const line of patch.split("\n")) {
+		const m = /^diff --git a\/(\S+) b\/(\S+)$/.exec(line);
+		if (m) {
+			name = m[2];
+			byFile[name] = new Set();
+		} else if (name !== null && line.startsWith("+") && !line.startsWith("+++")) {
+			byFile[name].add(line.slice(1));
+		}
+	}
+	return byFile;
+}
+
+const TEXTS = {
+	COMMIT_EDITMSG: [read("commit-msg-bad.txt"), read("commit-msg-good.txt")],
+	PULL_REQUEST: [read("pr-bad.txt"), read("pr-good.txt")]
+};
+
+// Reads a layer back against the files it claims to show: each numbered row
+// is that line of that file, and a row is tinted as added exactly when the
+// patch adds that text.
+function verbatim(layerId, files, adds, which) {
+	let file = null;
+	for (const row of rowsOf(layerId)) {
+		if (row.dataset.file !== undefined) {
+			file = row.dataset.file;
+			continue;
+		}
+		const text = row.querySelector(".text").textContent;
+		const n = Number(row.dataset.line);
+		const source = files[file] !== undefined ? files[file] : (TEXTS[file] ? TEXTS[file][which] : null);
+		if (source === null || source === undefined) {
+			failures.push(layerId + " shows " + file + ", which is not a sample file");
+			continue;
+		}
+		const want = source.split("\n")[n - 1];
+		if (text !== want) failures.push(layerId + " line " + file + ":" + n + " is " + JSON.stringify(text) + ", the file has " + JSON.stringify(want));
+		if (adds) {
+			const tinted = row.classes.has("add");
+			if (tinted !== adds[file].has(text) && text !== "") failures.push(layerId + " line " + file + ":" + n + (tinted ? " is tinted but the patch does not add it" : " is added by the patch but not tinted"));
+		}
+	}
+}
+
+checkAt(starts[0] + 8000, "act 1 verbatim", () => {
+	verbatim("layer-blocked", changed, added(read("agent-change.patch")), 0);
+	verbatim("layer-passed", fixed, added(read("agent-fix.patch")), 1);
+});
+checkAt(starts[1] + 4000, "act 2 verbatim", () => {
+	verbatim("layer-blocked", {}, null, 0);
+	verbatim("layer-passed", {}, null, 1);
+});
+checkAt(starts[2] + 4000, "act 3 verbatim", () => {
+	verbatim("layer-blocked", {}, null, 0);
+	verbatim("layer-passed", {}, null, 1);
+});
+
+// Every tenet fits the right pane: the marker, a gap and the id on one line,
+// the gloss on the next.
 const glosses = [...src.matchAll(/"([\w-]+)":\s*"([^"]+)"/g)];
 for (const [, id, gloss] of glosses) {
-	const width = 22 + 8 + id.length * 18 * 0.6 + 8 + 4 + gloss.length * 16 * 0.52;
 	const room = RIGHT_PANE - PAD;
-	ok(width <= room, "the label for " + id + " needs " + width.toFixed(1) + "px of " + room);
+	const label = 22 + 8 + id.length * 11;
+	ok(label <= room, "the label for " + id + " needs " + label.toFixed(1) + "px of " + room);
+	const words = 22 + 8 + gloss.length * 16 * 0.52;
+	ok(words <= room, "the gloss for " + id + " needs " + words.toFixed(1) + "px of " + room);
 }
 
 const SESSION = 1280 - PAD;
