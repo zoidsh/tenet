@@ -89,6 +89,11 @@ type Report struct {
 	Stats    judge.Stats
 	Skipped  []source.Skip
 
+	// NearMisses are the verdicts that came within NearBand of their cutoff.
+	// They fail nothing and are printed only where there is room to tune a
+	// cutoff by them, which is --verbose and the job summary.
+	NearMisses []judge.NearMiss
+
 	// Baselined are the findings an accepted baseline took out of Findings.
 	// They are counted, and printed only when ShowBaselined, but they never
 	// fail a run: the point of accepting them was to stop them blocking.
@@ -327,6 +332,9 @@ func (r Report) JSON(w io.Writer) error {
 // step's output and turns into annotations on the lines they name. Baselined
 // findings are left out: accepting one was the decision not to put it in
 // front of anyone again.
+//
+// An annotation is only ever seen by someone who opens the diff, so where the
+// runner offers a job summary the report goes there as well.
 func (r Report) GitHub(w io.Writer) error {
 	var b strings.Builder
 	for _, f := range r.Findings {
@@ -336,9 +344,63 @@ func (r Report) GitHub(w io.Writer) error {
 	if !r.Quiet {
 		b.WriteString(r.summary() + "\n")
 	}
+	if _, err := io.WriteString(w, b.String()); err != nil {
+		return err
+	}
+	return r.appendStepSummary(os.Getenv(StepSummaryEnv))
+}
+
+// StepSummaryEnv names the file a GitHub Actions step appends its summary to,
+// which the runner then renders on the job's own page.
+const StepSummaryEnv = "GITHUB_STEP_SUMMARY"
+
+// appendStepSummary adds this run's summary to the file the runner named,
+// which several steps of one job share, so it is appended rather than written.
+func (r Report) appendStepSummary(path string) error {
+	if path == "" {
+		return nil
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if err := r.Markdown(f); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+// Markdown writes the report as a job summary: the verdict, what was found,
+// what nearly was, and what the run cost.
+func (r Report) Markdown(w io.Writer) error {
+	var b strings.Builder
+	fmt.Fprintf(&b, "## %d findings\n", len(r.Findings))
+	if len(r.Findings) > 0 {
+		b.WriteString("\n| File | Line | Tenet | Probability | Message |\n| --- | --- | --- | --- | --- |\n")
+		for _, f := range r.Findings {
+			fmt.Fprintf(&b, "| %s | %d | %s | %.2f | %s |\n",
+				cell(f.File), f.Line, cell(f.Tenet), f.Probability, cell(f.Message))
+		}
+	}
+	if len(r.NearMisses) > 0 {
+		b.WriteString("\n### Near misses\n")
+		b.WriteString("\n| File | Line | Tenet | Probability | Cutoff |\n| --- | --- | --- | --- | --- |\n")
+		for _, n := range r.NearMisses {
+			fmt.Fprintf(&b, "| %s | %d | %s | %.2f | %.2f |\n",
+				cell(n.File), n.Line, cell(n.Tenet), n.Probability, n.Fail)
+		}
+	}
+	fmt.Fprintf(&b, "\n%s\n", r.summary())
 	_, err := io.WriteString(w, b.String())
 	return err
 }
+
+// cell is a value a table row can carry: a pipe would end the column it is in
+// and a newline the row.
+var cellEscapes = strings.NewReplacer("|", "\\|", "\r\n", " ", "\n", " ", "\r", " ")
+
+func cell(s string) string { return cellEscapes.Replace(s) }
 
 // The escapes a workflow command needs: a raw newline would end the command
 // early, and an unescaped separator inside a property would start another one.

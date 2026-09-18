@@ -350,6 +350,7 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 
 	r := report.Report{
 		Findings:      findings,
+		NearMisses:    near,
 		Baselined:     baselined,
 		ShowBaselined: o.showBaselined,
 		Stats:         run.outcome.Stats,

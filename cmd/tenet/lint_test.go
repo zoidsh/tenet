@@ -462,3 +462,30 @@ func TestNextLineFitsTheRun(t *testing.T) {
 		})
 	}
 }
+
+// On a runner that offers a job summary, the github format writes the report
+// there as well, where it is read without opening the diff.
+func TestLintGitHubFormatWritesTheJobSummary(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	writeConfigFile(t, dir, testConfig)
+	writeFile(t, dir, "inc.go", staged)
+	git(t, dir, "add", "-A")
+	t.Chdir(dir)
+	t.Setenv(jev.APIKeyEnv, "test-key")
+	t.Setenv(jev.BaseURLEnv, answerServer(t).URL)
+	summary := filepath.Join(t.TempDir(), "summary.md")
+	t.Setenv(report.StepSummaryEnv, summary)
+
+	if code, _, stderr := runRoot(t, "--no-cache", "--format", "github"); code != report.ExitFinding {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	data, err := os.ReadFile(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "## 1 findings") || !strings.Contains(got, "| inc.go | 3 | comment-why |") {
+		t.Errorf("the job summary is\n%s", got)
+	}
+}
