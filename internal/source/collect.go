@@ -18,8 +18,12 @@ const (
 	sniffBytes   = 8 << 10
 )
 
+// Nothing tenet keeps for itself is judged: the config and the calibrated
+// examples quote the tenets back, so a rule about narrating comments reads its
+// own sentence in them as a violation.
 var skipDirs = map[string]bool{
 	".git":         true,
+	ConfigDir:      true,
 	"node_modules": true,
 	"vendor":       true,
 	"dist":         true,
@@ -28,18 +32,21 @@ var skipDirs = map[string]bool{
 // Files whose contents must never leave the machine, whatever the tenets say.
 var secretPatterns = []string{".env", ".env.*", "*.pem", "*.key", "id_rsa*", "*.p12", "*.pfx"}
 
-// ConfigName and BaselineName are tenet's own files. They live here
-// rather than in the packages that own them because those packages import
-// this one, and the skip below has to name them.
+// ConfigDir, ConfigName and BaselineName name tenet's own directory and what
+// it holds. They live here rather than in the packages that own them because
+// those packages import this one, and the skip above has to name the
+// directory.
 const (
-	ConfigName   = "tenet.yml"
-	BaselineName = ".tenet-baseline.json"
+	ConfigDir    = ".tenet"
+	ConfigName   = "config.yml"
+	BaselineName = "baseline.json"
 )
 
-// tenet's own files are never judged: both quote the tenets back, so a
-// rule about narrating comments reads its own sentence in them as a
-// violation.
-var skipFiles = map[string]bool{ConfigName: true, BaselineName: true}
+// ConfigFile is where the config sits inside a repository.
+const ConfigFile = ConfigDir + "/" + ConfigName
+
+// ConfigPath is the config file of the repository rooted at dir.
+func ConfigPath(dir string) string { return filepath.Join(dir, ConfigFile) }
 
 // Skip is a file that was not linted, and why.
 type Skip struct {
@@ -297,9 +304,6 @@ func skipByName(path string) string {
 		if skipDirs[dir] {
 			return "in " + dir
 		}
-	}
-	if skipFiles[name] {
-		return "tenet's own file"
 	}
 	for _, pattern := range secretPatterns {
 		if ok, _ := filepath.Match(pattern, name); ok {

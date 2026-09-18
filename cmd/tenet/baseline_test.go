@@ -19,6 +19,7 @@ import (
 	"github.com/zoidsh/tenet/internal/baseline"
 	"github.com/zoidsh/tenet/internal/jev"
 	"github.com/zoidsh/tenet/internal/judge"
+	"github.com/zoidsh/tenet/internal/source"
 	"github.com/zoidsh/tenet/internal/tenets"
 )
 
@@ -96,13 +97,19 @@ func baselineRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", testConfig)
+	writeConfigFile(t, dir, testConfig)
 	writeFile(t, dir, "inc.go", marked)
 	git(t, dir, "add", "-A")
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
 	t.Setenv(jev.BaseURLEnv, markerServer(t).URL)
 	return dir
+}
+
+// baselineIn is where a run started in dir writes its baseline, beside the
+// config it was accepted against.
+func baselineIn(dir string) string {
+	return filepath.Join(dir, source.ConfigDir, baseline.Name)
 }
 
 func readBaseline(t *testing.T, path string) baseline.File {
@@ -141,7 +148,7 @@ func TestBaselineWrite(t *testing.T) {
 		t.Errorf("stdout is %q", stdout)
 	}
 
-	got := readBaseline(t, filepath.Join(dir, baseline.Name))
+	got := readBaseline(t, baselineIn(dir))
 	if got.Version != baseline.Version {
 		t.Errorf("version is %d", got.Version)
 	}
@@ -170,7 +177,7 @@ func TestBaselineWriteFromASubdirectory(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	got := readBaseline(t, filepath.Join(dir, baseline.Name))
+	got := readBaseline(t, baselineIn(dir))
 	if len(got.Findings) != 1 || got.Findings[0].File != "inc.go" {
 		t.Errorf("findings are %#v", got.Findings)
 	}
@@ -187,7 +194,7 @@ func TestBaselineWriteToANamedFile(t *testing.T) {
 	if len(readBaseline(t, path).Findings) != 1 {
 		t.Error("the named file holds no findings")
 	}
-	if _, err := os.Stat(filepath.Join(dir, baseline.Name)); !os.IsNotExist(err) {
+	if _, err := os.Stat(baselineIn(dir)); !os.IsNotExist(err) {
 		t.Errorf("the default file was written too: %v", err)
 	}
 }
@@ -310,7 +317,7 @@ func TestBaselinePruneDropsWhatIsFixed(t *testing.T) {
 	if !strings.Contains(stdout, "dropped 1 finding") {
 		t.Errorf("stdout is %q", stdout)
 	}
-	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 0 {
+	if got := readBaseline(t, baselineIn(dir)); len(got.Findings) != 0 {
 		t.Errorf("findings are %#v", got.Findings)
 	}
 }
@@ -326,7 +333,7 @@ func TestBaselinePruneKeepsWhatIsStillFound(t *testing.T) {
 	if !strings.Contains(stdout, "dropped 0 findings") {
 		t.Errorf("stdout is %q", stdout)
 	}
-	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 1 {
+	if got := readBaseline(t, baselineIn(dir)); len(got.Findings) != 1 {
 		t.Errorf("findings are %#v", got.Findings)
 	}
 }
@@ -342,7 +349,7 @@ func TestBaselinePruneAcceptsNothingNew(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	got := readBaseline(t, filepath.Join(dir, baseline.Name))
+	got := readBaseline(t, baselineIn(dir))
 	if len(got.Findings) != 1 || got.Findings[0].File != "inc.go" {
 		t.Errorf("findings are %#v", got.Findings)
 	}
@@ -365,7 +372,7 @@ func TestBaselinePruneWithoutABaseline(t *testing.T) {
 func TestABaselinedFindingSurvivesAModelBump(t *testing.T) {
 	dir := baselineRepo(t)
 	writeBaseline(t)
-	writeFile(t, dir, "tenet.yml", strings.Replace(testConfig, "jev-1.13.0", "jev-1.14.0", 1))
+	writeConfigFile(t, dir, strings.Replace(testConfig, "jev-1.13.0", "jev-1.14.0", 1))
 
 	code, stdout, stderr := runCmd(t, "--no-cache", ".")
 	if code != 0 {
@@ -380,7 +387,7 @@ func TestBaselineRecordsItsScope(t *testing.T) {
 	dir := baselineRepo(t)
 	writeBaseline(t)
 
-	got := readBaseline(t, filepath.Join(dir, baseline.Name)).Scope
+	got := readBaseline(t, baselineIn(dir)).Scope
 	if got.Mode != baseline.ModePaths || len(got.Paths) != 1 || got.Paths[0] != "." {
 		t.Errorf("scope is %#v", got)
 	}
@@ -394,7 +401,7 @@ func TestBaselineRecordsABaseScope(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	got := readBaseline(t, filepath.Join(dir, baseline.Name)).Scope
+	got := readBaseline(t, baselineIn(dir)).Scope
 	if got.Mode != baseline.ModeBase || got.Base != "main" {
 		t.Errorf("scope is %#v", got)
 	}
@@ -415,7 +422,7 @@ func TestBaselinePruneRefusesANarrowerScope(t *testing.T) {
 			t.Errorf("stderr %q does not name %s", stderr, want)
 		}
 	}
-	if len(readBaseline(t, filepath.Join(dir, baseline.Name)).Findings) != 1 {
+	if len(readBaseline(t, baselineIn(dir)).Findings) != 1 {
 		t.Error("the refused prune wrote the file anyway")
 	}
 }
@@ -457,14 +464,14 @@ func TestBaselineIsWrittenWholeAndReadable(t *testing.T) {
 	dir := baselineRepo(t)
 	writeBaseline(t)
 
-	info, err := os.Stat(filepath.Join(dir, baseline.Name))
+	info, err := os.Stat(baselineIn(dir))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if info.Mode().Perm() != 0o644 {
 		t.Errorf("mode is %v", info.Mode().Perm())
 	}
-	left, err := filepath.Glob(filepath.Join(dir, baseline.Name+".*"))
+	left, err := filepath.Glob(baselineIn(dir) + ".*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +530,7 @@ func TestBaselinePruneDropsADeletedFile(t *testing.T) {
 	if !strings.Contains(stdout, "dropped 1 finding") {
 		t.Errorf("stdout is %q", stdout)
 	}
-	if got := readBaseline(t, filepath.Join(dir, baseline.Name)); len(got.Findings) != 0 {
+	if got := readBaseline(t, baselineIn(dir)); len(got.Findings) != 0 {
 		t.Errorf("findings are %#v", got.Findings)
 	}
 }

@@ -1,4 +1,4 @@
-tenet.yml
+.tenet/config.yml
 
 id                     origin         kind  fail  include
 comment-why            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py

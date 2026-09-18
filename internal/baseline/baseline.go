@@ -16,7 +16,7 @@ import (
 	"github.com/zoidsh/tenet/internal/source"
 )
 
-// Name is the file a run looks for in the repository root.
+// Name is the file a run looks for beside the config it is running under.
 const Name = source.BaselineName
 
 // Version is the format, so that a later change retires the old file instead

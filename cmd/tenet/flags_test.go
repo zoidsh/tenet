@@ -83,7 +83,7 @@ func runRoot(t *testing.T, args ...string) (int, string, string) {
 func stagedRepo(t *testing.T) string {
 	t.Helper()
 	dir, _ := authRepo(t)
-	writeFile(t, dir, "tenet.yml", testConfig)
+	writeConfigFile(t, dir, testConfig)
 	writeFile(t, dir, "inc.go", staged)
 	git(t, dir, "add", "-Af")
 	return dir

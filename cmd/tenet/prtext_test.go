@@ -51,7 +51,7 @@ func writePRText(t *testing.T, dir, body string) string {
 func TestLintPRTextEndToEnd(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", prTextConfig)
+	writeConfigFile(t, dir, prTextConfig)
 	path := writePRText(t, dir, prText)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -90,7 +90,7 @@ func TestLintPRTextEndToEnd(t *testing.T) {
 func TestLintPRTextKeepsEveryLine(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", prTextIncludeConfig)
+	writeConfigFile(t, dir, prTextIncludeConfig)
 	path := writePRText(t, dir, prText)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -118,7 +118,7 @@ func TestLintPRTextKeepsEveryLine(t *testing.T) {
 func TestLintPRTextWithoutATenetForIt(t *testing.T) {
 	dir := t.TempDir()
 	git(t, dir, "init", "-q", "-b", "main")
-	writeFile(t, dir, "tenet.yml", testConfig)
+	writeConfigFile(t, dir, testConfig)
 	path := writePRText(t, dir, prText)
 	t.Chdir(dir)
 	t.Setenv(jev.APIKeyEnv, "test-key")
@@ -145,7 +145,7 @@ func TestLintPRTextIsAloneOnTheCommandLine(t *testing.T) {
 	} {
 		dir := t.TempDir()
 		git(t, dir, "init", "-q", "-b", "main")
-		writeFile(t, dir, "tenet.yml", prTextConfig)
+		writeConfigFile(t, dir, prTextConfig)
 		writePRText(t, dir, prText)
 		t.Chdir(dir)
 		t.Setenv(jev.APIKeyEnv, "test-key")

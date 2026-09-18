@@ -32,7 +32,7 @@ func TestKind(t *testing.T) {
 		{"app/i18n/de.strings", source.KindProse},
 		{"locales/en.json", source.KindProse},
 		{"app/i18n/de.yml", source.KindProse},
-		{"tenet.yml", source.KindData},
+		{"settings.yml", source.KindData},
 		{"package.json", source.KindData},
 		{"Cargo.toml", source.KindData},
 		{"go.work.lock", source.KindData},

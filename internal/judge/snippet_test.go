@@ -30,8 +30,8 @@ func TestStateOfFraming(t *testing.T) {
 		{
 			kind: source.KindData,
 			lang: "yaml",
-			path: "tenet.yml",
-			want: "Data file: yaml. File: tenet.yml. Excerpt:\nL001 one\nL002 two\n",
+			path: "settings.yml",
+			want: "Data file: yaml. File: settings.yml. Excerpt:\nL001 one\nL002 two\n",
 		},
 		{
 			kind: source.KindCommit,

@@ -101,7 +101,7 @@ func TestInitEndToEnd(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
 
-	cfg, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
+	cfg, err := tenets.Load(filepath.Join(dir, tenets.FileName))
 	if err != nil {
 		t.Fatalf("the drafted file does not load: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestInitEndToEnd(t *testing.T) {
 		"code-rule",
 		"process",
 		"comment-says-why-code-exists",
-		"2 candidates, 1 tenets written to tenet.yml",
+		"2 candidates, 1 tenets written to " + tenets.FileName,
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("stdout does not mention %q:\n%s", want, stdout)
@@ -180,7 +180,7 @@ func TestInitJSON(t *testing.T) {
 	if second := got.Candidates[1]; second.Kind != importer.KindProcess || second.Accepted || second.Tenet != "" {
 		t.Errorf("second candidate is %#v", second)
 	}
-	if got.Written == nil || *got.Written != "tenet.yml" {
+	if got.Written == nil || *got.Written != tenets.FileName {
 		t.Errorf("written is %v", got.Written)
 	}
 	if got.Stats.Candidates != 2 || got.Stats.Tenets != 1 || got.Stats.Calls != 1 || got.Stats.InputTokens != 300 {
@@ -198,7 +198,7 @@ func TestInitDryRunWritesNothing(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "tenet.yml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, tenets.FileName)); !os.IsNotExist(err) {
 		t.Errorf("a dry run wrote the file: %v", err)
 	}
 	if !strings.Contains(stdout, "nothing written (--dry-run)") {
@@ -208,23 +208,23 @@ func TestInitDryRunWritesNothing(t *testing.T) {
 
 func TestInitRefusesAnExistingConfig(t *testing.T) {
 	dir := initRepo(t)
-	writeFile(t, dir, "tenet.yml", testConfig)
+	writeConfigFile(t, dir, testConfig)
 
 	code, _, stderr := runInitCmd(t)
 	if code != 2 {
 		t.Fatalf("exit %d, want 2", code)
 	}
-	if !strings.Contains(stderr, "tenet.yml") || !strings.Contains(stderr, "--force") {
+	if !strings.Contains(stderr, tenets.FileName) || !strings.Contains(stderr, "--force") {
 		t.Errorf("stderr is %q", stderr)
 	}
-	if data, err := os.ReadFile(filepath.Join(dir, "tenet.yml")); err != nil || string(data) != testConfig {
+	if data, err := os.ReadFile(filepath.Join(dir, tenets.FileName)); err != nil || string(data) != testConfig {
 		t.Errorf("the existing file was touched: %v", err)
 	}
 
 	if code, _, stderr := runInitCmd(t, "--force"); code != 0 {
 		t.Fatalf("exit %d with --force: %s", code, stderr)
 	}
-	cfg, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
+	cfg, err := tenets.Load(filepath.Join(dir, tenets.FileName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,14 +258,14 @@ func TestInitDryRunToASubdirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	code, stdout, stderr := runInitCmd(t, "--config", "sub/tenet.yml", "--dry-run")
+	code, stdout, stderr := runInitCmd(t, "--config", "sub/config.yml", "--dry-run")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
 	if !strings.Contains(stdout, "nothing written (--dry-run)") {
 		t.Errorf("stdout is %s", stdout)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "sub", "tenet.yml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(dir, "sub", "config.yml")); !os.IsNotExist(err) {
 		t.Errorf("a dry run wrote the file: %v", err)
 	}
 }
@@ -297,7 +297,7 @@ func TestInitReadsASavedKey(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if _, err := tenets.Load(filepath.Join(dir, "tenet.yml")); err != nil {
+	if _, err := tenets.Load(filepath.Join(dir, tenets.FileName)); err != nil {
 		t.Errorf("the drafted file does not load: %v", err)
 	}
 }
@@ -319,7 +319,7 @@ func TestInitFromNamedFiles(t *testing.T) {
 	if code, _, stderr := runInitCmd(t, "--from", "other.md"); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	cfg, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
+	cfg, err := tenets.Load(filepath.Join(dir, tenets.FileName))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -338,10 +338,10 @@ func TestInitStarterWhenNothingIsFound(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if !strings.Contains(stdout, "tenet.yml") || !strings.Contains(stdout, importer.DefaultPreset) {
+	if !strings.Contains(stdout, tenets.FileName) || !strings.Contains(stdout, importer.DefaultPreset) {
 		t.Errorf("stdout does not say what it wrote where: %q", stdout)
 	}
-	assertPresetFile(t, filepath.Join(dir, "tenet.yml"), importer.DefaultPreset)
+	assertPresetFile(t, filepath.Join(dir, tenets.FileName), importer.DefaultPreset)
 }
 
 // assertPresetFile holds the written file to naming presets and nothing else,
@@ -382,7 +382,7 @@ func TestInitFromAPreset(t *testing.T) {
 	}
 	// The repository has a CLAUDE.md, which a preset on its own says not to
 	// read; the file holds the preset and nothing drafted from it.
-	assertPresetFile(t, filepath.Join(dir, "tenet.yml"), "agent-hygiene")
+	assertPresetFile(t, filepath.Join(dir, tenets.FileName), "agent-hygiene")
 }
 
 func TestInitFromAPresetAndAFile(t *testing.T) {
@@ -391,7 +391,7 @@ func TestInitFromAPresetAndAFile(t *testing.T) {
 	if code, _, stderr := runInitCmd(t, "--preset", "agent-hygiene", "--from", "CLAUDE.md"); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	cfg, err := tenets.Load(filepath.Join(dir, "tenet.yml"))
+	cfg, err := tenets.Load(filepath.Join(dir, tenets.FileName))
 	if err != nil {
 		t.Fatal(err)
 	}

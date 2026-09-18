@@ -38,7 +38,7 @@ func newConfigCmd() *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().StringVar(&path, "config", "", "path to tenet.yml, searched for by default")
+	cmd.Flags().StringVar(&path, "config", "", "path to "+tenets.FileName+", searched for by default")
 	return cmd
 }
 
