@@ -86,6 +86,41 @@ type Judge struct {
 
 	// Log, when set, receives a line per round of questions asked.
 	Log func(string)
+
+	// Trace, when set, receives a record per window judged. Windows are
+	// judged concurrently, so it is called from several goroutines at once.
+	Trace func(Trace)
+}
+
+// Trace is everything one window's judging carried: what was sent, what came
+// back, and what it cost. Seq is the window's place in the run, assigned
+// before any of them is dispatched so that it does not depend on which one
+// finishes first. A window judged in halves records a Trace per half, each
+// under the same Seq and its own line range.
+//
+// A round that ran into the request budget is not traced: the window it asked
+// about is abandoned for its halves, and nothing of what it sent holds for
+// what was judged in the end. The calls it made were still paid for, so a
+// run's own cost can be more than its traces add up to.
+type Trace struct {
+	Seq   int
+	File  string
+	First int
+	Last  int
+
+	Tenets    []string
+	State     string
+	Questions map[string]jev.Question
+	Answers   map[string]jev.Answer
+
+	// Cached says no request was made at all: every answer came out of the
+	// cache, so Model is empty and nothing was paid.
+	Cached bool
+
+	Model       string
+	InputTokens int
+	CostUSD     float64
+	Duration    time.Duration
 }
 
 // State is what the model is shown: the window's lines, each under the id the
@@ -139,14 +174,14 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) (Outcome, err
 	slots := make(chan struct{}, concurrency)
 	files := map[string]bool{}
 
-	for _, w := range windows {
+	for i, w := range windows {
 		files[w.Path()] = true
 		wg.Add(1)
 		slots <- struct{}{}
-		go func(w *source.Window) {
+		go func(w *source.Window, seq int) {
 			defer wg.Done()
 			defer func() { <-slots }()
-			found, missed, s, err := j.window(ctx, w)
+			found, missed, s, err := j.window(ctx, w, seq)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
@@ -162,7 +197,7 @@ func (j *Judge) Run(ctx context.Context, windows []*source.Window) (Outcome, err
 			stats.CacheHits += s.CacheHits
 			stats.InputTokens += s.InputTokens
 			stats.CostUSD += s.CostUSD
-		}(w)
+		}(w, i+1)
 	}
 	wg.Wait()
 
@@ -256,13 +291,13 @@ func (p *pending) offers(label string) bool {
 	return ok && slices.Contains(p.open, id)
 }
 
-func (j *Judge) window(ctx context.Context, w *source.Window) ([]Finding, []NearMiss, Stats, error) {
+func (j *Judge) window(ctx context.Context, w *source.Window, seq int) ([]Finding, []NearMiss, Stats, error) {
 	var stats Stats
-	findings, near, err := j.judge(ctx, w, &stats)
+	findings, near, err := j.judge(ctx, w, seq, &stats)
 	return findings, near, stats, err
 }
 
-func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Finding, []NearMiss, error) {
+func (j *Judge) judge(ctx context.Context, w *source.Window, seq int, stats *Stats) ([]Finding, []NearMiss, error) {
 	state := State(w)
 
 	var work []*pending
@@ -292,11 +327,13 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 		return nil, nil, nil
 	}
 
-	if err := j.askVerdicts(ctx, w, state, work, stats); err != nil {
-		return j.inHalves(ctx, w, stats, err)
+	t := j.newTrace(w, seq, state, work)
+	started, before := time.Now(), *stats
+	if err := j.askVerdicts(ctx, w, state, work, stats, t); err != nil {
+		return j.inHalves(ctx, w, seq, stats, err)
 	}
-	if err := j.askLocations(ctx, w, state, work, stats); err != nil {
-		return j.inHalves(ctx, w, stats, err)
+	if err := j.askLocations(ctx, w, state, work, stats, t); err != nil {
+		return j.inHalves(ctx, w, seq, stats, err)
 	}
 
 	var findings []Finding
@@ -333,14 +370,69 @@ func (j *Judge) judge(ctx context.Context, w *source.Window, stats *Stats) ([]Fi
 			Hash:        FindingHash(p.tenet.IdentityHash(), w.File.Lines, line),
 		})
 	}
+	j.traced(t, before, stats, started)
 	return findings, near, nil
 }
+
+// newTrace opens a record of what this window is about to be asked, nil when
+// nobody is listening. The answers the cache already holds go in here: they
+// are the ones no request will carry and no response will report.
+func (j *Judge) newTrace(w *source.Window, seq int, state string, work []*pending) *Trace {
+	if j.Trace == nil {
+		return nil
+	}
+	t := &Trace{
+		Seq:       seq,
+		File:      w.Path(),
+		First:     w.First,
+		Last:      w.First + len(w.Lines) - 1,
+		State:     state,
+		Questions: map[string]jev.Question{},
+		Answers:   map[string]jev.Answer{},
+	}
+	for _, p := range work {
+		t.Tenets = append(t.Tenets, p.tenet.ID)
+		if !p.asked {
+			continue
+		}
+		t.Questions[verdictName(p.tenet.ID)] = VerdictQuestion(p.tenet)
+		t.Answers[verdictName(p.tenet.ID)] = jev.Answer{Type: jev.KindNoul, Noul: p.prob}
+		if p.line == "" {
+			continue
+		}
+		t.Answers[whereName(p.tenet.ID)] = jev.Answer{Type: jev.KindChoice, Choice: p.line}
+		// A question the run never has to ask is still what the cached line
+		// answers, and a reader with only the answer cannot tell which lines
+		// were on offer.
+		if q, err := LocationQuestion(p.tenet, p.open); err == nil {
+			t.Questions[whereName(p.tenet.ID)] = q
+		}
+	}
+	return t
+}
+
+// traced closes the record with what the window cost, which is what the run's
+// stats grew by while it was judged.
+func (j *Judge) traced(t *Trace, before Stats, stats *Stats, started time.Time) {
+	if t == nil {
+		return
+	}
+	t.Cached = stats.Calls == before.Calls
+	t.InputTokens = stats.InputTokens - before.InputTokens
+	t.CostUSD = stats.CostUSD - before.CostUSD
+	t.Duration = time.Since(started)
+	j.Trace(*t)
+}
+
+func verdictName(id string) string { return "verdict:" + id }
+
+func whereName(id string) string { return "where:" + id }
 
 // inHalves judges the window in two, which is the only way left when a single
 // question and the window together are over budget. Any answer the window
 // already had is dropped: the halves ask about a different state, so nothing
 // carries over.
-func (j *Judge) inHalves(ctx context.Context, w *source.Window, stats *Stats, err error) ([]Finding, []NearMiss, error) {
+func (j *Judge) inHalves(ctx context.Context, w *source.Window, seq int, stats *Stats, err error) ([]Finding, []NearMiss, error) {
 	if !errors.Is(err, errOversize) {
 		return nil, nil, err
 	}
@@ -352,7 +444,7 @@ func (j *Judge) inHalves(ctx context.Context, w *source.Window, stats *Stats, er
 	var findings []Finding
 	var near []NearMiss
 	for _, half := range halves(w) {
-		found, missed, err := j.judge(ctx, half, stats)
+		found, missed, err := j.judge(ctx, half, seq, stats)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -370,23 +462,23 @@ func halves(w *source.Window) []*source.Window {
 	}
 }
 
-func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
+func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats, t *Trace) error {
 	questions := map[string]jev.Question{}
 	for _, p := range work {
 		if p.asked {
 			continue
 		}
-		questions["verdict:"+p.tenet.ID] = VerdictQuestion(p.tenet)
+		questions[verdictName(p.tenet.ID)] = VerdictQuestion(p.tenet)
 	}
 	if len(questions) == 0 {
 		return nil
 	}
-	resp, err := j.ask(ctx, w, "verdict", state, questions, stats)
+	resp, err := j.ask(ctx, w, "verdict", state, questions, stats, t)
 	if err != nil {
 		return err
 	}
 	for _, p := range work {
-		answer, ok := resp.Answers["verdict:"+p.tenet.ID]
+		answer, ok := resp.Answers[verdictName(p.tenet.ID)]
 		if !ok {
 			continue
 		}
@@ -396,7 +488,7 @@ func (j *Judge) askVerdicts(ctx context.Context, w *source.Window, state string,
 	return nil
 }
 
-func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats) error {
+func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string, work []*pending, stats *Stats, t *Trace) error {
 	questions := map[string]jev.Question{}
 	var asking []*pending
 	for _, p := range work {
@@ -407,18 +499,18 @@ func (j *Judge) askLocations(ctx context.Context, w *source.Window, state string
 		if err != nil {
 			return err
 		}
-		questions["where:"+p.tenet.ID] = q
+		questions[whereName(p.tenet.ID)] = q
 		asking = append(asking, p)
 	}
 	if len(questions) == 0 {
 		return nil
 	}
-	resp, err := j.ask(ctx, w, "where", state, questions, stats)
+	resp, err := j.ask(ctx, w, "where", state, questions, stats, t)
 	if err != nil {
 		return err
 	}
 	for _, p := range asking {
-		answer, ok := resp.Answers["where:"+p.tenet.ID]
+		answer, ok := resp.Answers[whereName(p.tenet.ID)]
 		if !ok {
 			continue
 		}
@@ -458,7 +550,7 @@ func TopLine(a jev.Answer, keepNone bool) string {
 
 // ask answers every question, over as many calls as the token budget needs,
 // and merges the answers as if one call had been made.
-func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, questions map[string]jev.Question, stats *Stats) (*jev.Response, error) {
+func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, questions map[string]jev.Question, stats *Stats, t *Trace) (*jev.Response, error) {
 	groups, tokens, err := split(state, questions)
 	if err != nil {
 		return nil, err
@@ -472,15 +564,31 @@ func (j *Judge) ask(ctx context.Context, w *source.Window, kind, state string, q
 		stats.Calls++
 		stats.InputTokens += resp.Usage.InputTokens
 		stats.CostUSD += jev.Cost(resp.Usage)
+		merged.Model = resp.Model
 		merged.Usage.InputTokens += resp.Usage.InputTokens
 		merged.Usage.OutputTokens += resp.Usage.OutputTokens
 		for name, answer := range resp.Answers {
 			merged.Answers[name] = answer
 		}
 	}
+	record(t, questions, merged)
 	j.logf("%s:%d %s for %d tenets, ~%d estimated tokens, %d calls, %d input tokens",
 		w.Path(), w.First, kind, len(questions), tokens, len(groups), merged.Usage.InputTokens)
 	return merged, nil
+}
+
+// record adds one round of questions and their answers to the trace.
+func record(t *Trace, questions map[string]jev.Question, resp *jev.Response) {
+	if t == nil {
+		return
+	}
+	t.Model = resp.Model
+	for name, q := range questions {
+		t.Questions[name] = q
+	}
+	for name, a := range resp.Answers {
+		t.Answers[name] = a
+	}
 }
 
 // errOversize says that no grouping of the questions can fit the window into
