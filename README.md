@@ -83,7 +83,7 @@ From the root of your repository:
 
    `tenet --base main` lints the working tree against that git ref instead, and naming paths lints those files whether or not they are staged.
 
-5. Install the hooks, so every commit is linted from here on; `tenet hook uninstall` takes them away again.
+5. Run the lint from your git hooks, so every commit is linted from here on. If a hook manager already runs this repository's hooks, add `tenet` to it as a pre-commit command and `tenet --commit-msg` with the message file it passes as a commit-msg command; otherwise write the two hooks with the command below, which steps aside when something already manages them, and `tenet hook uninstall` takes them away again.
 
    ```sh
    tenet hook install
@@ -447,7 +447,7 @@ tenet init --agent cursor --agent agents
 
 Setting tenet up is one instruction to the agent, as Quick start says. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
 
-The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `.tenet/examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
+The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It then wires tenet into whatever already runs the repository's git hooks, or runs `tenet hook install` when nothing does, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `.tenet/examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
 
 ## Comparison
 
