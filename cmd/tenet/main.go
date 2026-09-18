@@ -90,7 +90,7 @@ func newRootCmd() *cobra.Command {
 	g := addGlobalFlags(root)
 	opts.g = g
 	addLintFlags(root, opts)
-	root.AddCommand(newVersionCmd(), newAuthCmd(g), newInitCmd(g), newHookCmd(), newCheckCmd(g), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd(g))
+	root.AddCommand(newVersionCmd(), newAuthCmd(g), newInitCmd(g), newSyncCmd(g), newHookCmd(), newCheckCmd(g), newRulesCmd(), newPresetsCmd(), newConfigCmd(), newBaselineCmd(g))
 	return root
 }
 

@@ -143,7 +143,7 @@ func (r SyncReport) JSON(w io.Writer) error {
 		},
 	}
 	for _, c := range r.Plan.Added {
-		kind := draftKind(c.Kind)
+		kind := DraftKind(c.Kind)
 		if kind == nil {
 			kind = []string{}
 		}

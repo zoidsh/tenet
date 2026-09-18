@@ -116,11 +116,11 @@ type draftTenet struct {
 	Source string   `yaml:"source"`
 }
 
-// draftKind is what a sorted candidate says about the files its rule is
+// DraftKind is what a sorted candidate says about the files its rule is
 // about. Only the two kinds the sort names outright are written down: a rule
 // the model read as process or as needing the repository is about code often
 // enough, and a wrong kind would silence it everywhere else.
-func draftKind(kind string) []string {
+func DraftKind(kind string) []string {
 	switch kind {
 	case KindCodeRule:
 		return []string{source.KindCode}
@@ -139,7 +139,7 @@ func Draft(sorted []Sorted, presets []string) ([]byte, error) {
 		file.Tenets = append(file.Tenets, draftTenet{
 			ID:     c.ID,
 			Tenet:  c.Text,
-			Kind:   draftKind(c.Kind),
+			Kind:   DraftKind(c.Kind),
 			Source: SourceLine(c.File, c.Text),
 		})
 	}
