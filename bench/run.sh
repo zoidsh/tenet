@@ -264,7 +264,7 @@ agent_footnote() {
 	day=$3
 	note=$4
 	IFS=$'\t' read -r _ _ thinking _ api_ms <<<"$(agent_cells "$1")"
-	line="$(group "$thinking") of its output tokens were thinking tokens, and $(secs "$api_ms") of its time was spent in the API"
+	line="$(group "$thinking") of its output tokens were thinking tokens, and the CLI put $(secs "$api_ms") of the call down to the API"
 	if [ "$src" != null ] && [ -n "$src" ]; then
 		line="$line; prices from $src, read $day"
 	fi
