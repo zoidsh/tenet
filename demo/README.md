@@ -26,4 +26,4 @@ Record a window of at least 1280 by 720 at 30 fps, capturing the stage rather th
 
 The acts start at the milliseconds in `T.AT` at the top of the script, and each act's own beats are in its `off`. The console logs the act, verdict and pass times on load.
 
-`node demo/check.js` plays the page where there is no browser, under a DOM stub and a virtual clock, and fails if a beat, a marker, a session line or a stylesheet token has moved.
+`node demo/check.js` plays the page where there is no browser, under a DOM stub and a virtual clock, and fails if a beat, a marker, a session line or a stylesheet token has moved, or if a line of any act no longer fits the pane it is shown in.

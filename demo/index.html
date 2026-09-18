@@ -160,9 +160,13 @@ header .left { display: flex; align-items: baseline; }
 	margin: 0;
 }
 
+/* The left column is as wide as the longest line of the patches needs, so no
+   line wraps or is cut: 66 columns of JetBrains Mono at 16px is 633.6px, plus
+   the 48px gutter a row carries and the pane's 48px of padding. The right
+   column is what is left. */
 main {
 	display: grid;
-	grid-template-columns: 640px 1fr;
+	grid-template-columns: 732px 1fr;
 	min-height: 0;
 	transition: opacity var(--base) var(--ease);
 }
@@ -206,8 +210,9 @@ main[data-vis="0"] { opacity: 0; }
 
 .layer[data-state="hidden"] { opacity: 0; }
 
-/* A line too long for the pane wraps rather than being cut: every character
-   shown is the file's own. */
+/* Nothing wraps and nothing is cut: the pane is cut to hold the longest line
+   the data has, so every character shown is the file's own and every line is
+   one row tall. */
 .row {
 	display: grid;
 	grid-template-columns: var(--s5) var(--s4) 1fr;
@@ -217,8 +222,8 @@ main[data-vis="0"] { opacity: 0; }
 	   move sideways when it lights up. */
 	border-left: 2px solid transparent;
 	padding-left: calc(var(--s2) - 2px);
-	white-space: pre-wrap;
-	overflow-wrap: break-word;
+	white-space: pre;
+	overflow: hidden;
 	opacity: 0;
 	transform: translateY(var(--s1));
 	transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
@@ -229,7 +234,7 @@ main[data-vis="0"] { opacity: 0; }
 .row.in { opacity: 1; transform: none; }
 
 .row .sign { color: var(--muted); }
-.row .text { color: var(--ink-2); }
+.row .text { color: var(--ink-2); white-space: pre; overflow: hidden; }
 
 .row.file .text { color: var(--ink); font-weight: 700; }
 .row.gap .text { color: var(--muted); }
@@ -590,8 +595,8 @@ const GLOSS = {
 	"comment-why": "a comment says why, not what",
 	"no-mocking": "tests use the real dependency",
 	"no-fallback": "no silent fallback, raise the error",
-	"money-in-cents": "money is integer cents, never a float",
-	"subject-says-what-changed": "the title says what changed",
+	"money-in-cents": "money is integer cents, not a float",
+	"subject-says-what-changed": "not the files touched",
 	"body-says-why": "the description gives the why",
 	"body-states-door": "says how far it walks back",
 	"body-few-visuals": "one or two visuals, no more"
@@ -616,20 +621,20 @@ const CODE_PASSED = [
 ];
 
 // Verbatim from demo/sample/agent-change.patch and agent-fix.patch, cut to the
-// lines the findings name and the lines around them, contiguous within each
-// hunk, with a gap row wherever lines are left out. A line of more than 56
-// columns wraps rather than being cut, and the pane holds fifteen lines, which
-// is what the test file is down to one line for.
+// lines the findings name and their context, contiguous within each hunk, with
+// a gap row wherever lines are left out. No line wraps or is cut: the left
+// pane is as wide as the longest line here needs, and the two narrating
+// comments the patch puts above the fallback and the division are left out
+// because they are longer than that and neither is a line a finding names.
 const CODE_DIFF_BLOCKED = [
 	{ k: "file", t: "billing.go" },
 	{ k: "add", t: "\tif err != nil {" },
-	{ k: "add", t: "\t\t// default to 0 on a parse error so that checkout keeps working" },
 	{ k: "add", t: "\t\tpercent = 0", hit: "no-fallback" },
+	{ k: "add", t: "\t}" },
 	{ k: "gap", t: "…" },
 	{ k: "add", t: "func DiscountedTotal(totalCents int, discount Discount) float64 {", hit: "money-in-cents" },
 	{ k: "add", t: "\t// divide the cents by 100 to get dollars" },
 	{ k: "add", t: "\tdollars := float64(totalCents) / 100", hit: "comment-why" },
-	{ k: "add", t: "\t// multiply the dollars by the percent, divide that by 100, take it away" },
 	{ k: "gap", t: "…" },
 	{ k: "file", t: "billing_test.go" },
 	{ k: "add", t: "\trepo := stubRepository{invoice: Invoice{", hit: "no-mocking" }

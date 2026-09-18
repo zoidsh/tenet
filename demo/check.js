@@ -146,18 +146,19 @@ const rowsOf = (id) => el(id).children.filter((c) => c.classes.has("row"));
 const allRows = () => rowsOf("layer-blocked").concat(rowsOf("layer-passed"));
 const sessionLines = () => el("session").children.map((c) => c.textContent);
 
-// item 3: nothing from either layer is on screen between the acts, and no row
-// is faded in before the main area is.
 // Between the acts the layers are blanked; from there until main is visible
 // again no row may carry `in`, or it is on screen while the pane is empty.
+// Every row that exists is measured against the pane it has to fit.
 let blanked = true;
 function invariant() {
-	if (allRows().length === 0) blanked = true;
+	const rows = allRows();
+	if (rows.length === 0) blanked = true;
 	if (el("main").dataset.vis === "1") blanked = false;
 	if (blanked) {
-		const early = allRows().filter((r) => r.classes.has("in"));
+		const early = rows.filter((r) => r.classes.has("in"));
 		ok(early.length === 0, "a row carried `in` at " + now + " ms, before main's data-vis was 1");
 	}
+	rows.forEach(fits);
 }
 
 starts.slice(1).forEach((s, i) => {
@@ -244,33 +245,6 @@ checkAt(starts[0] + 15000, "passed cost stat", () => {
 	eq(el("cost").textContent, "$0.000190", "the passed cost");
 });
 
-// ---- run ----
-
-fn(document, window, consoleStub, setTimeoutStub, clearTimeoutStub, DateStub);
-
-checkpoints.sort((a, b) => a.at - b.at);
-let ci = 0;
-const END_AT = 60000;
-for (;;) {
-	let next = null;
-	for (const t of queue.values()) {
-		if (!next || t.at < next.at || (t.at === next.at && t.seq < next.seq)) next = t;
-	}
-	const cpAt = ci < checkpoints.length ? checkpoints[ci].at : Infinity;
-	if (!next && cpAt === Infinity) break;
-	if (next && next.at <= cpAt) {
-		now = next.at;
-		queue.delete(next.id);
-		next.fn();
-		invariant();
-		continue;
-	}
-	now = cpAt;
-	checkpoints[ci].fn();
-	ci += 1;
-	if (now > END_AT) break;
-}
-
 // ---- the stylesheet and the widths it has to hold ----
 
 const css = HTML.slice(HTML.indexOf("<style>") + 7, HTML.indexOf("</style>"));
@@ -299,18 +273,74 @@ for (const m of below.matchAll(/(padding|margin|gap|padding-left|margin-top|marg
 	}
 }
 
-// Nothing is set under 16px, and the two labels the data makes longest fit
-// their boxes: a mono glyph is 0.6em, a sans one averages about 0.52em.
-const RIGHT_PANE = 1280 - 640 - 24 * 2;
+// A JetBrains Mono glyph at 16px is 9.6px wide and a tab stops every second
+// column; a sans glyph at 16px averages about 0.52em and at 18px 0.6em.
+const MONO = 9.6;
+const LEFT_PANE = Number(/grid-template-columns:\s*(\d+)px/.exec(css)[1]);
+const RIGHT_PANE = 1280 - LEFT_PANE;
+const PAD = 24 * 2;
+const INSET = 8 + 24;
+
+function columns(t) {
+	let c = 0;
+	for (const ch of t) c += ch === "\t" ? 2 - (c % 2) : 1;
+	return c;
+}
+
+// Nothing wraps: every line of every act, in both of its states, fits the left
+// pane's text column.
+const overflowed = new Set();
+function fits(row) {
+	const text = row.querySelector(".text").textContent;
+	const gutter = INSET + (row.classes.has("text-only") ? 0 : 16);
+	const room = LEFT_PANE - PAD - gutter;
+	const width = columns(text) * MONO;
+	if (width <= room || overflowed.has(text)) return;
+	overflowed.add(text);
+	failures.push("a line needs " + width.toFixed(1) + "px of the " + room +
+		"px text column: " + JSON.stringify(text));
+}
+
+// Every tenet label row fits the right pane: marker, gap, id, gap, margin, gloss.
 const glosses = [...src.matchAll(/"([\w-]+)":\s*"([^"]+)"/g)];
 for (const [, id, gloss] of glosses) {
 	const width = 22 + 8 + id.length * 18 * 0.6 + 8 + 4 + gloss.length * 16 * 0.52;
-	ok(width < RIGHT_PANE, "the label for " + id + " needs " + Math.round(width) + "px of " + RIGHT_PANE);
+	const room = RIGHT_PANE - PAD;
+	ok(width <= room, "the label for " + id + " needs " + width.toFixed(1) + "px of " + room);
 }
-const SESSION = 1280 - 24 * 2;
-for (const m of src.matchAll(/arg: "([^"]*)"/g)) {
-	const width = ("● Bash(" + m[1] + ")").length * 16 * 0.6;
-	ok(width < SESSION, "the session line for " + m[1] + " needs " + Math.round(width) + "px of " + SESSION);
+
+const SESSION = 1280 - PAD;
+for (const m of src.matchAll(/arg: "((?:[^"\\]|\\.)*)"/g)) {
+	const arg = JSON.parse('"' + m[1] + '"');
+	const width = ("● Bash(" + arg + ")").length * MONO;
+	ok(width <= SESSION, "the session line for " + arg + " needs " + Math.round(width) + "px of " + SESSION);
+}
+
+// ---- run ----
+
+fn(document, window, consoleStub, setTimeoutStub, clearTimeoutStub, DateStub);
+
+checkpoints.sort((a, b) => a.at - b.at);
+let ci = 0;
+const END_AT = 60000;
+for (;;) {
+	let next = null;
+	for (const t of queue.values()) {
+		if (!next || t.at < next.at || (t.at === next.at && t.seq < next.seq)) next = t;
+	}
+	const cpAt = ci < checkpoints.length ? checkpoints[ci].at : Infinity;
+	if (!next && cpAt === Infinity) break;
+	if (next && next.at <= cpAt) {
+		now = next.at;
+		queue.delete(next.id);
+		next.fn();
+		invariant();
+		continue;
+	}
+	now = cpAt;
+	checkpoints[ci].fn();
+	ci += 1;
+	if (now > END_AT) break;
 }
 
 console.log(logs.join("\n"));
