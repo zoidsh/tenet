@@ -23,5 +23,10 @@ output=$(tenet --format json 2>&1)
 status=$?
 [ "$status" -eq 0 ] && exit 0
 
+if [ "$status" -eq 3 ]; then
+	echo "no tenet.yml in this repository; the staged changes were not linted" >&2
+	exit 0
+fi
+
 printf '%s\n' "$output" >&2
 exit 2
