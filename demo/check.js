@@ -137,7 +137,7 @@ function eq(got, want, msg) { if (JSON.stringify(got) !== JSON.stringify(want)) 
 
 // ---- the invariants and the checkpoints ----
 
-const PRE = 400;
+const PRE = 0;
 const AT = [0, 16000, 28600];
 const MAIN_FADE = 500;
 const starts = AT.map((a) => PRE + a);

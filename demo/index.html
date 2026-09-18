@@ -503,9 +503,9 @@ footer {
 #session .line.result { color: var(--fail-text); }
 #session .line.result.good { color: var(--pass); }
 
-/* Black before the first frame and after the last, so the cut points are
-   clean, and a hairline along the bottom edge that says how much of the clip
-   is left to record. */
+/* Black after the last frame, so the cut point at the end is clean; the clip
+   opens on the stage itself. A hairline along the bottom edge says how much
+   of the clip is left to record. */
 #blackout {
 	position: absolute;
 	inset: 0;
@@ -578,7 +578,7 @@ footer {
 	<footer><span id="strip" class="xfade"></span></footer>
 
 	<div id="progress"></div>
-	<div id="blackout" data-shown="1"></div>
+	<div id="blackout" data-shown="0"></div>
 </div>
 
 <script>
@@ -848,16 +848,17 @@ const ACTS = [
 	}
 ];
 
-// Three acts, in milliseconds. PRE and POST are the black holds that give the
-// recording clean cut points; AT is where each act starts and act.off holds
-// its beats, measured from its own start. Those numbers are the holds read
+// Three acts, in milliseconds. The clip opens on the stage, with no black
+// before it, and POST is the black hold at the end that gives the recording a
+// clean cut point; AT is where each act starts and act.off holds its beats,
+// measured from its own start. Those numbers are the holds read
 // back: the left pane is fully in a second before jev is asked, a verdict
 // stands for four seconds in the code act and three in the other two, the
 // caption shows for 1.2 s, the swapped text is in for a second before the bars
 // re-run, and a pass holds for 3.08 s, which is where the next act's round
 // number falls, and for 3.5 s at the end.
 const T = {
-	PRE: 400,
+	PRE: 0,
 	POST: 400,
 	AT: [0, 16000, 28600],
 	END_HOLD: 3500,
@@ -1323,7 +1324,7 @@ function play() {
 	timers = [];
 	started = Date.now();
 
-	blackoutEl.dataset.shown = "1";
+	blackoutEl.dataset.shown = "0";
 	sessionEl.textContent = "";
 	sessionEl.style.transform = "translateY(0)";
 	sessionCount = 0;
@@ -1336,7 +1337,6 @@ function play() {
 	});
 
 	at(0, function () {
-		blackoutEl.dataset.shown = "0";
 		progressEl.style.transition = "width " + (TOTAL - T.PRE) + "ms linear";
 		progressEl.style.width = "100%";
 	});
