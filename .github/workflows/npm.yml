@@ -16,9 +16,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # The scripts come from the branch this workflow runs on and only the
+      # release binaries come from the tag, so a fix to the publishing never
+      # needs a retag.
       - uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.tag }}
 
       - uses: actions/setup-node@v4
         with:
