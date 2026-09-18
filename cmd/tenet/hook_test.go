@@ -223,10 +223,99 @@ func TestHookRespectsHooksPath(t *testing.T) {
 	git(t, dir, "config", "core.hooksPath", custom)
 	t.Chdir(dir)
 
-	if code, _, errOut := runCmd(t, "hook", "install"); code != 0 {
+	// core.hooksPath is itself a refusal, so only a forced install gets as far
+	// as writing anywhere.
+	if code, _, errOut := runCmd(t, "hook", "install", "--force"); code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut)
 	}
 	if _, err := os.Stat(filepath.Join(custom, "pre-commit")); err != nil {
 		t.Errorf("hook not written to core.hooksPath: %v", err)
+	}
+}
+
+// A hooks directory git was pointed at is somebody else's arrangement, whether
+// or not it holds a hook yet.
+func TestHookRefusesAManagedHooksPath(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	git(t, dir, "config", "core.hooksPath", filepath.Join(dir, "githooks"))
+	t.Chdir(dir)
+
+	code, _, errOut := runCmd(t, "hook", "install")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	for _, want := range []string{"core.hooksPath", "--commit-msg", "--force"} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("stderr does not mention %s: %q", want, errOut)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "githooks", "pre-commit")); !os.IsNotExist(err) {
+		t.Errorf("a hook was written anyway: %v", err)
+	}
+}
+
+// A hook of any name, not only the two tenet writes, says something already
+// runs hooks here.
+func TestHookRefusesAnUnrelatedHook(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	t.Chdir(dir)
+	prePush := filepath.Join(dir, ".git", "hooks", "pre-push")
+	foreign := "#!/bin/sh\necho mine\n"
+	if err := os.WriteFile(prePush, []byte(foreign), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	code, _, errOut := runCmd(t, "hook", "install")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	for _, want := range []string{"pre-push", "--force"} {
+		if !strings.Contains(errOut, want) {
+			t.Errorf("stderr does not mention %s: %q", want, errOut)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".git", "hooks", "pre-commit")); !os.IsNotExist(err) {
+		t.Errorf("a hook was written anyway: %v", err)
+	}
+
+	if code, _, errOut = runCmd(t, "hook", "install", "--force"); code != 0 {
+		t.Fatalf("forced install exited %d: %s", code, errOut)
+	}
+	for _, name := range []string{"pre-commit", "commit-msg"} {
+		script, err := os.ReadFile(filepath.Join(dir, ".git", "hooks", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(script), marker) {
+			t.Errorf("the %s hook is %q", name, script)
+		}
+	}
+	if kept, _ := os.ReadFile(prePush); string(kept) != foreign {
+		t.Errorf("--force touched a hook that is not tenet's: %q", kept)
+	}
+}
+
+// git ships the samples with every repository, so they say nothing about who
+// manages its hooks.
+func TestHookInstallsBesideTheSamples(t *testing.T) {
+	dir := t.TempDir()
+	git(t, dir, "init", "-q", "-b", "main")
+	t.Chdir(dir)
+	sample := filepath.Join(dir, ".git", "hooks", "pre-commit.sample")
+	if err := os.WriteFile(sample, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if code, _, errOut := runCmd(t, "hook", "install"); code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut)
+	}
+	script, err := os.ReadFile(filepath.Join(dir, ".git", "hooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(script), marker) {
+		t.Errorf("hook is %q", script)
 	}
 }

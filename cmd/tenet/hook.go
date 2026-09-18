@@ -79,6 +79,15 @@ func newHookInstallCmd() *cobra.Command {
 			if err != nil {
 				return fail(err)
 			}
+			if !force {
+				reason, err := managedHooks(cmd.Context(), dir, root)
+				if err != nil {
+					return fail(err)
+				}
+				if reason != "" {
+					return fail(fmt.Errorf(`this repository already manages its git hooks (%s); add tenet to that setup instead, as a pre-commit command "tenet" and a commit-msg command "tenet --commit-msg <file>", or pass --force to write tenet's own hooks`, reason))
+				}
+			}
 			// Every hook is read before any is written, so that a refusal over
 			// one of them does not leave half of a pair installed.
 			var plans []plan
@@ -147,6 +156,46 @@ func newHookUninstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// managedHooks says, in a few words for the refusal, why this repository
+// looks like it already runs its git hooks through something else, and is
+// empty when it does not. Hook managers differ too much to name, so the only
+// signals are the ones every one of them leaves: the hooks directory moved,
+// or a hook in it that tenet did not write. Go reports no executable bit on
+// Windows, where core.hooksPath is therefore the only signal left.
+func managedHooks(ctx context.Context, hooks, root string) (string, error) {
+	if path, err := exec.CommandContext(ctx, "git", "-C", root, "config", "--get", "core.hooksPath").Output(); err == nil && strings.TrimSpace(string(path)) != "" {
+		return "core.hooksPath is set", nil
+	}
+	entries, err := os.ReadDir(hooks)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || strings.HasSuffix(entry.Name(), ".sample") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&0o111 == 0 {
+			continue
+		}
+		path := filepath.Join(hooks, entry.Name())
+		script, err := os.ReadFile(path)
+		if err != nil {
+			return "", err
+		}
+		if !strings.Contains(string(script), marker) {
+			return inRepo(root, path) + " exists", nil
+		}
+	}
+	return "", nil
 }
 
 // inRepo names a hook the way the repository does. A hooks directory outside
