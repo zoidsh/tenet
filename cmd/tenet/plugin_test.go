@@ -88,7 +88,7 @@ func TestPluginHooksSchema(t *testing.T) {
 	if hook.If != "Bash(git commit *)" {
 		t.Errorf("hook runs on %q", hook.If)
 	}
-	if hook.Command != `"${CLAUDE_PLUGIN_ROOT}"/hooks/pre-commit.sh` {
+	if hook.Command != `sh "${CLAUDE_PLUGIN_ROOT}"/hooks/pre-commit.sh` {
 		t.Errorf("hook command is %q", hook.Command)
 	}
 }
