@@ -1,4 +1,4 @@
-// Package importer drafts a tenet.yml from the rule files a coding agent
+// Package importer drafts a config from the rule files a coding agent
 // already reads.
 package importer
 

@@ -24,7 +24,7 @@ const Header = "# Criteria under a tenet, a true and a false description of what
 // from, the same preset this repository judges itself by.
 const DefaultPreset = "agent-hygiene"
 
-// PresetFile is a tenet.yml that names presets and nothing else. It carries
+// PresetFile is a config that names presets and nothing else. It carries
 // no header, because a file with no tenet in it has nowhere to put criteria.
 func PresetFile(presets []string) []byte {
 	return fmt.Appendf(nil, "version: 1\npresets: [%s]\n", strings.Join(presets, ", "))
@@ -127,7 +127,7 @@ func draftKind(kind string) []string {
 	}
 }
 
-// Draft is the tenet.yml for everything the sort accepted, which Assign has
+// Draft is the config for everything the sort accepted, which Assign has
 // named by the time it is called, under the presets the run was asked for.
 func Draft(sorted []Sorted, presets []string) ([]byte, error) {
 	file := draftFile{Version: 1, Presets: presets}

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/zoidsh/tenet/internal/importer"
+	"github.com/zoidsh/tenet/internal/tenets"
 )
 
 // repoDir is resolved while the working directory is still the package's own,
@@ -263,13 +264,13 @@ func TestPreCommitHookAllowsWhenSkipped(t *testing.T) {
 }
 
 func TestPreCommitHookAllowsWhenTheRepositoryHasNoConfig(t *testing.T) {
-	tenet := fake(t, "echo 'tenet: no tenet.yml found' >&2\nexit 3\n")
+	tenet := fake(t, "echo 'tenet: no .tenet/config.yml found' >&2\nexit 3\n")
 
 	code, _, stderr := runPreCommit(t, tenet, commitInput)
 	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, stderr)
 	}
-	if !strings.Contains(stderr, "tenet.yml") {
+	if !strings.Contains(stderr, tenets.FileName) {
 		t.Errorf("stderr is %q", stderr)
 	}
 	if !tenet.ran() {
