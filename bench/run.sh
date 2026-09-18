@@ -18,15 +18,16 @@ COMMIT=f0fdf08
 # the measured count back in the table.
 BASE=7911bea
 
-AGENT_BYTES_PER_TOKEN=4
-AGENT_OUTPUT_TOKENS=1000
+# Every model is asked this, with the same diff appended, so that the rows of
+# the agent table differ only by the model that answered.
+AGENT_PROMPT="Review this pull request diff as a senior engineer. Report the bugs, risks and changes it needs, most important first, in about a page. Do not restate the diff."
 
 if [ ! -f bench/run.sh ]; then
 	echo "run this from the repository root, as bench/run.sh" >&2
 	exit 2
 fi
 
-for tool in jq git; do
+for tool in jq git claude; do
 	if ! command -v "$tool" >/dev/null 2>&1; then
 		echo "bench/run.sh needs $tool" >&2
 		exit 2
@@ -197,23 +198,81 @@ prices() {
 			return v
 		}
 		function flush() {
-			if (id != "") printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, name, inp, outp, tps, ttft, src, day, sspeed, sday, note
-			id = ""; name = ""; inp = ""; outp = ""; tps = ""; ttft = ""; src = ""; day = ""; sspeed = ""; sday = ""; note = ""
+			if (id != "") printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, name, inp, outp, src, day, note
+			id = ""; name = ""; inp = ""; outp = ""; src = ""; day = ""; note = ""
 		}
 		/^[[:space:]]*#/ { next }
 		/^[[:space:]]*-[[:space:]]*id:/ { flush(); id = value($0); next }
 		/^[[:space:]]*name:/ { name = value($0); next }
 		/^[[:space:]]*input_usd_per_million:/ { inp = value($0); next }
 		/^[[:space:]]*output_usd_per_million:/ { outp = value($0); next }
-		/^[[:space:]]*output_tokens_per_second:/ { tps = value($0); next }
-		/^[[:space:]]*ttft_seconds:/ { ttft = value($0); next }
-		/^[[:space:]]*speed_source:/ { sspeed = value($0); next }
-		/^[[:space:]]*speed_date:/ { sday = value($0); next }
 		/^[[:space:]]*source:/ { src = value($0); next }
 		/^[[:space:]]*date:/ { day = value($0); next }
 		/^[[:space:]]*note:/ { note = value($0); next }
 		END { flush() }
 	' bench/prices.yml
+}
+
+
+# One call per model, all made before the table is written so that a failure
+# stops the run rather than leaving a half-measured table behind. The working
+# directory is the throwaway one rather than the repository, so that no project
+# settings or CLAUDE.md can reach the model and make one row unlike the others.
+agent_runs() {
+	{
+		printf '%s\n\n' "$AGENT_PROMPT"
+		git -C "$tmp/repo" diff "$BASE"
+	} >"$tmp/prompt.txt"
+	prices >"$tmp/prices.tsv"
+	while IFS=$'\t' read -r id _ _ _ _ _ _; do
+		if ! (cd "$tmp" && claude -p --model "$id" --tools "" --system-prompt "" \
+			--strict-mcp-config --setting-sources "" --output-format json \
+			<"$tmp/prompt.txt" >"$tmp/agent-$id.json"); then
+			echo "bench/run.sh: the claude CLI exited non-zero for $id" >&2
+			exit 2
+		fi
+		if [ "$(jq -r '.is_error' "$tmp/agent-$id.json")" != false ]; then
+			echo "bench/run.sh: the claude call for $id reported an error:" >&2
+			jq -r '.result // "no result field"' "$tmp/agent-$id.json" >&2
+			exit 2
+		fi
+		if [ "$(jq -r 'has("usage")' "$tmp/agent-$id.json")" != true ]; then
+			echo "bench/run.sh: the claude call for $id returned no usage, so it cannot be priced" >&2
+			exit 2
+		fi
+	done <"$tmp/prices.tsv"
+}
+
+agent_cells() {
+	jq -r '[(.usage.input_tokens + .usage.cache_read_input_tokens + .usage.cache_creation_input_tokens),
+	        .usage.output_tokens, (.usage.output_tokens_details.thinking_tokens // 0),
+	        .duration_ms, .duration_api_ms] | @tsv' "$tmp/agent-$1.json"
+}
+
+agent_row() {
+	name=$2
+	IFS=$'\t' read -r in_tokens out_tokens _ ms _ <<<"$(agent_cells "$1")"
+	[ -n "$name" ] && [ "$name" != null ] || name=$1
+	usd=$(awk -v i="$in_tokens" -v o="$out_tokens" -v pi="$3" -v po="$4" \
+		'BEGIN { printf "%.6f", (i * pi + o * po) / 1000000 }')
+	printf '| %s | %s | %s | %s | %s |\n' \
+		"$name" "$(group "$in_tokens")" "$(group "$out_tokens")" "$(cost "$usd")" "$(secs "$ms")"
+}
+
+agent_footnote() {
+	src=$2
+	day=$3
+	note=$4
+	IFS=$'\t' read -r _ _ thinking _ api_ms <<<"$(agent_cells "$1")"
+	line="$(group "$thinking") of its output tokens were thinking tokens, and $(secs "$api_ms") of its time was spent in the API"
+	if [ "$src" != null ] && [ -n "$src" ]; then
+		line="$line; prices from $src, read $day"
+	fi
+	if [ "$note" != null ] && [ -n "$note" ]; then
+		line="$line; $note"
+	fi
+	echo
+	echo "$1: $line."
 }
 
 speed_row() {
@@ -272,7 +331,8 @@ lang_from() {
 }
 
 IFS=$'\t' read -r _ _ _ diff_tokens diff_usd diff_ms _ <<<"$(lint_stats diff.json)"
-agent_input=$((base_bytes / AGENT_BYTES_PER_TOKEN))
+
+agent_runs
 
 {
 	echo "# tenet benchmarks"
@@ -316,43 +376,16 @@ agent_input=$((base_bytes / AGENT_BYTES_PER_TOKEN))
 	echo "| --- | --- | --- | --- | --- |"
 	printf '| tenet, measured | %s | n/a | %s | %s |\n' \
 		"$(group "$diff_tokens")" "$(cost "$diff_usd")" "$(secs "$diff_ms")"
-	prices | while IFS=$'\t' read -r id name inp outp tps ttft _ _ _ _ _; do
-		[ -n "$name" ] && [ "$name" != null ] || name=$id
-		agent_cost="n/a"
-		if [ "$inp" != null ] && [ "$outp" != null ] && [ -n "$inp" ] && [ -n "$outp" ]; then
-			agent_cost=$(cost "$(awk -v i="$agent_input" -v o="$AGENT_OUTPUT_TOKENS" -v pi="$inp" -v po="$outp" \
-				'BEGIN { printf "%.6f", (i * pi + o * po) / 1000000 }')")
-		fi
-		agent_time="n/a"
-		if [ "$tps" != null ] && [ "$ttft" != null ] && [ -n "$tps" ] && [ -n "$ttft" ]; then
-			agent_time=$(awk -v t="$ttft" -v o="$AGENT_OUTPUT_TOKENS" -v s="$tps" 'BEGIN { printf "%.1f s", t + o / s }')
-		fi
-		printf '| %s | %s | %s | %s | %s |\n' "$name" "$(group "$agent_input")" "$(group "$AGENT_OUTPUT_TOKENS")" "$agent_cost" "$agent_time"
-	done
+	while IFS=$'\t' read -r id name inp outp _ _ _; do
+		agent_row "$id" "$name" "$inp" "$outp"
+	done <"$tmp/prices.tsv"
 	echo
-	echo "The agent rows are estimates, not runs. Input tokens are the $(group "$base_bytes") bytes of \`git diff $BASE\` over $AGENT_BYTES_PER_TOKEN bytes per token; output is fixed at $(group "$AGENT_OUTPUT_TOKENS") tokens, about a page of review. Cost is input tokens times the model's input price plus output tokens times its output price, and time is its time to first token plus output tokens over its output rate. All four inputs are read from bench/prices.yml, which is filled in by hand: the prices from the vendors' own pricing pages, and the output rate and the time to first token from Artificial Analysis, whose figures are third-party medians measured against each vendor's API rather than anything the vendor publishes. Both carry their source and the date they were read, below. A single field that is still missing reads n/a on its own, so a row can price a call it cannot time. tenet's own row is measured rather than estimated, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
+	echo "Every row here is measured. Each agent row is one \`claude -p\` call through the Claude Code CLI, with an empty system prompt, no tools, no MCP servers and no settings of any kind, so that nothing but the model differs between them. All four were sent the identical prompt: one instruction line, then the $(group "$base_bytes") bytes of \`git diff $BASE\`. Input tokens are what the API counted for that call, including any cache reads; output tokens include the model's thinking tokens, which the per-model lines below give on their own. Cost is those token counts priced at the list prices in bench/prices.yml rather than the figure the CLI reports for the call. Time is the call's wall clock as the CLI reports it, so it carries the CLI's own startup with it. tenet's row is measured the same way it is elsewhere in this file, and its input tokens are what the run actually sent, which is the changed windows rather than the whole diff."
 	echo
 	echo "Every agent row is a lower bound: one call, the whole diff in the prompt, no tool use, no reading the rest of the repository and no second pass. A reviewer that opens the files around the diff, or that is asked again about what it missed, costs more than this and takes longer."
-	prices | while IFS=$'\t' read -r id _ _ _ _ ttft src day sspeed sday note; do
-		line=""
-		if [ "$src" != null ] && [ -n "$src" ]; then
-			line="prices from $src, read $day"
-		fi
-		if [ "$sspeed" != null ] && [ -n "$sspeed" ]; then
-			measured="rate and time to first token"
-			[ "$ttft" != null ] || measured="output rate"
-			[ -z "$line" ] || line="$line; "
-			line="$line$measured from $sspeed, read $sday"
-		fi
-		if [ "$note" != null ] && [ -n "$note" ]; then
-			[ -z "$line" ] || line="$line; "
-			line="$line$note"
-		fi
-		if [ -n "$line" ]; then
-			echo
-			echo "$id: $line."
-		fi
-	done
+	while IFS=$'\t' read -r id _ _ _ src day note; do
+		agent_footnote "$id" "$src" "$day" "$note"
+	done <"$tmp/prices.tsv"
 } >"$partial"
 
 mv "$partial" bench/results.md
