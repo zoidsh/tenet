@@ -12,23 +12,29 @@
 	--plane: #0a0a09;
 	--surface: #16161a;
 	--pane: #101014;
+	--black: #000000;
 	--ink: #f4f4ef;
 	--ink-2: #c3c2b7;
-	/* Both greys clear 4.5:1 on --pane, which 18px text needs at the size this
-	   clip is watched: --muted 5.5, --faint 4.5. */
+	/* --muted clears 4.5:1 on --pane, which the 16px text it carries needs at
+	   the size this clip is watched. */
 	--muted: #8b8a82;
-	--faint: #7d7c75;
 	--hairline: rgba(244, 244, 239, 0.10);
-	--wash: rgba(244, 244, 239, 0.045);
+	--rail: rgba(244, 244, 239, 0.06);
 	--grid: #3a3a37;
+	/* Two reds, because one cannot do both jobs: --fail is what a marker, a bar
+	   and a hit line's rule are filled with, and --fail-text is red set as
+	   text, which --fail misses 4.5:1 for. */
 	--fail: #d03b3b;
 	--fail-text: #ef6b6b;
 	--fail-wash: rgba(208, 59, 59, 0.16);
+	--fail-tint: rgba(208, 59, 59, 0.07);
+	--fail-ink: #f6d0d0;
+	--on-fail: #ffffff;
 	--pass: #3fb950;
 	--quiet-bar: #4a6f8f;
 	--add-wash: rgba(63, 185, 80, 0.07);
 	--add-ink: #a8d8ae;
-	--del-wash: rgba(208, 59, 59, 0.07);
+	--del-wash: var(--fail-tint);
 	--del-ink: #e5a3a3;
 	/* Claude Code's own dots: amber for a tool call, green for the agent. */
 	--tool-dot: #d4a72c;
@@ -37,14 +43,33 @@
 	--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	--sans: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 
+	/* One type scale, and nothing on the stage is set below --t-xs: at the two
+	   fifths of full size a recording is watched at, smaller stops being read. */
+	--t-xs: 16px;
+	--t-s: 18px;
+	--t-m: 20px;
+	--t-l: 24px;
+	--t-xl: 32px;
+	--t-num: 42px;
+
+	/* One rhythm, of 4px. Every padding, gap and margin is one of these. */
+	--s1: 4px;
+	--s2: 8px;
+	--s3: 12px;
+	--s4: 16px;
+	--s5: 24px;
+
 	--line: 22px;
 	--ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+	--fast: 200ms;
+	--base: 300ms;
+	--slow: 700ms;
 }
 
 /* Anything whose words change does it by fading out, swapping and fading back
    in, so nothing on the page snaps from one state to the next. */
-.xfade { transition: opacity 300ms var(--ease); }
-.xfade[data-vis="0"] { opacity: 0; transition-duration: 200ms; }
+.xfade { transition: opacity var(--base) var(--ease); }
+.xfade[data-vis="0"] { opacity: 0; transition-duration: var(--fast); }
 
 @keyframes asking {
 	from { opacity: 0.6; }
@@ -79,9 +104,9 @@ body {
 	transform-origin: center center;
 	background: var(--surface);
 	border: 1px solid var(--hairline);
-	border-radius: 10px;
+	border-radius: var(--s3);
 	display: grid;
-	grid-template-rows: 52px 88px 1fr 110px 40px;
+	grid-template-rows: 52px 88px 1fr 112px 40px;
 	overflow: hidden;
 }
 
@@ -89,34 +114,34 @@ header {
 	display: flex;
 	align-items: baseline;
 	justify-content: space-between;
-	gap: 16px;
-	padding: 14px 22px 0;
+	gap: var(--s4);
+	padding: var(--s3) var(--s5) 0;
 	border-bottom: 1px solid var(--hairline);
 }
 
 header .brand {
-	font-size: 20px;
+	font-size: var(--t-m);
 	font-weight: 600;
 	letter-spacing: -0.01em;
 	color: var(--ink);
-	margin-right: 12px;
+	margin-right: var(--s3);
 }
 
-header .tagline { font-size: 16px; color: var(--muted); }
-header .repo { font-family: var(--mono); font-size: 16px; color: var(--muted); }
+header .tagline { font-size: var(--t-xs); color: var(--muted); }
+header .repo { font-family: var(--mono); font-size: var(--t-xs); color: var(--muted); }
 header .left { display: flex; align-items: baseline; }
 
 .headline {
-	padding: 12px 24px;
+	padding: var(--s3) var(--s5);
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 4px;
+	gap: var(--s1);
 	border-bottom: 1px solid var(--hairline);
 }
 
 #headline {
-	font-size: 32px;
+	font-size: var(--t-xl);
 	font-weight: 600;
 	line-height: 40px;
 	letter-spacing: -0.015em;
@@ -124,13 +149,12 @@ header .left { display: flex; align-items: baseline; }
 	color: var(--ink);
 }
 
-#headline .tail { transition: opacity 300ms var(--ease); }
-#headline .tail.bad { color: var(--fail); }
+#headline .tail.bad { color: var(--fail-text); }
 #headline .tail.good { color: var(--pass); }
 
 #subline {
 	font-family: var(--mono);
-	font-size: 16px;
+	font-size: var(--t-xs);
 	line-height: 20px;
 	color: var(--muted);
 	margin: 0;
@@ -140,24 +164,24 @@ main {
 	display: grid;
 	grid-template-columns: 640px 1fr;
 	min-height: 0;
-	transition: opacity 500ms var(--ease);
+	transition: opacity var(--base) var(--ease);
 }
 
 main[data-vis="0"] { opacity: 0; }
 
 .pane {
-	padding: 12px 24px;
+	padding: var(--s3) var(--s5);
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: var(--s3);
 }
 
 .pane.left { border-right: 1px solid var(--hairline); background: var(--pane); }
 
 #filemeta {
 	font-family: var(--mono);
-	font-size: 16px;
+	font-size: var(--t-xs);
 	line-height: 20px;
 	color: var(--muted);
 	margin: 0;
@@ -169,7 +193,7 @@ main[data-vis="0"] { opacity: 0; }
 	flex: 1 1 auto;
 	min-height: 0;
 	font-family: var(--mono);
-	font-size: 16px;
+	font-size: var(--t-xs);
 	line-height: var(--line);
 	tab-size: 2;
 }
@@ -177,7 +201,7 @@ main[data-vis="0"] { opacity: 0; }
 .layer {
 	position: absolute;
 	inset: 0;
-	transition: opacity var(--fade, 500ms) var(--ease);
+	transition: opacity var(--fade, var(--slow)) var(--ease);
 }
 
 .layer[data-state="hidden"] { opacity: 0; }
@@ -186,30 +210,29 @@ main[data-vis="0"] { opacity: 0; }
    shown is the file's own. */
 .row {
 	display: grid;
-	grid-template-columns: 24px 14px 1fr;
+	grid-template-columns: var(--s5) var(--s4) 1fr;
 	align-items: baseline;
 	min-height: var(--line);
+	/* The rule a hit line carries is part of its 8px inset, so a line does not
+	   move sideways when it lights up. */
 	border-left: 2px solid transparent;
-	padding-left: 6px;
+	padding-left: calc(var(--s2) - 2px);
 	white-space: pre-wrap;
 	overflow-wrap: break-word;
 	opacity: 0;
-	transform: translateY(6px);
-	transition: opacity 300ms var(--ease), transform 300ms var(--ease);
+	transform: translateY(var(--s1));
+	transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
 }
 
-.row.text-only {
-	grid-template-columns: 24px 1fr;
-	min-height: 20px;
-	line-height: 20px;
-}
+.row.text-only { grid-template-columns: var(--s5) 1fr; }
+
 .row.in { opacity: 1; transform: none; }
 
 .row .sign { color: var(--muted); }
 .row .text { color: var(--ink-2); }
 
 .row.file .text { color: var(--ink); font-weight: 700; }
-.row.gap .text { color: var(--faint); }
+.row.gap .text { color: var(--muted); }
 .row.add { background: var(--add-wash); }
 .row.add .sign, .row.add .text { color: var(--add-ink); }
 .row.del { background: var(--del-wash); }
@@ -218,37 +241,37 @@ main[data-vis="0"] { opacity: 0; }
 .row.hit {
 	background: var(--fail-wash);
 	border-left-color: var(--fail);
-	transition: opacity 200ms var(--ease), background 400ms var(--ease), border-color 400ms var(--ease);
+	transition: opacity var(--fast) var(--ease), background var(--base) var(--ease), border-color var(--base) var(--ease);
 }
 
-.row.hit .text { color: #f6d0d0; }
+.row.hit .text { color: var(--fail-ink); }
 
 .marker {
-	width: 20px;
-	height: 20px;
-	border-radius: 10px;
+	width: var(--line);
+	height: var(--line);
+	border-radius: 50%;
 	background: var(--fail);
-	color: #ffffff;
+	color: var(--on-fail);
 	font-family: var(--mono);
-	font-size: 13px;
+	font-size: var(--t-xs);
 	font-weight: 700;
-	line-height: 20px;
+	line-height: var(--line);
 	text-align: center;
 	opacity: 0;
-	transition: opacity 400ms var(--ease);
+	transition: opacity var(--base) var(--ease);
 }
 
 .marker[data-shown="1"] { opacity: 1; }
 
 .clock { display: flex; flex-direction: column; }
 
-/* Two stats of the same shape, a number over its caption. They are aligned on
-   the captions rather than on the numbers, which are set at different sizes. */
+/* Two stats of the same shape, a number over its caption. They line up on the
+   captions rather than the numbers, which are set at different sizes. */
 .clock .top {
 	display: flex;
 	align-items: flex-end;
 	justify-content: space-between;
-	gap: 16px;
+	gap: var(--s4);
 }
 
 .clock .stat { display: flex; flex-direction: column; }
@@ -256,69 +279,71 @@ main[data-vis="0"] { opacity: 0; }
 
 #counter {
 	font-family: var(--mono);
-	font-size: 42px;
+	font-size: var(--t-num);
 	font-weight: 700;
-	line-height: 46px;
+	line-height: 48px;
 	color: var(--ink);
 	font-variant-numeric: tabular-nums;
 }
 
 #cost {
 	font-family: var(--mono);
-	font-size: 20px;
-	line-height: 26px;
+	font-size: var(--t-m);
+	line-height: 28px;
 	color: var(--ink-2);
 	font-variant-numeric: tabular-nums;
 }
 
 .clock .caption {
-	font-size: 16px;
-	line-height: 18px;
+	font-size: var(--t-xs);
+	line-height: 20px;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
 	color: var(--muted);
 }
 
+/* The four tenets fill what is left between the clock and the status line
+   exactly: four rows of 62px with 12px between them. */
 .tenets {
 	position: relative;
 	flex: 1 1 auto;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 16px;
+	gap: var(--s3);
 }
 
 .tenet {
-	margin: 0 -8px;
-	padding: 0 8px;
-	border-radius: 4px;
-	background: rgba(208, 59, 59, 0);
-	transition: background 400ms var(--ease);
+	margin: 0 calc(-1 * var(--s2));
+	padding: 0 var(--s2);
+	border-radius: var(--s1);
+	background: transparent;
+	transition: background var(--base) var(--ease);
 }
 
-.tenet.over { background: rgba(208, 59, 59, 0.07); }
+.tenet.over { background: var(--fail-tint); }
 
 .tenet .label {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	height: 22px;
+	gap: var(--s2);
+	height: var(--line);
 }
 
 .tenet .id {
 	font-family: var(--mono);
-	font-size: 18px;
-	line-height: 22px;
+	font-size: var(--t-s);
+	line-height: var(--line);
 	color: var(--ink-2);
 	flex: 0 0 auto;
-	transition: color 400ms var(--ease);
+	transition: color var(--base) var(--ease);
 }
 
 .tenet .gloss {
-	font-size: 16px;
-	line-height: 22px;
+	font-size: var(--t-xs);
+	line-height: var(--line);
 	color: var(--muted);
-	margin-left: 4px;
+	margin-left: var(--s1);
 	flex: 1 1 auto;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -329,34 +354,36 @@ main[data-vis="0"] { opacity: 0; }
 
 .track {
 	position: relative;
-	height: 16px;
-	margin-top: 4px;
-	background: rgba(244, 244, 239, 0.06);
+	height: var(--s4);
+	margin-top: var(--s1);
+	background: var(--rail);
 	border-radius: 2px;
 }
 
+/* --bar-dur is a beat of the clip rather than a duration of the interface: the
+   script sets it to how long the bars take to run. */
 .fill {
 	height: 100%;
 	width: 0;
 	background: var(--quiet-bar);
-	border-radius: 0 4px 4px 0;
-	transition: width var(--bar-dur, 800ms) var(--ease), background-color 300ms var(--ease);
+	border-radius: 0 var(--s1) var(--s1) 0;
+	transition: width var(--bar-dur, 800ms) var(--ease), background-color var(--base) var(--ease);
 }
 
 .tenet.over .fill { background: var(--fail); }
 
 .value {
 	position: absolute;
-	top: -1px;
+	top: 0;
 	left: 0;
-	transform: translateX(8px);
+	transform: translateX(var(--s2));
 	font-family: var(--mono);
-	font-size: 16px;
-	line-height: 16px;
+	font-size: var(--t-xs);
+	line-height: var(--s4);
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 	opacity: 0;
-	transition: left var(--bar-dur, 800ms) var(--ease), opacity 300ms var(--ease);
+	transition: left var(--bar-dur, 800ms) var(--ease), opacity var(--base) var(--ease);
 }
 
 .value[data-vis="1"] { opacity: 1; }
@@ -364,22 +391,22 @@ main[data-vis="0"] { opacity: 0; }
 .tenet.over .value { color: var(--ink); }
 
 /* Past three quarters of the track the tip label would run off the pane, so it
-   sits inside the bar end, in white against the fill. */
+   sits inside the bar end, against the fill. */
 .value.inside {
-	transform: translateX(-100%) translateX(-8px);
-	color: #ffffff;
+	transform: translateX(-100%) translateX(calc(-1 * var(--s2)));
+	color: var(--on-fail);
 }
 
 .tenet .at {
 	font-family: var(--mono);
-	font-size: 16px;
-	line-height: 18px;
-	height: 18px;
-	margin-top: 2px;
+	font-size: var(--t-xs);
+	line-height: var(--s4);
+	height: var(--s4);
+	margin-top: var(--s1);
 	color: var(--fail-text);
 	font-variant-numeric: tabular-nums;
 	opacity: 0;
-	transition: opacity 300ms var(--ease);
+	transition: opacity var(--base) var(--ease);
 }
 
 .tenet .at[data-vis="1"] { opacity: 1; }
@@ -395,30 +422,32 @@ main[data-vis="0"] { opacity: 0; }
 	pointer-events: none;
 }
 
+/* One size and one weight in every state; the colour is what says which state
+   the run is in. */
 #status {
-	font-size: 24px;
+	font-size: var(--t-l);
 	font-weight: 600;
-	line-height: 26px;
-	height: 26px;
+	line-height: 28px;
+	height: 28px;
 	color: var(--muted);
-	transition: color 200ms var(--ease);
+	transition: color var(--fast) var(--ease);
 }
 
-#status.bad { color: var(--fail); }
+#status.bad { color: var(--fail-text); }
 #status.good { color: var(--pass); }
-#status.note { font-size: 20px; font-weight: 400; color: var(--ink-2); }
+#status.note { color: var(--ink-2); }
 #status.asking { animation: asking 1.2s var(--ease) infinite alternate; }
 
 footer {
 	border-top: 1px solid var(--hairline);
-	padding: 0 24px;
+	padding: 0 var(--s5);
 	display: flex;
 	align-items: center;
 }
 
 #strip {
 	font-family: var(--mono);
-	font-size: 16px;
+	font-size: var(--t-xs);
 	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 }
@@ -426,35 +455,35 @@ footer {
 .session {
 	border-top: 1px solid var(--hairline);
 	background: var(--pane);
-	padding: 10px 24px;
+	padding: var(--s3) var(--s5);
 	overflow: hidden;
 }
 
 #session {
 	font-family: var(--mono);
-	font-size: 16px;
-	line-height: 22px;
-	transition: transform 300ms var(--ease);
+	font-size: var(--t-xs);
+	line-height: var(--line);
+	transition: transform var(--base) var(--ease);
 }
 
 #session .line {
-	height: 22px;
+	height: var(--line);
 	white-space: pre;
 	color: var(--ink-2);
 	opacity: 0;
-	transform: translateY(6px);
-	transition: opacity 300ms var(--ease), transform 300ms var(--ease);
+	transform: translateY(var(--s1));
+	transition: opacity var(--base) var(--ease), transform var(--base) var(--ease);
 }
 
 #session .line.in { opacity: 1; transform: none; }
 
 #session .box {
 	display: inline-block;
-	height: 20px;
-	line-height: 18px;
-	padding: 0 8px;
+	height: var(--line);
+	line-height: 20px;
+	padding: 0 var(--s2);
 	border: 1px solid var(--hairline);
-	border-radius: 6px;
+	border-radius: var(--s1);
 	color: var(--ink);
 }
 
@@ -472,9 +501,9 @@ footer {
 #blackout {
 	position: absolute;
 	inset: 0;
-	background: #000000;
+	background: var(--black);
 	pointer-events: none;
-	transition: opacity 400ms var(--ease);
+	transition: opacity var(--fast) var(--ease);
 }
 
 #blackout[data-shown="0"] { opacity: 0; }
@@ -483,14 +512,14 @@ footer {
 	position: absolute;
 	left: 0;
 	bottom: 0;
-	height: 3px;
+	height: var(--s1);
 	width: 0;
 	background: var(--grid);
 	pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	main, .xfade, .layer, .fill, .value, .row, .row.hit, .marker, .tenet, #session, #session .line, #blackout {
+	main, .xfade, .layer, .fill, .value, .row, .row.hit, .marker, .tenet, .tenet .id, .tenet .at, #status, #session, #session .line, #blackout {
 		transition-duration: 1ms;
 	}
 
@@ -769,7 +798,7 @@ const ACTS = [
 		session: [
 			{ when: "open", kind: "user", t: "Open the pull request" },
 			{ when: "call", kind: "tool", name: "Bash", arg: "gh pr create --fill" },
-			{ when: "verdict", kind: "result", t: "tenet: 4 findings on the pull request" },
+			{ when: "verdict", kind: "result", t: "tenet: 4 findings · pull request blocked" },
 			{ when: "caption", kind: "agent", t: "rewriting the description" },
 			{ when: "again", kind: "tool", name: "Bash", arg: "gh pr create --fill" },
 			{ when: "pass", kind: "result good", t: "tenet: 0 findings · pull request opened" }
@@ -790,8 +819,10 @@ const T = {
 	POST: 400,
 	AT: [0, 16000, 28600],
 	END_HOLD: 3500,
+	// FADE, MAIN_FADE and OUT are --slow, --base and --fast: the script holds
+	// the same three durations the stylesheet transitions on.
 	FADE: 700,
-	MAIN_FADE: 500,
+	MAIN_FADE: 300,
 	// A frame before the act starts, by which point the main area's fade-out
 	// has run, is when the two layers are emptied.
 	BLANK: 16,
@@ -1011,8 +1042,10 @@ function stripText(stats) {
 		stats.windows + (stats.windows === 1 ? " window" : " windows");
 }
 
+// The headline tail shows what the counter it stopped is showing, so the two
+// numbers on screen at that moment are the same number.
 function seconds(ms) {
-	return (ms / 1000).toFixed(1) + " s";
+	return (ms / 1000).toFixed(2) + " s";
 }
 
 function setBar(row, duration) {
@@ -1234,8 +1267,8 @@ function scheduleAct(act, start) {
 	setHeadlineAt(act.lead, "Blocked in " + seconds(act.blocked.duration_ms) + ".", "bad", verdictAt);
 	setTextAt(sublineEl, sublineText(act, act.blocked.findings), verdictAt);
 	setCostAt(act.blocked.cost_usd, verdictAt);
-	setTextAt(statusEl, "blocked · " + act.blocked.findings +
-		(act.blocked.findings === 1 ? " finding" : " findings"), verdictAt, "bad");
+	setTextAt(statusEl, act.blocked.findings +
+		(act.blocked.findings === 1 ? " finding · blocked" : " findings · blocked"), verdictAt, "bad");
 
 	setTextAt(statusEl, act.caption, start + off.caption, "note");
 
@@ -1264,7 +1297,7 @@ function scheduleAct(act, start) {
 	setTextAt(sublineEl, sublineText(act, act.passed.findings), passAt);
 	setCostAt(act.passed.cost_usd, passAt);
 	setTextAt(stripEl, stripText(act.passed), passAt);
-	setTextAt(statusEl, "passed · 0 findings", passAt, "good");
+	setTextAt(statusEl, "0 findings · passed", passAt, "good");
 
 	return { verdictAt: verdictAt, passAt: passAt };
 }
