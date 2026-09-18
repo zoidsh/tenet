@@ -363,8 +363,8 @@ func TestLintWithoutAConfig(t *testing.T) {
 	root.SetErr(&stderr)
 	root.SetArgs(nil)
 
-	if code := execute(root); code != 2 {
-		t.Fatalf("exit %d, want 2", code)
+	if code := execute(root); code != report.ExitNoConfig {
+		t.Fatalf("exit %d, want %d", code, report.ExitNoConfig)
 	}
 	if !strings.Contains(stderr.String(), "tenet.yml") || !strings.Contains(stderr.String(), dir) {
 		t.Errorf("stderr is %q, want the search path", stderr.String())

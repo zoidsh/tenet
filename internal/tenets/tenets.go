@@ -25,6 +25,10 @@ import (
 // FileName is the config file Find looks for.
 const FileName = source.ConfigName
 
+// ErrNotFound is what Find wraps, so that a caller can tell a repository that
+// does not use tenet from a run that broke.
+var ErrNotFound = errors.New("no " + FileName + " found")
+
 // DefaultFail is the probability at or above which a verdict becomes a
 // finding, for a tenet that names no cutoff of its own. Measured over the
 // spike's 126 cases, 0.8 keeps 84% of the violations against two borderline
@@ -485,6 +489,6 @@ func Find(startDir string) (string, []string, error) {
 		}
 		dir = parent
 	}
-	return "", searched, fmt.Errorf("no %s found from %s up to %s; run tenet init to draft one",
-		FileName, searched[0], searched[len(searched)-1])
+	return "", searched, fmt.Errorf("%w from %s up to %s; run tenet init to draft one",
+		ErrNotFound, searched[0], searched[len(searched)-1])
 }

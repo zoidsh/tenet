@@ -1,6 +1,7 @@
 package tenets_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -348,6 +349,9 @@ func TestFindNamesTheSearchAndTheWayOut(t *testing.T) {
 	_, _, err := tenets.Find(nested)
 	if err == nil {
 		t.Fatal("want an error, there is no config")
+	}
+	if !errors.Is(err, tenets.ErrNotFound) {
+		t.Errorf("error %v does not wrap ErrNotFound", err)
 	}
 	want := "no " + tenets.FileName + " found from " + nested + " up to " + root + "; run tenet init to draft one"
 	if err.Error() != want {
