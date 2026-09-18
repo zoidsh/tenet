@@ -70,7 +70,7 @@ A tenet is calibrated when labelled examples say what it catches and what it lea
     }
 ```
 
-- Point the tenet at the file with `examples_from: examples/<id>.yml`, a path read relative to the directory the config is in.
+- The file is found by the tenet's id, so the tenet itself names nothing; `examples_from`, a path read relative to the directory the config is in, is for the examples you keep somewhere else.
 - Twelve examples at least, roughly half of them `violation` with the `lines` a finding should land on and the rest `ok`. Mine them from this repository and its history where you can, and make them hard: include the innocent look-alikes a careless reading of the tenet would flag.
 - A drafted tenet has no `criteria`, so write one: `true` describes what a violation looks like, `false` describes the innocent case that resembles it.
 - Run `tenet check <id> --runs 3 --format json`. Read `verdict`, then `misjudged`, which names each example that landed on the wrong side of the cutoff by its first line, then `stability.crossed`. The verdict is the first pass alone, so an example in `crossed` moved across the cutoff between passes and counts as a miss.
@@ -84,7 +84,7 @@ The long form of this recipe, with what to do about each verdict, is `rules/READ
 
 `tenet init` refuses to run against a `.tenet/config.yml` that exists, and `--force` throws that file away, so never pass it. When the rule arrived as a sentence in `AGENTS.md` or another instruction file, run `tenet init --dry-run --format json`, which writes nothing and sorts the new sentences for you; when the person told you the rule instead, take their sentence as it stands. Either way, append one entry to `tenets:` by hand with `id`, `tenet` and `source`, then calibrate it by the section above before it gates anybody's commit.
 
-Leave the tenets that are already calibrated alone. Examples are how you tell the two apart: a tenet with an `examples` list or an `examples_from` path has been calibrated, and one with neither has not.
+Leave the tenets that are already calibrated alone. Examples are how you tell the two apart: a tenet with examples, inline or in `.tenet/examples/<id>.yml`, has been calibrated, and one with neither has not.
 
 ### Reporting
 
