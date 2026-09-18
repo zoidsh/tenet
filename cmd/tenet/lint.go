@@ -8,9 +8,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/zoidsh/tenet/internal/auth"
 	"github.com/zoidsh/tenet/internal/baseline"
@@ -22,6 +24,7 @@ import (
 	"github.com/zoidsh/tenet/internal/report"
 	"github.com/zoidsh/tenet/internal/source"
 	"github.com/zoidsh/tenet/internal/tenets"
+	"github.com/zoidsh/tenet/internal/trace"
 )
 
 // exitError carries the code the process should end with, so that a finding
@@ -109,6 +112,8 @@ type lintOptions struct {
 	baseline      string
 	noBaseline    bool
 	showBaselined bool
+	trace         bool
+	traceDir      string
 }
 
 func addLintFlags(cmd *cobra.Command, o *lintOptions) {
@@ -121,6 +126,23 @@ func addLintFlags(cmd *cobra.Command, o *lintOptions) {
 	f.StringVar(&o.baseline, "baseline", "", "read this baseline instead of "+baseline.Name+" beside the config")
 	f.BoolVar(&o.noBaseline, "no-baseline", false, "report every finding, whatever the baseline accepts")
 	f.BoolVar(&o.showBaselined, "show-baselined", false, "list the findings the baseline accepts as well, marked and still passing")
+	f.BoolVar(&o.trace, "trace", false,
+		"write what was sent to the model and what came back to "+source.ConfigDir+"/"+trace.DirName+", which is emptied first and ignored by git")
+	f.StringVar(&o.traceDir, "trace-dir", "",
+		"write the trace to this directory instead, which traces the run whether or not --trace is given and is emptied first as well")
+}
+
+// tracing reports whether this run writes a trace. --trace-dir says so on its
+// own, because naming where the trace goes is asking for one.
+func (o *lintOptions) tracing() bool { return o.trace || o.traceDir != "" }
+
+// traceDirFor is where the trace goes: beside the config, like the baseline,
+// unless --trace-dir names somewhere else.
+func (o *lintOptions) traceDirFor(configDir string) string {
+	if o.traceDir != "" {
+		return o.traceDir
+	}
+	return filepath.Join(configDir, trace.DirName)
 }
 
 // addRunFlags are the flags that choose what is judged and how, which baseline
@@ -184,6 +206,10 @@ type run struct {
 	key      string
 	set      *source.Set
 	outcome  judge.Outcome
+
+	// trace is where this run writes what it sent and what came back, nil
+	// when nobody asked for it.
+	trace *trace.Writer
 }
 
 // collectRun reads the config and gathers what the options select, without
@@ -267,10 +293,17 @@ func (r *run) collect(cmd *cobra.Command, paths []string, o *lintOptions) error 
 // judge asks the model about everything collected.
 func (r *run) judge(cmd *cobra.Command, o *lintOptions) error {
 	windows := r.set.Windows()
+	if o.tracing() {
+		w, err := trace.Open(o.traceDirFor(r.configDir), len(windows))
+		if err != nil {
+			return err
+		}
+		r.trace = w
+	}
 	if len(windows) == 0 {
 		return nil
 	}
-	outcome, err := lintWindows(cmd.Context(), cmd, o, r.cfg, windows, r.provider, r.key, r.model)
+	outcome, err := lintWindows(cmd.Context(), cmd, o, r.cfg, windows, r.provider, r.key, r.model, r.trace)
 	if err != nil {
 		return err
 	}
@@ -297,6 +330,9 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 	}
 	receiptPath, receiptKey := receiptFor(cmd, run, paths, o)
 	if receiptKey != "" && receipt.Load(receiptPath) == receiptKey {
+		if err := traceExcused(cmd, run, paths, o); err != nil {
+			return fail(err)
+		}
 		return reportExcused(cmd, o)
 	}
 
@@ -304,6 +340,9 @@ func runLint(cmd *cobra.Command, paths []string, o *lintOptions) error {
 		return fail(err)
 	}
 	if err := run.judge(cmd, o); err != nil {
+		return fail(err)
+	}
+	if err := run.traceRun(cmd, paths, o, false); err != nil {
 		return fail(err)
 	}
 	set, dir, near := run.set, run.dir, run.outcome.NearMisses
@@ -372,6 +411,63 @@ func reportExcused(cmd *cobra.Command, o *lintOptions) error {
 	return nil
 }
 
+// traceExcused writes the trace of a run a receipt answered, which asked
+// nothing and so has only the run itself to record.
+func traceExcused(cmd *cobra.Command, r *run, paths []string, o *lintOptions) error {
+	if !o.tracing() {
+		return nil
+	}
+	w, err := trace.Open(o.traceDirFor(r.configDir), 0)
+	if err != nil {
+		return err
+	}
+	r.trace = w
+	return r.traceRun(cmd, paths, o, true)
+}
+
+// traceRun records what the run as a whole was, so that the windows beside it
+// say which tree they came out of. The tree is the index's, which is what a
+// staged run reads every file out of and what no other run is judged from, so
+// only a staged run has one to name.
+func (r *run) traceRun(cmd *cobra.Command, paths []string, o *lintOptions, excused bool) error {
+	if r.trace == nil {
+		return nil
+	}
+	ctx := cmd.Context()
+	info := trace.Run{
+		Command: tracedCommand(cmd, paths),
+		Config:  r.cfg.Path,
+		Model:   r.model,
+		Stats:   r.outcome.Stats,
+		Excused: excused,
+	}
+	info.Head, _ = receipt.Head(ctx, r.dir)
+	if stagedRun(paths, o) {
+		info.Tree, _ = receipt.Tree(ctx, r.dir)
+	}
+	return r.trace.Run(info)
+}
+
+// redactedValue stands in the trace for what a key flag carried.
+const redactedValue = "<redacted>"
+
+// tracedCommand is the run as it was configured: the command, every flag that
+// was given and the paths it was pointed at. It is built from the flags rather
+// than from the process arguments so that a key a flag carried stays where it
+// already was, in this machine's process list, instead of going into a file
+// written to be handed to somebody.
+func tracedCommand(cmd *cobra.Command, paths []string) []string {
+	out := []string{cmd.CommandPath()}
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		value := f.Value.String()
+		if strings.HasSuffix(f.Name, keyFlagSuffix) {
+			value = redactedValue
+		}
+		out = append(out, "--"+f.Name+"="+value)
+	})
+	return append(out, paths...)
+}
+
 // receiptFor is the receipt this run may be excused by and would leave behind,
 // empty when there is none to be had. Only the default staged run has one: the
 // index is what it reads every file's content out of, so the tree the index
@@ -382,7 +478,7 @@ func reportExcused(cmd *cobra.Command, o *lintOptions) error {
 // stopping it, because a receipt only ever saves a call, and a commit must
 // never fail over one.
 func receiptFor(cmd *cobra.Command, r *run, paths []string, o *lintOptions) (path, key string) {
-	if len(paths) > 0 || o.base != "" || o.commitMsg != "" || o.prText != "" || o.noCache {
+	if !stagedRun(paths, o) || o.noCache {
 		return "", ""
 	}
 	ctx := cmd.Context()
@@ -397,6 +493,12 @@ func receiptFor(cmd *cobra.Command, r *run, paths []string, o *lintOptions) (pat
 		return "", ""
 	}
 	return path, receipt.Key(in)
+}
+
+// staged reports whether the run judges the staged changes, which is the run
+// with no paths, no base and no text of its own to lint.
+func stagedRun(paths []string, o *lintOptions) bool {
+	return len(paths) == 0 && o.base == "" && o.commitMsg == "" && o.prText == ""
 }
 
 func receiptInputs(ctx context.Context, r *run, o *lintOptions) (receipt.Inputs, error) {
@@ -519,7 +621,7 @@ func relativeTo(dir, path string) string {
 	return rel
 }
 
-func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, p provider.Provider, key, model string) (judge.Outcome, error) {
+func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *tenets.Config, windows []*source.Window, p provider.Provider, key, model string, tw *trace.Writer) (judge.Outcome, error) {
 	j := &judge.Judge{Asker: p.Client(key, model, o.g.clientOptions(p)...), Tenets: cfg.Tenets}
 	c, err := openCache(o.noCache)
 	if err != nil {
@@ -538,6 +640,24 @@ func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *t
 		}
 	}
 
+	var traceErr error
+	if tw != nil {
+		// The writer takes the concurrent windows one at a time itself; what
+		// needs the lock is the first failure, which is what the run reports.
+		var mu sync.Mutex
+		j.Trace = func(t judge.Trace) {
+			err := tw.Window(t)
+			if err == nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if traceErr == nil {
+				traceErr = err
+			}
+		}
+	}
+
 	// The progress line is the only sign of life during a run that can take
 	// tens of seconds, and it is taken back before anything is printed. A
 	// verbose run has its own lines to write to stderr, which would be
@@ -547,5 +667,9 @@ func lintWindows(ctx context.Context, cmd *cobra.Command, o *lintOptions, cfg *t
 		progress.Start(len(windows), j.Cached(windows))
 	}
 	defer progress.Clear()
-	return j.Run(ctx, windows)
+	outcome, err := j.Run(ctx, windows)
+	if err == nil && traceErr != nil {
+		return judge.Outcome{}, traceErr
+	}
+	return outcome, err
 }

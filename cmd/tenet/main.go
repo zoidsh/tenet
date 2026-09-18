@@ -14,6 +14,10 @@ import (
 	"github.com/zoidsh/tenet/internal/report"
 )
 
+// keyFlagSuffix ends the name of every flag that carries an API key, which is
+// how anything writing a command line down knows what not to write.
+const keyFlagSuffix = "-api-key"
+
 // providerFlags are the pair of flags one provider answers to, named after it
 // so that a second provider brings its own pair rather than fighting over one.
 type providerFlags struct {
@@ -39,7 +43,7 @@ func addGlobalFlags(root *cobra.Command) *globalOptions {
 		}
 		pf := &providerFlags{}
 		g.providers[p.Name] = pf
-		f.StringVar(&pf.key, p.Name+"-api-key", "",
+		f.StringVar(&pf.key, p.Name+keyFlagSuffix, "",
 			"the "+p.Label+" API key to judge with, ahead of "+p.Env+" and any saved key; a saved key or the variable is better, because a flag is in the process list for anyone on the machine to read")
 		f.StringVar(&pf.baseURL, p.Name+"-base-url", "",
 			"send the "+p.Label+" requests to this host, ahead of the environment and the host "+p.Name+" is otherwise asked on")
