@@ -1,6 +1,6 @@
 # The numbers the demo page animates
 
-Six runs against the live jev API, captured on 2026-09-18 over the sample project in `demo/sample` and its own `tenet.yml`, which turns on the `agent-hygiene` and `pr` presets and adds the `money-in-cents` tenet. Every number, id, path and line in `demo/index.html` comes from these files.
+Six runs against the live jev API, captured on 2026-09-18 over the sample project in `demo/sample` and its own `.tenet/config.yml`, which turns on the `agent-hygiene` and `pr` presets and adds the `money-in-cents` tenet. Every number, id, path and line in `demo/index.html` comes from these files.
 
 The two code runs judge a staged change: a fresh clone of `demo/sample` (the `*.patch` and `*.txt` files left out), `git init`, one commit of the sample as it stands, then `git apply` and `git add -A`. `XDG_CACHE_HOME` pointed at an empty directory, so every run below is cold.
 

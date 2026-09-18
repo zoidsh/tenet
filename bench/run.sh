@@ -135,7 +135,7 @@ numstat_lines() {
 # than the rename carries the file under its old name. A tenet's include globs are
 # matched against paths relative to the run's own root rather than to the
 # config's directory, so a config from outside the checkout judges it the same.
-config="$repo/tenet.yml"
+config="$repo/.tenet/config.yml"
 
 lint cold.json "$tmp/repo" --no-cache --config "$config" .
 lint warm.json "$tmp/repo" --config "$config" .

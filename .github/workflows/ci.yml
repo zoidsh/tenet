@@ -82,7 +82,7 @@ jobs:
             exit 1
           fi
 
-      - name: Lint the branch against tenet.yml
+      - name: Lint the branch against the repository config
         if: env.TYPESAFE_API_KEY != '' && github.event_name == 'pull_request'
         run: go run ./cmd/tenet --base origin/${{ github.base_ref }} --format json
 
