@@ -1,6 +1,7 @@
 package receipt
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -178,16 +179,25 @@ func TestTreeOfAnUnmergedIndex(t *testing.T) {
 	run(t, dir, "add", "-A")
 	commit(t, dir, "first")
 
-	run(t, dir, "checkout", "-q", "--orphan", "conflicting")
+	run(t, dir, "checkout", "-q", "-b", "conflicting")
 	write(t, dir, "a.txt", "theirs\n")
 	run(t, dir, "add", "-A")
 	commit(t, dir, "theirs")
-	run(t, dir, "checkout", "-q", "main")
 
-	merge := exec.Command("git", "merge", "--allow-unrelated-histories", "--no-edit", "conflicting")
-	merge.Dir = dir
-	if out, err := merge.CombinedOutput(); err == nil {
+	run(t, dir, "checkout", "-q", "main")
+	write(t, dir, "a.txt", "ours\n")
+	run(t, dir, "add", "-A")
+	commit(t, dir, "ours")
+
+	if out, err := output(t, dir, "merge", "--no-edit", "conflicting"); err == nil {
 		t.Fatalf("the merge did not conflict: %s", out)
+	}
+	unmerged, err := output(t, dir, "ls-files", "-u")
+	if err != nil {
+		t.Fatalf("git ls-files -u: %v\n%s", err, unmerged)
+	}
+	if len(bytes.TrimSpace(unmerged)) == 0 {
+		t.Fatal("the merge left the index merged")
 	}
 	if tree, err := Tree(context.Background(), dir); err == nil {
 		t.Errorf("an unmerged index wrote the tree %q", tree)
@@ -203,14 +213,26 @@ func write(t *testing.T, dir, name, content string) {
 
 func commit(t *testing.T, dir, message string) {
 	t.Helper()
-	run(t, dir, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-qm", message)
+	run(t, dir, "commit", "-qm", message)
 }
 
 func run(t *testing.T, dir string, args ...string) {
 	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	if out, err := cmd.CombinedOutput(); err != nil {
+	if out, err := output(t, dir, args...); err != nil {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
 	}
+}
+
+// output leaves the failure to its caller, for a command a test expects to
+// fail. The identity comes from the environment because the machine running
+// the tests may configure none.
+func output(t *testing.T, dir string, args ...string) ([]byte, error) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com",
+		"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com",
+	)
+	return cmd.CombinedOutput()
 }
