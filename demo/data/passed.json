@@ -8,9 +8,9 @@
     "windows": 2,
     "calls": 2,
     "cache_hits": 0,
-    "input_tokens": 4530,
-    "cost_usd": 0.00019,
-    "duration_ms": 795
+    "input_tokens": 4509,
+    "cost_usd": 0.000189,
+    "duration_ms": 684
   },
   "skipped": []
 }

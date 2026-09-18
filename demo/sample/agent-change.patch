@@ -1,5 +1,5 @@
 diff --git a/billing.go b/billing.go
-index aa84936..ef3125d 100644
+index aa84936..0385119 100644
 --- a/billing.go
 +++ b/billing.go
 @@ -1,5 +1,10 @@
@@ -13,18 +13,16 @@ index aa84936..ef3125d 100644
  func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
  	inv, err := repo.Invoice(id)
  	if err != nil {
-@@ -8,3 +13,27 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
+@@ -8,3 +13,24 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
  	subtotal := inv.SubtotalCents()
  	return subtotal + TaxCents(subtotal, taxRatePerMille), nil
  }
 +
-+// Discount is a code the customer types at checkout.
 +type Discount struct {
 +	Code    string
 +	Percent float64
 +}
 +
-+// ParseDiscount reads a code of the form SAVE10.
 +func ParseDiscount(code string) Discount {
 +	percent, err := strconv.ParseFloat(strings.TrimPrefix(code, "SAVE"), 64)
 +	if err != nil {
@@ -34,11 +32,10 @@ index aa84936..ef3125d 100644
 +	return Discount{Code: code, Percent: percent}
 +}
 +
-+// DiscountedTotal returns the amount due after the discount as a float64.
 +func DiscountedTotal(totalCents int, discount Discount) float64 {
 +	// divide the cents by 100 to get dollars
 +	dollars := float64(totalCents) / 100
-+	// multiply the dollars by the percent, divide that by 100, take it away
++	// take the percent off the dollars
 +	return dollars - dollars*discount.Percent/100
 +}
 diff --git a/billing_test.go b/billing_test.go

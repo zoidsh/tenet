@@ -1,5 +1,5 @@
 diff --git a/billing.go b/billing.go
-index ef3125d..7a2357a 100644
+index 0385119..b4edb3a 100644
 --- a/billing.go
 +++ b/billing.go
 @@ -1,6 +1,7 @@
@@ -10,15 +10,14 @@ index ef3125d..7a2357a 100644
  	"strconv"
  	"strings"
  )
-@@ -17,23 +18,19 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
- // Discount is a code the customer types at checkout.
+@@ -16,21 +17,19 @@ func TotalCents(repo Repository, id string, taxRatePerMille int) (int, error) {
+ 
  type Discount struct {
  	Code    string
 -	Percent float64
 +	Percent int
  }
  
--// ParseDiscount reads a code of the form SAVE10.
 -func ParseDiscount(code string) Discount {
 -	percent, err := strconv.ParseFloat(strings.TrimPrefix(code, "SAVE"), 64)
 +func ParseDiscount(code string) (Discount, error) {
@@ -26,22 +25,21 @@ index ef3125d..7a2357a 100644
  	if err != nil {
 -		// default to 0 on a parse error so that checkout keeps working
 -		percent = 0
-+		return Discount{}, fmt.Errorf("discount code %q carries no percentage: %w", code, err)
++		return Discount{}, fmt.Errorf("discount code %q: %w", code, err)
  	}
 -	return Discount{Code: code, Percent: percent}
 +	return Discount{Code: code, Percent: percent}, nil
  }
  
--// DiscountedTotal returns the amount due after the discount as a float64.
 -func DiscountedTotal(totalCents int, discount Discount) float64 {
 -	// divide the cents by 100 to get dollars
 -	dollars := float64(totalCents) / 100
--	// multiply the dollars by the percent, divide that by 100, take it away
+-	// take the percent off the dollars
 -	return dollars - dollars*discount.Percent/100
-+// DiscountedTotalCents rounds the discount up, so half a cent of rounding
-+// falls to Northwind rather than to the customer.
++// Rounding goes to the house: half a cent of discount is dropped rather
++// than given away, because the ledger reconciles in whole cents.
 +func DiscountedTotalCents(totalCents int, discount Discount) int {
-+	return totalCents - (totalCents*discount.Percent+99)/100
++	return totalCents - totalCents*discount.Percent/100
  }
 diff --git a/billing_test.go b/billing_test.go
 index f79dd96..4d85d57 100644
