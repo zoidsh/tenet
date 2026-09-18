@@ -6,8 +6,9 @@ import (
 	"time"
 )
 
-// TestLive spends real money against the real API, so it only runs when a key
-// is deliberately put in the environment.
+// Every run is billed, so opting in has to be deliberate and last no longer
+// than one shell. The saved credentials that auth.Resolve accepts would opt a
+// developer in for good; CI opts in through the repository secret.
 func TestLive(t *testing.T) {
 	key := KeyFromEnv()
 	if key == "" {
