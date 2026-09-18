@@ -6,7 +6,7 @@
 
 *Pre-release: the tenet format, the flags and the output are not stable, and any release can change them, so pin the version you install with `TENET_VERSION`.*
 
-tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each tenet once in plain language in `tenet.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
+tenet is the review gate for code that agents write. Your AGENTS.md says what a comment is for and that a failure is raised rather than hidden; agents break those rules anyway, and nobody reads every line of a large diff. You write each tenet once in plain language in `.tenet/config.yml` and every commit is judged against it, fast enough that the agent fixes its own findings before you see the diff.
 
 TypeSafe's jev model answers each rule with a calibrated probability, so a tenet is a pass-or-fail cutoff rather than a review comment to skim. On this repository a staged change took 1.1 s and cost $0.0022; a 2,062-line diff took 1.5 s and $0.0036, against a measured 50.3 s and $0.0535 for one Claude Haiku 4.5 call over the same diff and 121.4 s and $0.1943 for Sonnet 5, so about 34x faster and 15x cheaper than Haiku and about 81x faster and 54x cheaper than Sonnet. The tables are under Benchmarks.
 
@@ -61,11 +61,13 @@ From the root of your repository:
 
    From here an agent can do the rest. Install the Claude Code plugin: `/plugin marketplace add zoidsh/tenet` then `/plugin install tenet@zoidsh`; for another agent, `tenet init --agent agents` (or `cursor`, `claude`) gives the same instructions. Then tell it to set tenet up: it runs `tenet init`, maps the drafted rules to built-in ones, installs the hooks, and calibrates the tenets that are yours alone, as For agents describes. Steps 2 to 5 are that same work done by hand.
 
-2. Draft a `tenet.yml` from the instruction files your agents already read, or turn on a preset from Built-in rules below.
+2. Draft a `.tenet/config.yml` from the instruction files your agents already read, or turn on a preset from Built-in rules below.
 
    ```sh
    tenet init
    ```
+
+   Everything tenet keeps in your repository lives in that one directory: `.tenet/config.yml` is the config, `.tenet/baseline.json` is the baseline from Adopting on an existing codebase, and `.tenet/examples/` holds the labelled examples a tenet is calibrated against. Nothing under `.tenet/` is ever linted.
 
 3. Read what it drafted, delete the rules you did not mean, and print what the file now resolves to.
 
@@ -89,7 +91,7 @@ From the root of your repository:
 
 `tenet init` splits each instruction file into sentences and list items, then asks jev what kind of instruction each one is and whether a diff alone settles it. It keeps the rules a diff is enough to judge, and reports what describes your project rather than instructing anyone. A rule phrased as an instruction to the agent, such as "never print the key", is kept when the thing it forbids would be visible in the changed lines.
 
-Without `--from` it reads every one of `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name, and the flag is repeatable. `--dry-run` prints the table without writing anything, `--force` replaces a `tenet.yml` that is already there, `--config path` writes somewhere other than the repository root, and `--format json` gives you every candidate with its probabilities.
+Without `--from` it reads every one of `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/*.mdc`, `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md` and `BUGBOT.md` that your repository has; with `--from path` it reads exactly the files you name, and the flag is repeatable. `--dry-run` prints the table without writing anything, `--force` replaces a `.tenet/config.yml` that is already there, `--config path` writes somewhere other than the default, and `--format json` gives you every candidate with its probabilities.
 
 In the table, `kind` is what jev took the sentence for (a rule about code, a process step, or context about the project) and `checkable p` is its confidence that a diff alone can settle it; only a checkable rule becomes a tenet.
 
@@ -114,7 +116,7 @@ CLAUDE.md
 
 ## Built-in rules
 
-Twenty-five rules ship inside the binary, each with the criteria that say what a violation looks like and a labelled corpus measured by `tenet check --builtin --no-cache --runs 3`. A preset is a named list of them, and one line of `tenet.yml` turns the list on.
+Twenty-five rules ship inside the binary, each with the criteria that say what a violation looks like and a labelled corpus measured by `tenet check --builtin --no-cache --runs 3`. A preset is a named list of them, and one line of `.tenet/config.yml` turns the list on.
 
 ```console
 $ tenet presets
@@ -157,7 +159,7 @@ Eleven of the twenty-five are standalone. They ship in the binary, and `tenet ru
 
 ## Pass or fail
 
-Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2. A repository with no `tenet.yml` exits 3, so a hook that runs everywhere can let those commits through instead of treating them as a broken run.
+Every rule and tenet has one cutoff, `fail`, 0.8 unless it says otherwise. A window is a slice of one file small enough to ask the model about in a single call, at most 254 lines of it. The model answers each window with a probability, and at or above the cutoff it is a finding, under it nothing at all. Any finding exits 1; a clean run exits 0 and a broken one exits 2. A repository with no `.tenet/config.yml` exits 3, so a hook that runs everywhere can let those commits through instead of treating them as a broken run.
 
 There is no severity, no warning tier and no flag that lets a finding through, because a rule that is not worth failing a commit over is a rule whose cutoff is in the wrong place.
 
@@ -180,7 +182,7 @@ Three directives exempt code from a tenet. `tenet:ignore` exempts the line it is
 
 Each takes an optional comma-separated list of tenet ids and exempts only those; with no list it exempts every tenet. Ids are joined by commas; the first word after the list begins a reason, as in `tenet:ignore no-fallback the vendor API returns 200 on failure`. A directive with no ids has nowhere for a reason, so put it in a comment of its own.
 
-A directive that names an id your `tenet.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
+A directive that names an id your `.tenet/config.yml` does not define, or a `tenet:ignore-` keyword that is not one of the three, fails the run rather than silently exempting nothing, because a typo you cannot see is worse than a run you have to fix.
 
 ```go
 x := fallback() // tenet:ignore no-fallback
@@ -197,9 +199,9 @@ In Markdown, YAML and other prose and data files a directive counts at the start
 
 ## Configuration
 
-A rule ships in the binary; a tenet is one you write in `tenet.yml`; both run the same way, and a tenet that carries a rule's id replaces it.
+A rule ships in the binary; a tenet is one you write in `.tenet/config.yml`; both run the same way, and a tenet that carries a rule's id replaces it.
 
-A `tenet.yml` composes what will run out of the rules that ship inside the binary, listed under Built-in rules above, and the ones you write yourself. `tenet rules comment-why` prints one built-in rule in full, criteria and all, and a rule may sit in several presets.
+A `.tenet/config.yml` composes what will run out of the rules that ship inside the binary, listed under Built-in rules above, and the ones you write yourself. `tenet rules comment-why` prints one built-in rule in full, criteria and all, and a rule may sit in several presets.
 
 ```yaml
 version: 1
@@ -229,8 +231,8 @@ The order is the order of that file: the presets in the order you list them, the
 An id that arrives twice, an unknown preset, rule, disable or override id, and a config that resolves to no tenets at all are each an error that names what it found. `tenet config`, from Quick start step 3, prints what your file resolves to, with the origin, kinds, cutoff and include globs of every tenet that will run.
 
 ```console
-$ tenet config --config tenet.yml
-tenet.yml
+$ tenet config --config .tenet/config.yml
+.tenet/config.yml
 
 id                     origin         kind  fail  include
 comment-why            agent-hygiene  code  0.80  **/*.go, **/*.ts, **/*.tsx, **/*.py
@@ -259,7 +261,7 @@ tenets:
 
 `tenet check` tells you whether a tenet is phrased well enough to lint with, by running it over examples you have labelled yourself. Give a tenet an `examples` list, each with a `label` of `violation` or `ok` and the `code` it is about. A violation also names the `lines` a finding should land on: one line, or a `[first, last]` pair when the violation spans several and naming any line of it is right.
 
-Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenet check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
+Keep them in a sibling file with `examples_from: examples/comment-why.yml` when they crowd the config out. The path is read relative to the config's own directory, so that file is `.tenet/examples/comment-why.yml`. A built-in rule keeps its examples in the `examples.yml` beside its `rule.yml` under `rules/<id>/`, and `tenet check --builtin` measures every rule that ships in the binary, whatever your config turns on. Examples are never shown to the model and never enter a tenet's hash, so adding one costs you nothing in the lint cache.
 
 ```yaml
 tenets:
@@ -318,7 +320,7 @@ One line of advice names what usually moves the numbers:
 - a `true` criterion when the violations score low;
 - a rewrite of the sentence itself when both sit in the middle.
 
-`check` reports and never fails: it exits 0 whatever the numbers say, 3 when the repository has no `tenet.yml`, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. `--no-cache` bypasses the cached answers it reads, never the ones it writes, so the run after it is warm rather than cold. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
+`check` reports and never fails: it exits 0 whatever the numbers say, 3 when the repository has no `.tenet/config.yml`, and 2 only when the config or the API is broken. `--format json` gives the same numbers for a script, `--min-examples` moves the bar, and `--no-cache` asks again. `--no-cache` bypasses the cached answers it reads, never the ones it writes, so the run after it is warm rather than cold. Unlike the lint, `check` does not split an oversized request: an example longer than one request's token budget comes back as an API error rather than being judged in halves, so keep an example to the piece of code the tenet is about.
 
 `--runs 3` judges every example three times, leaving the cache out of it so the passes are independent. It adds a `stability` line per tenet: the largest standard deviation it saw over any one example, and every example whose probability landed on both sides of the cutoff between passes. The numbers above that line are still the first pass's, so asking for several passes does not change what one of them says. It is what tells you whether a verdict sitting near `fail` is a verdict or a coin toss, and it is the evidence a cutoff of its own should rest on.
 
@@ -326,7 +328,7 @@ Where a label is a call the tenet's sentence does not obviously make, write the 
 
 ## Adopting on an existing codebase
 
-A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenet-baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds.
+A first full sweep of code nobody wrote against these tenets finds things nobody is going to fix today, which is no reason to leave the rules off. `tenet baseline .` judges the whole tree, writes what it found to `.tenet/baseline.json`, and says how many findings it accepted; commit that file. The hook and CI then pass over every finding it holds and block only the ones your branch adds.
 
 `tenet --show-baselined` lists the accepted ones alongside, marked `[baselined]` and still passing, when you want to see what is waiting, which in JSON is a `baselined` array beside `findings`, of the same shape. `--baseline path` reads a file other than the default one, and `--no-baseline` accepts nothing from the baseline, which is the sweep to do before a release.
 
@@ -334,7 +336,7 @@ An entry is matched by the file, the tenet and a hash of the offending line with
 
 ```console
 $ tenet baseline .
-wrote 2 findings to .tenet-baseline.json
+wrote 2 findings to .tenet/baseline.json
 
 $ tenet .
 0 findings, 2 baselined · 5 windows, 0 calls, 10 cached · $0.0000 · 0.0s
@@ -445,7 +447,7 @@ tenet init --agent cursor --agent agents
 
 Setting tenet up is one instruction to the agent, as Quick start says. Two steps stay with you: installing the binary, and `tenet auth`, because the key is yours to paste.
 
-The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
+The agent checks `tenet auth --status`, runs `tenet init`, and replaces every drafted rule that a built-in rule already covers with that rule's id, keeping the source line in a comment. It runs `tenet hook install`, so the built-in rules gate the next commit, and everything up to there takes under two minutes. Each remaining custom tenet it then calibrates by the recipe named under Checking a tenet: twelve labelled examples in `.tenet/examples/<id>.yml`, `tenet check <id> --runs 3`, and criteria edited while the tenet sentence stays as written. Adding a rule later runs the same flow for that rule alone.
 
 ## Comparison
 

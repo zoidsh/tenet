@@ -24,7 +24,7 @@ status=$?
 [ "$status" -eq 0 ] && exit 0
 
 if [ "$status" -eq 3 ]; then
-	echo "no tenet.yml in this repository; the staged changes were not linted" >&2
+	echo "no .tenet/config.yml in this repository; the staged changes were not linted" >&2
 	exit 0
 fi
 

@@ -9,7 +9,7 @@ A Go CLI that lints code against English rules, judged by TypeSafe's jev model.
 - Lint: `golangci-lint run`
 - Shell scripts: `shellcheck bench/run.sh bench/testdata/stub-tenet install.sh npm/publish.sh npm/stage.sh npm/test.sh plugin/hooks/pre-commit.sh`
 - Release build check: `goreleaser build --snapshot --clean`
-- Before reporting a branch done: `tenet --base main`, which lints the branch against the repo's own `tenet.yml` and needs `TYPESAFE_API_KEY`.
+- Before reporting a branch done: `tenet --base main`, which lints the branch against the repo's own `.tenet/config.yml` and needs `TYPESAFE_API_KEY`.
 - Before tagging a release: set the `version` in `plugin/.claude-plugin/plugin.json` to the tag without its `v`, because the release workflow refuses a tag whose plugin version does not match.
 - Before a release: `tenet .`, a full sweep, because diff-scoped runs never revisit old code after a rule changes.
 

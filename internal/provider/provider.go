@@ -15,7 +15,7 @@ const Default = "typesafe"
 
 // Provider is one service and the key that buys answers from it.
 type Provider struct {
-	// Name is what tenet.yml and tenet auth call it, and what a credentials
+	// Name is what the config and tenet auth call it, and what a credentials
 	// file keys its line by.
 	Name string
 
